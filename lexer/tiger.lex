@@ -1,6 +1,8 @@
 type pos = int
 type lexresult = Tokens.token
 
+val commentCount = 0
+
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
 fun err(p1,p2) = ErrorMsg.error p1
@@ -47,3 +49,12 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <INITIAL>"<"	=> (Tokens.LT(yypos, yypos+1));
 <INITIAL>"="	=> (Tokens.EQ(yypos, yypos+1));
 <INITIAL>"<>"	=> (Tokens.NEQ(yypos, yypos+2));
+
+<INITIAL>"/*"=> (YYBEGIN COMMENT; commentCount := 1; continue());
+<COMMENT>"/*" => (commentCount := commentCount + 1; continue());
+<COMMENT>"*/" => (commentCount := commentCount - 1;
+		  if commentCount = 0 
+		  then (YYBEGIN INITIAL; continue()) 
+		  else continue());
+<COMMENT>. => (continue());
+<COMMENT>[\r\n] => (continue());
