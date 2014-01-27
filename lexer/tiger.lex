@@ -1,15 +1,13 @@
 type pos = int
 type lexresult = Tokens.token
 
+
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
-val uncloseStr = ref false
-
-val str =ref ""
-val strPos= ref 0
 
 val strBuilder = ref ""
 val strPosition = ref 0
+val uncloseStr = ref false
 val cmCount = ref 0
 
 fun eof() =
@@ -29,7 +27,7 @@ digit   = [0-9];
 letter  = [a-zA-Z];
 %s  COMMENT NPSTRING STRING STCOMMENT;
 %%
-<INITIAL>\n	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<INITIAL>\n	=> (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue());
 <INITIAL>[\ \t] => (continue());
 
 <INITIAL>type	=> (Tokens.TYPE(yypos,yypos+4));
@@ -83,18 +81,18 @@ letter  = [a-zA-Z];
 <STRING>\"    	=> (YYBEGIN INITIAL; uncloseStr := false; Tokens.STRING(!strBuilder, !strPosition, yypos+1));
 <STRING>\\(n|t|\^c|[0-9]{3}|\"|\\)	=> (strBuilder := !strBuilder ^ valOf(String.fromString yytext); continue());
 <STRING>[\\]   	=> (YYBEGIN NPSTRING; continue());
-<NPSTRING>[\n]  => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<NPSTRING>[\n]  => (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue());
 <NPSTRING>[\ \t\f]	=> (continue()); 
 <NPSTRING>[\\]	=> (YYBEGIN STRING; continue());
-<NPSTRING>.    	=> (ErrorMsg.error yypos ("Illegal escape character: \\" ^ yytext); YYBEGIN STRING; continue());
-<STRING>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; ErrorMsg.error yypos ("illegal linebreak in string literal "); continue());
+<NPSTRING>.    	=> (ErrorMsg.error yypos ("Illegal escape character: " ^ yytext); YYBEGIN STRING; continue());
+<STRING>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; ErrorMsg.error yypos ("illegal linebreak in string literal "); continue());
 <STRING>.      	=> (strBuilder := !strBuilder ^ yytext; continue());
 
 
 <INITIAL>"/*"   => (YYBEGIN COMMENT; cmCount := !cmCount + 1; continue());
 <COMMENT>"/*"   => (cmCount := !cmCount + 1; continue());
 <COMMENT>"*/"   => (cmCount := !cmCount - 1; if !cmCount = 0 then YYBEGIN INITIAL else (); continue());
-<COMMENT>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<COMMENT>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue());
 <COMMENT>.      => (continue());
 
 .				=> (ErrorMsg.error yypos ("Illegal character: " ^ yytext); continue());
