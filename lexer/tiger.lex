@@ -6,14 +6,14 @@ val linePos = ErrorMsg.linePos
 
 val strBuilder = ref ""
 val strPosition = 0
-val cmCount = 0
+val cmCount = ref 0
 
 fun eof() =
 	let
 		val pos = hd(!linePos)  (* don't think it's right *)
  	in 
-   		if cmCount > 0
-  			then (ErrorMsg.error pos (Int.toString(cmCount) ^ " unclosed comments "); cmCount = 0; Tokens.EOF(pos,pos))
+   		if !cmCount > 0
+  			then (ErrorMsg.error pos (Int.toString(!cmCount) ^ " unclosed comments "); !cmCount = 0; Tokens.EOF(pos,pos))
    			else if strPosition <> 0
      			then (ErrorMsg.error pos ("unclosed string starting " ^ Int.toString(strPosition)); Tokens.EOF(pos,pos))
      			else (Tokens.EOF(pos,pos)) 
@@ -55,6 +55,7 @@ letter  = [a-zA-Z];
 <INITIAL>"<"	=> (Tokens.LT(yypos, yypos+1));
 <INITIAL>"<>"	=> (Tokens.NEQ(yypos, yypos+2));
 <INITIAL>"="	=> (Tokens.EQ(yypos, yypos+1));
+<INITIAL>"*/"   => (ErrorMsg.error yypos ("Error: unopened comment"); !cmCount = 0; Tokens.EOF(yypos,yypos));
 <INITIAL>"/"	=> (Tokens.DIVIDE(yypos, yypos+1));
 <INITIAL>"*"	=> (Tokens.TIMES(yypos, yypos+1));
 <INITIAL>"-"	=> (Tokens.MINUS(yypos, yypos+1));
@@ -85,9 +86,9 @@ letter  = [a-zA-Z];
 <STRING>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; ErrorMsg.error yypos ("illegal linebreak in string literal "); continue());
 <STRING>.      	=> (continue());
 
-<INITIAL>"/*"   => (YYBEGIN COMMENT; cmCount = cmCount + 1; continue());
-<COMMENT>"/*"   => (cmCount = cmCount + 1; continue());
-<COMMENT>"*/"   => (cmCount = cmCount - 1; if cmCount = 0 then YYBEGIN INITIAL else (); continue());
+<INITIAL>"/*"   => (YYBEGIN COMMENT; cmCount := !cmCount + 1; continue());
+<COMMENT>"/*"   => (cmCount := !cmCount+1; continue());
+<COMMENT>"*/"   => (cmCount := !cmCount-1; if !cmCount = 0 then YYBEGIN INITIAL else (); continue());
 <COMMENT>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <COMMENT>.      => (continue());
 
