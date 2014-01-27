@@ -16,9 +16,9 @@ In this part of the compiler, we implemented features for a working compiler tha
 
 Main techniques used in this analysis include:
 
--deterministic finite-state automata
+	-deterministic finite-state automata
 
--regular expressions
+	-regular expressions
 
 
 We defined four different states for handling syntax and conventions in the Tiger language: INITIAL, COMMENT, STRING, and NPSTRING.
@@ -29,15 +29,15 @@ INITIAL state:
 
 	-when special characters, symbols, integer numbers, and reserved words were encountered, a token of the matched type is produced based on the longest match rule
 
-	-accept ¡°/*¡° to transition into a COMMENT state, and \¡° to transition into a STRING state
+	-accept "/*" to transition into a COMMENT state, and \" to transition into a STRING state
 
 COMMENT state:
 
 	-discard any character encountered during COMMENT state except for the transition rules
 
-	-when ¡°/*¡° is encountered during COMMENT state, a nested comment is detected, and we increase the comment count by 1
+	-when "/*" is encountered during COMMENT state, a nested comment is detected, and we increase the comment count by 1
 
-	-when ¡°*/¡° is encountered, decrease the comment count by 1, and transition to INITIAL if count is 0
+	-when "*/" is encountered, decrease the comment count by 1, and transition to INITIAL if count is 0
 
 STRING state:
 
@@ -45,7 +45,7 @@ STRING state:
 
 	-when [\\] is encountered, the program transitions into NPSTRING state, whereby it is ready to take legal escape characters defined by the Tiger language
 
-	-accept \¡° to end the STRING state and transition into INITIAL state, producing a string token at the same time
+	-accept \" to end the STRING state and transition into INITIAL state, producing a string token at the same time
 
 NPSTRING state:
 
