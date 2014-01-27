@@ -3,17 +3,30 @@ type lexresult = Tokens.token
 
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
-fun err(p1,p2) = ErrorMsg.error p1
 
-fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
+val strBuilder = ref ""
+val strPosition = 0
+val cmCount = 0
+
+fun eof() =
+	let
+		val pos = hd(!linePos)  (* don't think it's right *)
+ 	in 
+   		if cmCount > 0
+  			then (ErrorMsg.error pos (Int.toString(cmCount) ^ " unclosed comments "); cmCount = 0; Tokens.EOF(pos,pos))
+   			else if strPosition <> 0
+     			then (ErrorMsg.error pos ("unclosed string starting " ^ Int.toString(strPosition)); Tokens.EOF(pos,pos))
+     			else (Tokens.EOF(pos,pos)) 
+end
 
 
 %% 
+digit   = [0-9];
+letter  = [a-zA-Z];
+%s  COMMENT NPSTRING STRING;
 %%
 <INITIAL>\n	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
-<INITIAL>","	=> (Tokens.COMMA(yypos,yypos+1));
-<INITIAL>"123"	=> (Tokens.INT(123,yypos,yypos+3));
-<INITIAL>.       => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
+<INITIAL>[\ \t] => (continue());
 
 <INITIAL>type	=> (Tokens.TYPE(yypos,yypos+4));
 <INITIAL>var  	=> (Tokens.VAR(yypos,yypos+3));
@@ -33,17 +46,49 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 
 <INITIAL>if	=> (Tokens.IF(yypos, yypos+2));
 <INITIAL>array	=> (Tokens.ARRAY(yypos, yypos+5));
+<INITIAL>":="	=> (Tokens.ASSIGN(yypos, yypos+2));
 <INITIAL>"|"	=> (Tokens.OR(yypos, yypos+1));
 <INITIAL>"&"	=> (Tokens.AND(yypos, yypos+1));
-<INITIAL>"+"	=> (Tokens.PLUS(yypos, yypos+1));
-<INITIAL>"-"	=> (Tokens.MINUS(yypos, yypos+1));
-<INITIAL>"*"	=> (Tokens.TIMES(yypos, yypos+1));
-<INITIAL>"/"	=> (Tokens.DIVIDE(yypos, yypos+1));
-<INITIAL>"."	=> (Tokens.DOT(yypos, yypos+1));
-<INITIAL>":="	=> (Tokens.ASSIGN(yypos, yypos+2));
 <INITIAL>">="	=> (Tokens.GE(yypos, yypos+2));
-<INITIAL>"<="	=> (Tokens.LE(yypos, yypos+2));
 <INITIAL>">"	=> (Tokens.GT(yypos, yypos+1));
+<INITIAL>"<="	=> (Tokens.LE(yypos, yypos+2));
 <INITIAL>"<"	=> (Tokens.LT(yypos, yypos+1));
-<INITIAL>"="	=> (Tokens.EQ(yypos, yypos+1));
 <INITIAL>"<>"	=> (Tokens.NEQ(yypos, yypos+2));
+<INITIAL>"="	=> (Tokens.EQ(yypos, yypos+1));
+<INITIAL>"/"	=> (Tokens.DIVIDE(yypos, yypos+1));
+<INITIAL>"*"	=> (Tokens.TIMES(yypos, yypos+1));
+<INITIAL>"-"	=> (Tokens.MINUS(yypos, yypos+1));
+<INITIAL>"+"	=> (Tokens.PLUS(yypos, yypos+1));
+<INITIAL>"."	=> (Tokens.DOT(yypos, yypos+1));
+
+<INITIAL>"}"	=> (Tokens.RBRACE(yypos, yypos+1));
+<INITIAL>"{"	=> (Tokens.LBRACE(yypos, yypos+1));
+<INITIAL>"]"	=> (Tokens.RBRACK(yypos, yypos+1));
+<INITIAL>"["	=> (Tokens.LBRACK(yypos, yypos+1));
+<INITIAL>")"	=> (Tokens.RPAREN(yypos, yypos+1));
+<INITIAL>"("	=> (Tokens.LPAREN(yypos, yypos+1));
+<INITIAL>";"	=> (Tokens.SEMICOLON(yypos, yypos+1));
+<INITIAL>":"	=> (Tokens.COLON(yypos, yypos+1));
+<INITIAL>","	=> (Tokens.COMMA(yypos, yypos+1));
+
+<INITIAL>{digit}+	=> (Tokens.INT(valOf(Int.fromString yytext), yypos, yypos + size yytext));
+<INITIAL>{letter}+({letter}|{digit}|_)*	=> (Tokens.ID(yytext, yypos, yypos + size yytext));
+
+<INITIAL>\"		=> (YYBEGIN STRING; strBuilder := ""; strPosition = yypos; continue());
+<STRING>\"    	=> (YYBEGIN INITIAL; Tokens.STRING(!strBuilder, strPosition, yypos+1); strPosition = 0; continue());
+<STRING>\\(n|t|\^c|[0-9]{3}|\"|\\)	=> (strBuilder := !strBuilder ^ valOf(String.fromString yytext); continue());
+<STRING>[\\]   	=> (YYBEGIN NPSTRING; continue());
+<NPSTRING>[\n]  => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<NPSTRING>[\ \t\f]	=> (continue()); 
+<NPSTRING>[\\]	=> (YYBEGIN STRING; continue());
+<NPSTRING>.    	=> (ErrorMsg.error yypos ("Illegal escape character: \\" ^ yytext); YYBEGIN STRING; continue());
+<STRING>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; ErrorMsg.error yypos ("illegal linebreak in string literal "); continue());
+<STRING>.      	=> (continue());
+
+<INITIAL>"/*"   => (YYBEGIN COMMENT; cmCount = cmCount + 1; continue());
+<COMMENT>"/*"   => (cmCount = cmCount + 1; continue());
+<COMMENT>"*/"   => (cmCount = cmCount - 1; if cmCount = 0 then YYBEGIN INITIAL else (); continue());
+<COMMENT>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<COMMENT>.      => (continue());
+
+.				=> (ErrorMsg.error yypos ("Illegal character: " ^ yytext); continue());
