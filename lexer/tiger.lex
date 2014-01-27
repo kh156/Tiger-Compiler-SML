@@ -3,19 +3,24 @@ type lexresult = Tokens.token
 
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
+val uncloseStr = ref false
+
+val str = ref ""
+val strPos= ref 0
 
 val strBuilder = ref ""
-val strPosition = 0
+val strPosition = ref 0
 val cmCount = ref 0
+val position = ref 0
 
 fun eof() =
 	let
-		val pos = hd(!linePos)  (* don't think it's right *)
+		val pos = !position
  	in 
    		if !cmCount > 0
-  			then (ErrorMsg.error pos (Int.toString(!cmCount) ^ " unclosed comments "); !cmCount = 0; Tokens.EOF(pos,pos))
-   			else if strPosition <> 0
-     			then (ErrorMsg.error pos ("unclosed string starting " ^ Int.toString(strPosition)); Tokens.EOF(pos,pos))
+  			then (ErrorMsg.error pos (Int.toString(!cmCount) ^ " unclosed comments "); cmCount := 0; Tokens.EOF(pos,pos))
+   			else if !uncloseStr = true
+     			then (ErrorMsg.error pos ("unclosed string starting " ^ Int.toString(!strPosition)); Tokens.EOF(pos,pos))
      			else (Tokens.EOF(pos,pos)) 
 end
 
@@ -23,8 +28,9 @@ end
 %% 
 digit   = [0-9];
 letter  = [a-zA-Z];
-%s  COMMENT NPSTRING STRING;
+%s  COMMENT NPSTRING STRING STCOMMENT;
 %%
+
 <INITIAL>\n	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <INITIAL>[\ \t] => (continue());
 
@@ -74,8 +80,8 @@ letter  = [a-zA-Z];
 <INITIAL>{digit}+	=> (Tokens.INT(valOf(Int.fromString yytext), yypos, yypos + size yytext));
 <INITIAL>{letter}+({letter}|{digit}|_)*	=> (Tokens.ID(yytext, yypos, yypos + size yytext));
 
-<INITIAL>\"		=> (YYBEGIN STRING; strBuilder := ""; strPosition = yypos; continue());
-<STRING>\"    	=> (YYBEGIN INITIAL; Tokens.STRING(!strBuilder, strPosition, yypos+1); strPosition = 0; continue());
+<INITIAL>\"		=> (YYBEGIN STRING; strBuilder := ""; strPosition := yypos; uncloseStr := true; continue());
+<STRING>\"    	=> (YYBEGIN INITIAL; uncloseStr := false; Tokens.STRING(!strBuilder, !strPosition, yypos+1));
 <STRING>\\(n|t|\^c|[0-9]{3}|\"|\\)	=> (strBuilder := !strBuilder ^ valOf(String.fromString yytext); continue());
 <STRING>[\\]   	=> (YYBEGIN NPSTRING; continue());
 <NPSTRING>[\n]  => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
@@ -83,11 +89,12 @@ letter  = [a-zA-Z];
 <NPSTRING>[\\]	=> (YYBEGIN STRING; continue());
 <NPSTRING>.    	=> (ErrorMsg.error yypos ("Illegal escape character: \\" ^ yytext); YYBEGIN STRING; continue());
 <STRING>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; ErrorMsg.error yypos ("illegal linebreak in string literal "); continue());
-<STRING>.      	=> (continue());
+<STRING>.      	=> (strBuilder := !strBuilder ^ yytext; continue());
+
 
 <INITIAL>"/*"   => (YYBEGIN COMMENT; cmCount := !cmCount + 1; continue());
-<COMMENT>"/*"   => (cmCount := !cmCount+1; continue());
-<COMMENT>"*/"   => (cmCount := !cmCount-1; if !cmCount = 0 then YYBEGIN INITIAL else (); continue());
+<COMMENT>"/*"   => (cmCount := !cmCount + 1; continue());
+<COMMENT>"*/"   => (cmCount := !cmCount - 1; if !cmCount = 0 then YYBEGIN INITIAL else (); continue());
 <COMMENT>[\n] 	=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <COMMENT>.      => (continue());
 
