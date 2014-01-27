@@ -59,6 +59,7 @@ letter  = [a-zA-Z];
 <INITIAL>"<"	=> (Tokens.LT(yypos, yypos+1));
 <INITIAL>"<>"	=> (Tokens.NEQ(yypos, yypos+2));
 <INITIAL>"="	=> (Tokens.EQ(yypos, yypos+1));
+<INITIAL>"*/"   => (ErrorMsg.error yypos ("Error: unopened comment"); !cmCount = 0; Tokens.EOF(yypos,yypos));
 <INITIAL>"/"	=> (Tokens.DIVIDE(yypos, yypos+1));
 <INITIAL>"*"	=> (Tokens.TIMES(yypos, yypos+1));
 <INITIAL>"-"	=> (Tokens.MINUS(yypos, yypos+1));
