@@ -23,7 +23,7 @@ end
 %% 
 digit   = [0-9];
 letter  = [a-zA-Z];
-%s  COMMENT NPSTRING STRING STCOMMENT;
+%s  COMMENT NPSTRING STRING;
 %%
 <INITIAL>\n	=> (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue());
 <INITIAL>[\ \t] => (continue());
