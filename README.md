@@ -76,3 +76,9 @@ Other modifications:
 	-we modified driver.sml to include some steps for better error handling: our error report contains the specific file name for the file that causes the error, and we reset the lineNum and linePos in ErrorMsg before every run of parsing.
 
 	-we modified the eof() function to report any unclosed string or unclosed comment, and if everything is right, return and print out the EOF token with a position count
+
+Known bugs or problems:
+
+	-no bugs
+	
+	-if you enter \ddd in a string literal with an illegal ASCII code in decimal, the lexer throws an uncaught exception 

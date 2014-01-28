@@ -1,1 +1,2 @@
-/* /* nested comment test */ /* another nested */ */ 
+abc "\n\t\101"
+/* /* nested comment test */ /* another nested */ 
