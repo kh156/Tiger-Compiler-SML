@@ -11,7 +11,8 @@
   | BREAK | NIL
   | FUNCTION | VAR | TYPE 
 
-%nonterm  exp | program
+%nonterm  exp | program | decs | dec | tydec | vardec | fundec | ty | tyfields | IDarray | extratyfields
+          | letstruct
 
 %pos int
 %verbose
@@ -37,7 +38,35 @@
  *  to replace the two dummy productions below with an actual grammar. 
  *)
 
-program	: exp				()
+program	: exp   ()
+  | decs  ()
 
-	
-exp: 			()
+(*expression is the hardest part here i think...by Ang*)
+exp: letstruct   ()
+
+decs: dec decs  ()
+  |   ()
+
+dec: tydec  ()
+  | vardec  ()
+  | fundec  ()
+
+tydec: TYPE ID EQ ty  ()
+
+ty: ID  ()
+  | LBRACE tyfields RBRACE  ()
+  | ARRAY OF ID   ()
+
+tyfields:   ()
+  | ID COLON ID extratyfields  ()
+
+extratyfields:    ()
+  | COMMA ID COLON ID extratyfields  ()
+
+vardec: VAR ID ASSIGN exp   ()
+  | VAR ID COLON ID ASSIGN exp  ()
+
+fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   ()
+  | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
+
+letstruct: LET decs IN exp END   ()
