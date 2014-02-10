@@ -1,4 +1,3 @@
-type pos = int
 type svalue = Tokens.svalue
 type ('a,'b) token = ('a,'b) Tokens.token
 type lexresult = (svalue,pos) token
@@ -8,12 +7,9 @@ val strBuilder = ref ""
 val strPosition = ref 0
 val uncloseStr = ref false
 val cmCount = ref 0
-val position = ref 0
-val reset = ErrorMsg.reset
-
 fun eof() =
 	let
-		val pos = !position
+		val pos = hd(!linePos)
  	in 
    		if !cmCount > 0
   			then (ErrorMsg.error pos (Int.toString(!cmCount) ^ " unclosed comments "); cmCount := 0; Tokens.EOF(pos,pos))
@@ -27,9 +23,8 @@ end
 digit   = [0-9];
 letter  = [a-zA-Z];
 %header (functor TigerLexFun(structure Tokens: Tiger_TOKENS));
-%s  COMMENT NPSTRING STRING STCOMMENT;
+%s  COMMENT NPSTRING STRING;
 %%
-
 <INITIAL>\n	=> (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue());
 <INITIAL>[\ \t] => (continue());
 

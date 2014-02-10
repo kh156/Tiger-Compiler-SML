@@ -1,5 +1,4 @@
 type lexresult = Tokens.token
-
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
 val strBuilder = ref ""
