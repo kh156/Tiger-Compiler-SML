@@ -104,18 +104,15 @@ STCOMMENT | STRING | NPSTRING | COMMENT | INITIAL
 
 type pos = int
 type lexresult = Tokens.token
-
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
-val uncloseStr = ref false
-
-val str = ref ""
-val strPos= ref 0
-
 val strBuilder = ref ""
 val strPosition = ref 0
+val uncloseStr = ref false
 val cmCount = ref 0
 val position = ref 0
+val reset = ErrorMsg.reset
+reset()
 
 fun eof() =
 	let
@@ -189,7 +186,7 @@ Vector.fromList []
 	    in 
 let
 fun yyAction0 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue()))
+      (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue()))
 fun yyAction1 (strm, lastMatch : yymatch) = (yystrm := strm; (continue()))
 fun yyAction2 (strm, lastMatch : yymatch) = (yystrm := strm;
       (Tokens.TYPE(yypos,yypos+4)))
@@ -295,7 +292,7 @@ fun yyAction46 (strm, lastMatch : yymatch) = let
 fun yyAction47 (strm, lastMatch : yymatch) = (yystrm := strm;
       (YYBEGIN NPSTRING; continue()))
 fun yyAction48 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue()))
+      (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue()))
 fun yyAction49 (strm, lastMatch : yymatch) = (yystrm := strm; (continue()))
 fun yyAction50 (strm, lastMatch : yymatch) = (yystrm := strm;
       (YYBEGIN STRING; continue()))
@@ -303,10 +300,10 @@ fun yyAction51 (strm, lastMatch : yymatch) = let
       val yytext = yymktext(strm)
       in
         yystrm := strm;
-        (ErrorMsg.error yypos ("Illegal escape character: \\" ^ yytext); YYBEGIN STRING; continue())
+        (ErrorMsg.error yypos ("Illegal escape character: " ^ yytext); YYBEGIN STRING; continue())
       end
 fun yyAction52 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (lineNum := !lineNum+1; linePos := yypos :: !linePos; ErrorMsg.error yypos ("illegal linebreak in string literal "); continue()))
+      (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; ErrorMsg.error yypos ("illegal linebreak in string literal "); continue()))
 fun yyAction53 (strm, lastMatch : yymatch) = let
       val yytext = yymktext(strm)
       in
@@ -319,7 +316,7 @@ fun yyAction55 (strm, lastMatch : yymatch) = (yystrm := strm;
 fun yyAction56 (strm, lastMatch : yymatch) = (yystrm := strm;
       (cmCount := !cmCount - 1; if !cmCount = 0 then YYBEGIN INITIAL else (); continue()))
 fun yyAction57 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue()))
+      (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue()))
 fun yyAction58 (strm, lastMatch : yymatch) = (yystrm := strm; (continue()))
 fun yyAction59 (strm, lastMatch : yymatch) = let
       val yytext = yymktext(strm)
