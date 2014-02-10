@@ -1,4 +1,5 @@
 type svalue = Tokens.svalue
+type pos = int
 type ('a,'b) token = ('a,'b) Tokens.token
 type lexresult = (svalue,pos) token
 val lineNum = ErrorMsg.lineNum

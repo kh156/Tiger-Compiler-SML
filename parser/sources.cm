@@ -4,5 +4,6 @@ tiger.lex
 errormsg.sml
 parsetest.sml
 tiger.grm
-smlnj-lib.cm
-ml-yacc-lib.cme
+$/smlnj-lib.cm
+$/ml-yacc-lib.cm
+$/basis.cm
