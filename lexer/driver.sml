@@ -9,8 +9,9 @@ struct
                in print t; print "\n";
                    if substring(t,0,3)="EOF" then () else do_it()
               end
-       in do_it();
+       in ErrorMsg.reset();
+          ErrorMsg.fileName := filename;
+          do_it();
           TextIO.closeIn file
       end
-
 end

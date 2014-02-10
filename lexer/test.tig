@@ -23,4 +23,8 @@ end
 
 
 /* BELOW TEST THE NESTED COMMENT & UNCLOSED COMMENT*/                                
+<<<<<<< HEAD
 /* arr1/** is valid since expression 0 is int = myint */
+=======
+/* arr1 is valid since expression 0 is int = myint */
+>>>>>>> ab9ccbcd465e5b7b25739beddc2ae7e23d2b5614

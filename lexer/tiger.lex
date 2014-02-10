@@ -1,17 +1,14 @@
-type pos = int
 type lexresult = Tokens.token
+
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
 val strBuilder = ref ""
 val strPosition = ref 0
 val uncloseStr = ref false
 val cmCount = ref 0
-val position = ref 0
-val reset = ErrorMsg.reset
-
 fun eof() =
 	let
-		val pos = !position
+		val pos = hd(!linePos)
  	in 
    		if !cmCount > 0
   			then (ErrorMsg.error pos (Int.toString(!cmCount) ^ " unclosed comments "); cmCount := 0; Tokens.EOF(pos,pos))
@@ -24,9 +21,9 @@ end
 %% 
 digit   = [0-9];
 letter  = [a-zA-Z];
-%s  COMMENT NPSTRING STRING STCOMMENT;
-%%
 
+%s  COMMENT NPSTRING STRING;
+%%
 <INITIAL>\n	=> (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue());
 <INITIAL>[\ \t] => (continue());
 
