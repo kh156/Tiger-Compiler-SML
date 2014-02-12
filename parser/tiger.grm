@@ -88,8 +88,9 @@ exp: lvalue   ()
   | STRING  ()
   | MINUS exp %prec UMINUS  ()
 
-  (*  Function calls, pretty sure this is not correct *)
+  (*  Function calls *)
   | ID LPAREN RPAREN
+  (* pretty sure this is not correct *)
   | ID LPAREN exp LBRACK COMMA exp RBRACK RPAREN
 
   (* Arithmetic and Operators *)
