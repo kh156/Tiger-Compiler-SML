@@ -39,7 +39,7 @@
  *)
 
 program	: exp   ()
-  | decs  ()
+        | decs  ()
 
 (*expression is the hardest part here i think...by Ang*)
 exp: letstruct   ()
@@ -70,3 +70,45 @@ fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   ()
   | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
 
 letstruct: LET decs IN exp END   ()
+
+lvalue: ID  ()
+  | lvalue DOT ID   ()
+  | lvalue LBRACK exp RBRACK  ()
+
+exp: lvalue   ()
+  | WHILE exp  ()
+  | BREAK   ()
+  | NIL   ()
+  | IF exp THEN exp  ()
+  | IF exp THEN exp ELSE exp ()
+  | LPAREN explist RPAREN
+  | LPAREN RPAREN
+  | LET exp IN exp END
+  | INT  ()
+  | STRING  ()
+  | MINUS exp %prec UMINUS  ()
+
+  (*  Function calls, pretty sure this is not correct *)
+  | ID LPAREN RPAREN
+  | ID LPAREN exp LBRACK COMMA exp RBRACK RPAREN
+
+  (* Arithmetic and Operators *)
+  | exp PLUS exp  ()
+  | exp MINUS exp  ()
+  | exp TIMES exp  ()
+  | exp DIVIDE exp  ()
+  | exp EQ exp  ()
+  | exp NEQ exp  ()
+  | exp LT exp  ()
+  | exp LE exp  ()
+  | exp GT exp  ()
+  | exp GE exp  ()
+
+
+explist : exp explistTail ()
+  | ()
+
+explistTail : SEMICOLON exp explistTail ()
+  | ()
+
+
