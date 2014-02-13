@@ -9,10 +9,9 @@
   | AND | OR | ASSIGN
   | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF 
   | BREAK | NIL
-  | FUNCTION | VAR | TYPE 
+  | FUNCTION | VAR | TYPE | UMINUS
 
-%nonterm  exp | program | decs | dec | tydec | vardec | fundec | ty | tyfields | IDarray | extratyfields
-          | letstruct | func
+%nonterm program | decs | dec | tydec | ty | tyfields | extratyfields | vardec | fundec | lvalue | exp | recordlist |recordlistTail | explist | explistTail | paramlist | paramlistTail
 
 %pos int
 %verbose
@@ -22,8 +21,8 @@
 
 %name Tiger
 
-%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE 
-	DO OF NIL
+(* what are these???????????????????????????? *)
+%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE DO OF NIL
 
 %prefer THEN ELSE LPAREN
 
@@ -40,12 +39,6 @@
 
 
 %%
-
-(* This is a skeleton grammar file, meant to illustrate what kind of
- * declarations are necessary above the %% mark.  Students are expected
- *  to replace the two dummy productions below with an actual grammar. 
- *)
-
 program	: exp   ()              (* no decs ???????????????????? *)
 
 decs: dec decs ()
@@ -67,13 +60,11 @@ tyfields:   ()
 extratyfields:    ()
              | COMMA ID COLON ID extratyfields  ()
 
-vardec: VAR ID ASSIGN exp   ()
+vardec: VAR ID ASSIGN exp   ()                  (* what's the default priority of ASSIGN?????????????? *)
       | VAR ID COLON ID ASSIGN exp  ()
 
 fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   ()
       | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
-
-letstruct: LET decs IN exp END   ()
 
 lvalue: ID  ()
       | lvalue DOT ID   ()
@@ -112,10 +103,10 @@ exp: lvalue   ()                             (* L-value *)
    | LET decs IN explist END   ()            (* Let *)
 
 recordlist:   ()
-          | ID EQ exp recordTail   ()
+          | ID EQ exp recordlistTail   ()
 
-recordTail:   ()
-          | COMMA ID EQ exp recordTail   ()
+recordlistTail:   ()
+          | COMMA ID EQ exp recordlistTail   ()
 
 explist: exp explistTail ()
        | ()
@@ -124,9 +115,9 @@ explistTail: SEMICOLON exp explistTail ()
            | ()
 
 paramlist:   ()
-         | exp paramTail   ()
+         | exp paramlistTail   ()
 
-paramTail:   () 
-         | COMMA exp paramTail   ()
+paramlistTail:   () 
+         | COMMA exp paramlistTail   ()
 
 
