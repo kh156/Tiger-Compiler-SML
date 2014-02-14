@@ -1,3 +1,14 @@
-state 21: shifting LPAREN or LBRACK or LBRACE is the correct way because the ID can't be part of a lvalue anymore
+Compiler component: Parser
 
-state 63, 93, 94, 121, 124, 134: if any operator is trailing an exp, the exp is not finished. Shifting is the right thing to do in these cases.
+Group: Ang Li, Dan Deng, Kuang Han
+
+Comments:
+On top of all the grammar rules for the Tiger Language as described by the book, we added precedence directives for some of the keywords in the language so that shift/reduce conflicts may be resolved. An example of a precedence directive we added is:
+
+%nonassoc ELSE
+
+We tell ML-yacc that this terminal binds less tightly than arithmetic and boolean operators so that the expression:
+
+IF exp THEN exp ELSE exp
+
+can be parsed unambiguously. Other precedence directives were used in a similar way.
