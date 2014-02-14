@@ -30,14 +30,16 @@
 %value INT (1)
 %value STRING ("")
 
-(*all these tight less tightly then operators below*)
-%nonassoc DO THEN OF
+
+%nonassoc ID
+(*all these bind less tightly then operators below*)
+%nonassoc DO THEN OF LBRACK
 (*ELSE has higher precedence so that it'd shift ELSE when there is one*)
 %nonassoc ELSE
 (*Assign binds tighter than keywords like THEN, ELSE, etc.*)
 %nonassoc ASSIGN
 
-(*precedence order from the book*)
+(*precedence order from the book, these operators bind tighter than keywords above*)
 %left OR
 %left AND
 %nonassoc EQ NEQ GT LT GE LE
