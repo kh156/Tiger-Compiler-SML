@@ -1,3 +1,20 @@
+
+(* User Declatations *)
+structure A = Absyn
+
+fun makeOpExp(e1, op, e2, p) = 
+  A.OpExp {left=e1, oper=op, right=e2, pos=p}
+
+fun makeIfExp(e1, e2, exop, p) =
+  A.IfExp {test=e1, then'=e2, else'=exop option, pos=p}
+
+fun makeAssignExp(v, e, p) =
+  A.AssignExp {var=v, exp=e, pos=p}
+
+fun makeArrayExp(sym, e1, e2, p) =
+  A.IfExp {typ=sym, exp=e1, exp=e2, pos=p}
+
+(* Parser Declarations *)
 %%
 %term
     EOF 
@@ -11,7 +28,28 @@
   | BREAK | NIL
   | FUNCTION | VAR | TYPE | UMINUS
 
-%nonterm program | decs | dec | tydec | ty | tyfields | extratyfields | vardec | fundec | lvalue | exp | recordlist |recordlistTail | explist | explistTail | paramlist | paramlistTail
+%nonterm 
+    program of A.exp
+  | decs of A.dec list
+  | dec of A.dec
+  | tydec of A.dec
+  | ty of A.ty
+  | tyfields of A.field list
+  | extratyfields of A.field list
+  | vardec of A.dec
+  | fundec of A.dec
+  | lvalue of A.var
+  | exp of A.exp
+  | expSequence of (A.exp * pos) list
+  | expSequenceTail of (A.exp * pos) list
+  | expRecord of (A.symbol * A.exp * pos)
+  | expRecordTail of (A.symbol * A.exp * pos) list
+  | recordlist of A.exp list
+  | recordlistTail of A.exp list
+  | explist of A.exp list
+  | explistTail of A.exp list
+  | paramlist of A.exp list
+  | paramlistTail of A.exp list
 
 %pos int
 %verbose
@@ -28,6 +66,8 @@
 %value ID ("bogus")
 %value INT (1)
 %value STRING ("")
+
+(* Precendence Directives *)
 %nonassoc ID
 (*all these bind less tightly then operators below*)
 %nonassoc DO THEN OF LBRACK
@@ -45,18 +85,18 @@
 %left UMINUS
 
 
+(* Grammar *)
 %%
-program	: exp   ()
-  | decs  ()
+program	: exp   (exp)
 
-decs: dec decs ()
-    | ()
+decs: dec decs (dec::decs)
+    | ([])
 
-dec: tydec  ()
-   | vardec  ()
-   | fundec  ()
+dec: tydec  (tydec)
+   | vardec  (vardec)
+   | fundec  (fundec)
 
-tydec: TYPE ID EQ ty  ()
+tydec: TYPE ID EQ ty  (A.TypeDec{})
 
 ty: ID  ()
   | LBRACE tyfields RBRACE  ()
@@ -78,27 +118,28 @@ lvalue: ID  ()
       | lvalue DOT ID   ()
       | lvalue LBRACK exp RBRACK  ()
 
-exp: lvalue   ()                             (* L-value *)
-   | NIL   ()                                (* Nil *)
-   | LPAREN explist RPAREN   ()              (* Sequencing / No value *)
-   | INT  ()                                 (* Integer literal *)
-   | STRING  ()                              (* String literal *)
-   | MINUS exp %prec UMINUS  ()              (* Gives negation the highest precedence *)
+exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
+   | NIL   (A.Nil)                                (* Nil *)
+   | LPAREN explist RPAREN   (A.SeqExp(explist))              (* Sequencing / No value *)
+   | INT  (A.IntExp(INT))                                 (* Integer literal *)
+   | STRING  (A.StringExp(STRING))                              (* String literal *)
+   | MINUS exp %prec UMINUS  (makeOpExp(A.IntExp(0), A.MinusOp, exp, MINUSleft))              (* Gives negation the highest precedence *)
+
    | ID LPAREN paramlist RPAREN   ()         (* Function call *)
 
                                              (* Arithmetic and Operators *)
-   | exp PLUS exp  ()
-   | exp MINUS exp  ()
-   | exp TIMES exp  ()
-   | exp DIVIDE exp  ()
-   | exp EQ exp  ()
-   | exp NEQ exp  ()
-   | exp LT exp  ()
-   | exp LE exp  ()
-   | exp GT exp  ()
-   | exp GE exp  ()
-   | exp AND exp   ()
-   | exp OR exp   () 
+   | exp PLUS exp  (makeOpExp(exp1, A.PlusOp, exp2, exp1left))
+   | exp MINUS exp  (makeOpExp(exp1, A.MinusOp, exp2, exp1left))
+   | exp TIMES exp  (makeOpExp(exp1, A.TimesOp, exp2, exp1left))
+   | exp DIVIDE exp  (makeOpExp(exp1, A.DivideOp, exp2, exp1left))
+   | exp EQ exp  (makeOpExp(exp1, A.EqOp, exp2, exp1left))
+   | exp NEQ exp  (makeOpExp(exp1, A.NeqOp, exp2, exp1left))
+   | exp LT exp  (makeOpExp(exp1, A.LtOp, exp2, exp1left))
+   | exp LE exp  (makeOpExp(exp1, A.LeOp, exp2, exp1left))
+   | exp GT exp  (makeOpExp(exp1, A.GtOp, exp2, exp1left))
+   | exp GE exp  (makeOpExp(exp1, A.GeOp, exp2, exp1left))
+   | exp AND exp   (makeIfExp(exp1, exp2, A.IntExp(0), exp1left))
+   | exp OR exp   (makeIfExp(exp1, A.IntExp(1), exp2, exp1left)) 
 
    | ID LBRACE recordlist RBRACE   ()        (* Record creation *)
    | ID LBRACK exp RBRACK OF exp   ()        (* Array creation *)

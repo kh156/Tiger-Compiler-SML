@@ -1,0 +1,124 @@
+%%
+%term
+    EOF 
+  | ID of string
+  | INT of int | STRING of string 
+  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK 
+  | LBRACE | RBRACE | DOT 
+  | PLUS | MINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
+  | AND | OR | ASSIGN
+  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF 
+  | BREAK | NIL
+  | FUNCTION | VAR | TYPE | UMINUS
+
+%nonterm program | decs | dec | tydec | ty | tyfields | extratyfields | vardec | fundec | lvalue | exp | recordlist |recordlistTail | explist | explistTail | paramlist | paramlistTail
+
+%pos int
+%verbose
+%start program
+%eop EOF
+%noshift EOF
+
+%name Tiger
+
+(* what are these???????????????????????????? *)
+%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE DO OF NIL
+
+%prefer THEN ELSE LPAREN
+
+%value ID ("bogus")
+%value INT (1)
+%value STRING ("")
+
+%left OR
+%left AND
+%nonassoc EQ NEQ GT LT GE LE
+%left PLUS MINUS
+%left TIMES DIVIDE
+%left UMINUS
+
+
+%%
+program	: exp   ()
+  | decs  ()
+
+decs: dec decs ()
+    | ()
+
+dec: tydec  ()
+   | vardec  ()
+   | fundec  ()
+
+tydec: TYPE ID EQ ty  ()
+
+ty: ID  ()
+  | LBRACE tyfields RBRACE  ()
+  | ARRAY OF ID   ()
+
+tyfields:   ()
+        | ID COLON ID extratyfields  ()
+
+extratyfields:    ()
+             | COMMA ID COLON ID extratyfields  ()
+
+vardec: VAR ID ASSIGN exp   ()                  (* what's the default priority of ASSIGN? *)
+      | VAR ID COLON ID ASSIGN exp  ()
+
+fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   ()
+      | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
+
+lvalue: ID  ()
+      | lvalue DOT ID   ()
+      | lvalue LBRACK exp RBRACK  ()
+
+exp: lvalue   ()                             (* L-value *)
+   | NIL   ()                                (* Nil *)
+   | LPAREN explist RPAREN   ()              (* Sequencing / No value *)
+   | INT  ()                                 (* Integer literal *)
+   | STRING  ()                              (* String literal *)
+   | MINUS exp %prec UMINUS  ()              (* Gives negation the highest precedence *)
+   | ID LPAREN paramlist RPAREN   ()         (* Function call *)
+
+                                             (* Arithmetic and Operators *)
+   | exp PLUS exp  ()
+   | exp MINUS exp  ()
+   | exp TIMES exp  ()
+   | exp DIVIDE exp  ()
+   | exp EQ exp  ()
+   | exp NEQ exp  ()
+   | exp LT exp  ()
+   | exp LE exp  ()
+   | exp GT exp  ()
+   | exp GE exp  ()
+   | exp AND exp   ()
+   | exp OR exp   () 
+
+   | ID LBRACE recordlist RBRACE   ()        (* Record creation *)
+   | ID LBRACK exp RBRACK OF exp   ()        (* Array creation *)
+   | lvalue ASSIGN exp   ()                  (* Assignment *)
+   | IF exp THEN exp ELSE exp   ()           (* If-then-else *)
+   | IF exp THEN exp   ()                    (* If-then *)
+   | WHILE exp DO exp   ()                   (* While *)
+   | FOR ID ASSIGN exp TO exp DO exp   ()    (* For *)
+   | BREAK   ()                              (* Break *)
+   | LET decs IN explist END   ()            (* Let *)
+
+recordlist:   ()
+          | ID EQ exp recordlistTail   ()
+
+recordlistTail:   ()
+          | COMMA ID EQ exp recordlistTail   ()
+
+explist: exp explistTail ()
+       | ()
+
+explistTail: SEMICOLON exp explistTail ()
+           | ()
+
+paramlist:   ()
+         | exp paramlistTail   ()
+
+paramlistTail:   () 
+         | COMMA exp paramlistTail   ()
+
+

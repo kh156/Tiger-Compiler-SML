@@ -1,16 +1,11 @@
-<<<<<<< HEAD
 Compiler-SML
-============
-
 An implementation of a compiler for the Tiger Language
-=======
+
 Compiler Construction
 
 ECE/CS 553
 
 Duke University
-
-========
 
 Part.1--Lexical Analysis
 
@@ -88,4 +83,3 @@ Known bugs or problems:
 	-no bugs
 	
 	-if you enter \ddd in a string literal with an illegal ASCII code in decimal, the lexer throws an uncaught exception 
->>>>>>> ab9ccbcd465e5b7b25739beddc2ae7e23d2b5614
