@@ -21,7 +21,6 @@
 
 %name Tiger
 
-(* what are these???????????????????????????? *)
 %keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE DO OF NIL
 
 %prefer THEN ELSE LPAREN
@@ -30,6 +29,8 @@
 %value INT (1)
 %value STRING ("")
 
+%nonassoc ID
+%nonassoc LBRACK
 (*all these tight less tightly then operators below*)
 %nonassoc DO THEN OF
 (*ELSE has higher precedence so that it'd shift ELSE when there is one*)
