@@ -11,7 +11,7 @@ fun makeAssignExp(v, e, p) =
   A.AssignExp {var=v, exp=e, pos=p}
 
 fun makeArrayExp(sym, e1, e2, p) =
-  A.ArrayExp {typ=sym, exp=e1, exp=e2, pos=p}
+  A.ArrayExp {typ=sym, size=e1, init=e2, pos=p}
 
 (* Parser Declarations *)
 %%
@@ -39,12 +39,12 @@ fun makeArrayExp(sym, e1, e2, p) =
   | lvalue of A.var
   | tyfields of A.field list
   | extratyfields of A.field list
-  | recordlist of (symbol * exp * pos) list
-  | recordlistTail of (symbol * exp * pos) list
+  | recordlist of (A.symbol * A.exp * A.pos) list
+  | recordlistTail of (A.symbol * A.exp * A.pos) list
   | explist of (A.exp * A.pos) list
   | explistTail of (A.exp * A.pos) list
-  | paramlist of (A.exp * A.pos) list
-  | paramlistTail of (A.exp * A.pos) list
+  | paramlist of A.exp list
+  | paramlistTail of A.exp list
 
 %pos int
 %verbose
@@ -104,8 +104,8 @@ tyfields:   ([])
 extratyfields:    ([])
              | COMMA ID COLON ID extratyfields  ({name=Symbol.symbol(ID1),escape=ref true,typ=Symbol.symbol(ID2),pos=ID1left}::extrafields)
 
-vardec: VAR ID ASSIGN exp   (A.VarDec{name=Symbol.symbol(ID), escape=ref true, ty=NONE, init=exp, pos=VARleft})
-      | VAR ID COLON ID ASSIGN exp  (A.VarDec{name=Symbol.symbol(ID1), escape=ref true, ty=SOME(Symbol.symbol(ID2),ID2left), init=exp, pos=VARleft})
+vardec: VAR ID ASSIGN exp   (A.VarDec{name=Symbol.symbol(ID), escape=ref true, typ=NONE, init=exp, pos=VARleft})
+      | VAR ID COLON ID ASSIGN exp  (A.VarDec{name=Symbol.symbol(ID1), escape=ref true, typ=SOME(Symbol.symbol(ID2),ID2left), init=exp, pos=VARleft})
 
 fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   (A.FunctionDec [{name=Symbol.symbol(ID),
        params=tyfields,
@@ -124,12 +124,12 @@ lvalue: ID  (A.SimpleVar(Symbol.symbol(ID),IDleft))
 
 exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
    | NIL   (A.NilExp)                                         (* Nil *)
-   | LPAREN explist RPAREN   (A.SeqExp(explist, LPARENleft))   (* Sequencing / No value *)
+   | LPAREN explist RPAREN   (A.SeqExp(explist))   (* Sequencing / No value *)
    | INT  (A.IntExp(INT))                                      (* Integer literal *)
    | STRING  (A.StringExp(STRING, STRINGleft))                    (* String literal *)
    | MINUS exp %prec UMINUS  (makeOpExp(A.IntExp(0), A.MinusOp, exp, MINUSleft))              (* Gives negation the highest precedence *)
 
-   | ID LPAREN paramlist RPAREN   (A.CallExp(Symbol.symbol(ID), paramlist, paramlistleft))         (* Function call *)
+   | ID LPAREN paramlist RPAREN   (A.CallExp {func=Symbol.symbol(ID), args=paramlist, pos=IDleft})         (* Function call *)
 
                                              (* Arithmetic and Operators *)
    | exp PLUS exp  (makeOpExp(exp1, A.PlusOp, exp2, exp1left))
@@ -168,7 +168,7 @@ explistTail: ([])
        | SEMICOLON exp explistTail ((exp, SEMICOLONleft)::explistTail)
 
 paramlist:   ([])
-         | exp paramlistTail   ((exp, expleft)::paramListTail)
+         | exp paramlistTail   (exp::paramListTail)
 
 paramlistTail:   ([]) 
-         | COMMA exp paramlistTail   ((exp, COMMAleft)::paramListTail)
+         | COMMA exp paramlistTail   (exp::paramListTail)

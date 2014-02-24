@@ -21,7 +21,7 @@ fun makeAssignExp(v, e, p) =
   A.AssignExp {var=v, exp=e, pos=p}
 
 fun makeArrayExp(sym, e1, e2, p) =
-  A.ArrayExp {typ=sym, exp=e1, exp=e2, pos=p}
+  A.ArrayExp {typ=sym, size=e1, init=e2, pos=p}
 
 (* Parser Declarations *)
 
@@ -473,13 +473,12 @@ structure MlyValue =
 struct
 datatype svalue = VOID | ntVOID of unit ->  unit
  | STRING of unit ->  (string) | INT of unit ->  (int)
- | ID of unit ->  (string)
- | paramlistTail of unit ->  ( ( A.exp * A.pos )  list)
- | paramlist of unit ->  ( ( A.exp * A.pos )  list)
+ | ID of unit ->  (string) | paramlistTail of unit ->  (A.exp list)
+ | paramlist of unit ->  (A.exp list)
  | explistTail of unit ->  ( ( A.exp * A.pos )  list)
  | explist of unit ->  ( ( A.exp * A.pos )  list)
- | recordlistTail of unit ->  ( ( symbol * exp * pos )  list)
- | recordlist of unit ->  ( ( symbol * exp * pos )  list)
+ | recordlistTail of unit ->  ( ( A.symbol * A.exp * A.pos )  list)
+ | recordlist of unit ->  ( ( A.symbol * A.exp * A.pos )  list)
  | extratyfields of unit ->  (A.field list)
  | tyfields of unit ->  (A.field list) | lvalue of unit ->  (A.var)
  | fundec of unit ->  (A.dec) | vardec of unit ->  (A.dec)
@@ -694,7 +693,7 @@ rest671)) => let val  result = MlyValue.vardec (fn _ => let val  (ID
  as ID1) = ID1 ()
  val  (exp as exp1) = exp1 ()
  in (
-A.VarDec{name=Symbol.symbol(ID), escape=ref true, ty=NONE, init=exp, pos=VARleft}
+A.VarDec{name=Symbol.symbol(ID), escape=ref true, typ=NONE, init=exp, pos=VARleft}
 )
 end)
  in ( LrTable.NT 6, ( result, VAR1left, exp1right), rest671)
@@ -706,7 +705,7 @@ result = MlyValue.vardec (fn _ => let val  ID1 = ID1 ()
  val  ID2 = ID2 ()
  val  (exp as exp1) = exp1 ()
  in (
-A.VarDec{name=Symbol.symbol(ID1), escape=ref true, ty=SOME(Symbol.symbol(ID2),ID2left), init=exp, pos=VARleft}
+A.VarDec{name=Symbol.symbol(ID1), escape=ref true, typ=SOME(Symbol.symbol(ID2),ID2left), init=exp, pos=VARleft}
 )
 end)
  in ( LrTable.NT 6, ( result, VAR1left, exp1right), rest671)
@@ -783,10 +782,10 @@ result = MlyValue.exp (fn _ => (A.NilExp))
  in ( LrTable.NT 3, ( result, NIL1left, NIL1right), rest671)
 end
 |  ( 23, ( ( _, ( _, _, RPAREN1right)) :: ( _, ( MlyValue.explist 
-explist1, _, _)) :: ( _, ( _, (LPARENleft as LPAREN1left), _)) :: 
-rest671)) => let val  result = MlyValue.exp (fn _ => let val  (explist
- as explist1) = explist1 ()
- in (A.SeqExp(explist, LPARENleft))
+explist1, _, _)) :: ( _, ( _, LPAREN1left, _)) :: rest671)) => let
+ val  result = MlyValue.exp (fn _ => let val  (explist as explist1) = 
+explist1 ()
+ in (A.SeqExp(explist))
 end)
  in ( LrTable.NT 3, ( result, LPAREN1left, RPAREN1right), rest671)
 end
@@ -812,11 +811,12 @@ end)
  in ( LrTable.NT 3, ( result, MINUS1left, exp1right), rest671)
 end
 |  ( 27, ( ( _, ( _, _, RPAREN1right)) :: ( _, ( MlyValue.paramlist 
-paramlist1, paramlistleft, _)) :: _ :: ( _, ( MlyValue.ID ID1, ID1left
+paramlist1, _, _)) :: _ :: ( _, ( MlyValue.ID ID1, (IDleft as ID1left)
 , _)) :: rest671)) => let val  result = MlyValue.exp (fn _ => let val 
  (ID as ID1) = ID1 ()
  val  (paramlist as paramlist1) = paramlist1 ()
- in (A.CallExp(Symbol.symbol(ID), paramlist, paramlistleft))
+ in (A.CallExp {func=Symbol.symbol(ID), args=paramlist, pos=IDleft})
+
 end)
  in ( LrTable.NT 3, ( result, ID1left, RPAREN1right), rest671)
 end
@@ -1069,11 +1069,11 @@ end
  in ( LrTable.NT 15, ( result, defaultPos, defaultPos), rest671)
 end
 |  ( 58, ( ( _, ( MlyValue.paramlistTail paramlistTail1, _, 
-paramlistTail1right)) :: ( _, ( MlyValue.exp exp1, (expleft as 
-exp1left), _)) :: rest671)) => let val  result = MlyValue.paramlist
- (fn _ => let val  (exp as exp1) = exp1 ()
+paramlistTail1right)) :: ( _, ( MlyValue.exp exp1, exp1left, _)) :: 
+rest671)) => let val  result = MlyValue.paramlist (fn _ => let val  (
+exp as exp1) = exp1 ()
  val  paramlistTail1 = paramlistTail1 ()
- in ((exp, expleft)::paramListTail)
+ in (exp::paramListTail)
 end)
  in ( LrTable.NT 15, ( result, exp1left, paramlistTail1right), rest671
 )
@@ -1084,10 +1084,10 @@ end
 end
 |  ( 60, ( ( _, ( MlyValue.paramlistTail paramlistTail1, _, 
 paramlistTail1right)) :: ( _, ( MlyValue.exp exp1, _, _)) :: ( _, ( _,
- (COMMAleft as COMMA1left), _)) :: rest671)) => let val  result = 
+ COMMA1left, _)) :: rest671)) => let val  result = 
 MlyValue.paramlistTail (fn _ => let val  (exp as exp1) = exp1 ()
  val  paramlistTail1 = paramlistTail1 ()
- in ((exp, COMMAleft)::paramListTail)
+ in (exp::paramListTail)
 end)
  in ( LrTable.NT 16, ( result, COMMA1left, paramlistTail1right), 
 rest671)
