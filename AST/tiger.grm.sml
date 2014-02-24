@@ -661,9 +661,9 @@ extratyfields1right)) :: ( _, ( MlyValue.ID ID2, _, _)) :: _ :: ( _, (
  MlyValue.ID ID1, ID1left, _)) :: rest671)) => let val  result = 
 MlyValue.tyfields (fn _ => let val  ID1 = ID1 ()
  val  ID2 = ID2 ()
- val  extratyfields1 = extratyfields1 ()
+ val  (extratyfields as extratyfields1) = extratyfields1 ()
  in (
-{name=Symbol.symbol(ID1),escape=ref true,typ=Symbol.symbol(ID2),pos=ID1left}::extrafields
+{name=Symbol.symbol(ID1),escape=ref true,typ=Symbol.symbol(ID2),pos=ID1left}::extratyfields
 )
 end)
  in ( LrTable.NT 9, ( result, ID1left, extratyfields1right), rest671)
@@ -679,9 +679,9 @@ extratyfields1right)) :: ( _, ( MlyValue.ID ID2, _, _)) :: _ :: ( _, (
 )) => let val  result = MlyValue.extratyfields (fn _ => let val  ID1 =
  ID1 ()
  val  ID2 = ID2 ()
- val  extratyfields1 = extratyfields1 ()
+ val  (extratyfields as extratyfields1) = extratyfields1 ()
  in (
-{name=Symbol.symbol(ID1),escape=ref true,typ=Symbol.symbol(ID2),pos=ID1left}::extrafields
+{name=Symbol.symbol(ID1),escape=ref true,typ=Symbol.symbol(ID2),pos=ID1left}::extratyfields
 )
 end)
  in ( LrTable.NT 10, ( result, COMMA1left, extratyfields1right), 
@@ -920,9 +920,9 @@ end
 recordlist1, _, _)) :: _ :: ( _, ( MlyValue.ID ID1, (IDleft as ID1left
 ), _)) :: rest671)) => let val  result = MlyValue.exp (fn _ => let
  val  (ID as ID1) = ID1 ()
- val  recordlist1 = recordlist1 ()
+ val  (recordlist as recordlist1) = recordlist1 ()
  in (
-A.RecordExp {fields=recordList, typ = Symbol.symbol(ID), pos = IDleft}
+A.RecordExp {fields=recordlist, typ = Symbol.symbol(ID), pos = IDleft}
 )
 end)
  in ( LrTable.NT 3, ( result, ID1left, RBRACE1right), rest671)
@@ -1014,8 +1014,8 @@ recordlistTail1right)) :: ( _, ( MlyValue.exp exp1, _, _)) :: _ :: ( _
 , ( MlyValue.ID ID1, (IDleft as ID1left), _)) :: rest671)) => let val 
  result = MlyValue.recordlist (fn _ => let val  (ID as ID1) = ID1 ()
  val  (exp as exp1) = exp1 ()
- val  recordlistTail1 = recordlistTail1 ()
- in ((Symbol.symbol(ID), exp, IDleft)::recordListTail)
+ val  (recordlistTail as recordlistTail1) = recordlistTail1 ()
+ in ((Symbol.symbol(ID), exp, IDleft)::recordlistTail)
 end)
  in ( LrTable.NT 11, ( result, ID1left, recordlistTail1right), rest671
 )
@@ -1030,8 +1030,8 @@ recordlistTail1right)) :: ( _, ( MlyValue.exp exp1, _, _)) :: _ :: ( _
 ) :: rest671)) => let val  result = MlyValue.recordlistTail (fn _ =>
  let val  (ID as ID1) = ID1 ()
  val  (exp as exp1) = exp1 ()
- val  recordlistTail1 = recordlistTail1 ()
- in ((Symbol.symbol(ID), exp, COMMAleft)::recordListTail)
+ val  (recordlistTail as recordlistTail1) = recordlistTail1 ()
+ in ((Symbol.symbol(ID), exp, COMMAleft)::recordlistTail)
 end)
  in ( LrTable.NT 12, ( result, COMMA1left, recordlistTail1right), 
 rest671)
@@ -1072,8 +1072,8 @@ end
 paramlistTail1right)) :: ( _, ( MlyValue.exp exp1, exp1left, _)) :: 
 rest671)) => let val  result = MlyValue.paramlist (fn _ => let val  (
 exp as exp1) = exp1 ()
- val  paramlistTail1 = paramlistTail1 ()
- in (exp::paramListTail)
+ val  (paramlistTail as paramlistTail1) = paramlistTail1 ()
+ in (exp::paramlistTail)
 end)
  in ( LrTable.NT 15, ( result, exp1left, paramlistTail1right), rest671
 )
@@ -1086,8 +1086,8 @@ end
 paramlistTail1right)) :: ( _, ( MlyValue.exp exp1, _, _)) :: ( _, ( _,
  COMMA1left, _)) :: rest671)) => let val  result = 
 MlyValue.paramlistTail (fn _ => let val  (exp as exp1) = exp1 ()
- val  paramlistTail1 = paramlistTail1 ()
- in (exp::paramListTail)
+ val  (paramlistTail as paramlistTail1) = paramlistTail1 ()
+ in (exp::paramlistTail)
 end)
  in ( LrTable.NT 16, ( result, COMMA1left, paramlistTail1right), 
 rest671)
