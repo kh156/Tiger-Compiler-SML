@@ -5,13 +5,13 @@ fun makeOpExp(e1, expop, e2, p) =
   A.OpExp {left=e1, oper=expop, right=e2, pos=p}
 
 fun makeIfExp(e1, e2, exop, p) =
-  A.IfExp {test=e1, then'=e2, else'=exop option, pos=p}
+  A.IfExp {test=e1, then'=e2, else'=exop, pos=p}
 
 fun makeAssignExp(v, e, p) =
   A.AssignExp {var=v, exp=e, pos=p}
 
 fun makeArrayExp(sym, e1, e2, p) =
-  A.IfExp {typ=sym, exp=e1, exp=e2, pos=p}
+  A.ArrayExp {typ=sym, exp=e1, exp=e2, pos=p}
 
 (* Parser Declarations *)
 %%
@@ -31,24 +31,20 @@ fun makeArrayExp(sym, e1, e2, p) =
     program of A.exp
   | decs of A.dec list
   | dec of A.dec
-  | tydec of A.dec
+  | exp of A.exp
   | ty of A.ty
-  | tyfields of A.field list
-  | extratyfields of A.field list
+  | tydec of A.dec
   | vardec of A.dec
   | fundec of A.dec
   | lvalue of A.var
-  | exp of A.exp
-  | expSequence of (A.exp * pos) list
-  | expSequenceTail of (A.exp * pos) list
-  | expRecord of (A.symbol * A.exp * pos)
-  | expRecordTail of (A.symbol * A.exp * pos) list
-  | recordlist of A.exp list
-  | recordlistTail of A.exp list
-  | explist of A.exp list
-  | explistTail of A.exp list
-  | paramlist of A.exp list
-  | paramlistTail of A.exp list
+  | tyfields of A.field list
+  | extratyfields of A.field list
+  | recordlist of (symbol * exp * pos) list
+  | recordlistTail of (symbol * exp * pos) list
+  | explist of (A.exp * A.pos) list
+  | explistTail of (A.exp * A.pos) list
+  | paramlist of (A.exp * A.pos) list
+  | paramlistTail of (A.exp * A.pos) list
 
 %pos int
 %verbose
@@ -87,41 +83,50 @@ fun makeArrayExp(sym, e1, e2, p) =
 (* Grammar *)
 %%
 program : exp   (exp)
+(*how about declarations in a program?*)
 
 decs: dec decs (dec::decs)
     | ([])
 
-dec: tydec  (tydec)
+dec: tydec   (tydec)
    | vardec  (vardec)
    | fundec  (fundec)
 
-tydec: TYPE ID EQ ty  (A.TypeDec{})
+tydec: TYPE ID EQ ty  (A.TypeDec [{name=Symbol.symbol(ID), ty=ty, pos=TYPEleft}])
 
-ty: ID  ()
-  | LBRACE tyfields RBRACE  ()
-  | ARRAY OF ID   ()
+ty: ID  (A.NameTy(Symbol.symbol(ID), IDleft))
+  | LBRACE tyfields RBRACE  (A.RecordTy(tyfields))
+  | ARRAY OF ID   (A.ArrayTy(Symbol.symbol(ID), ARRAYleft))
 
-tyfields:   ()
-        | ID COLON ID extratyfields  ()
+tyfields:   ([])
+        | ID COLON ID extratyfields  ({name=Symbol.symbol(ID1),escape=ref true,typ=Symbol.symbol(ID2),pos=ID1left}::extrafields)
 
-extratyfields:    ()
-             | COMMA ID COLON ID extratyfields  ()
+extratyfields:    ([])
+             | COMMA ID COLON ID extratyfields  ({name=Symbol.symbol(ID1),escape=ref true,typ=Symbol.symbol(ID2),pos=ID1left}::extrafields)
 
-vardec: VAR ID ASSIGN exp   ()                  (* what's the default priority of ASSIGN? *)
-      | VAR ID COLON ID ASSIGN exp  ()
+vardec: VAR ID ASSIGN exp   (A.VarDec{name=Symbol.symbol(ID), escape=ref true, ty=NONE, init=exp, pos=VARleft})
+      | VAR ID COLON ID ASSIGN exp  (A.VarDec{name=Symbol.symbol(ID1), escape=ref true, ty=SOME(Symbol.symbol(ID2),ID2left), init=exp, pos=VARleft})
 
-fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   ()
-      | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
+fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   (A.FunctionDec [{name=Symbol.symbol(ID),
+       params=tyfields,
+       result=NONE,
+       body=exp,
+       pos=FUNCTIONleft}])
+      | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  (A.FunctionDec [{name=Symbol.symbol(ID1),
+       params=tyfields,
+       result=SOME(Symbol.symbol(ID2),ID2left),
+       body=exp,
+       pos=FUNCTIONleft}])
 
-lvalue: ID  ()
-      | lvalue DOT ID   ()
-      | lvalue LBRACK exp RBRACK  ()
+lvalue: ID  (A.SimpleVar(Symbol.symbol(ID),IDleft))
+      | lvalue DOT ID   (A.FieldVar(lvalue, Symbol.symbol(ID), lvalueleft))
+      | lvalue LBRACK exp RBRACK  (A.SubscriptVar(lvalue, exp, lvalueleft))
 
 exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
-   | NIL   (A.Nil)                                (* Nil *)
-   | LPAREN explist RPAREN   (A.SeqExp(explist))              (* Sequencing / No value *)
-   | INT  (A.IntExp(INT))                                 (* Integer literal *)
-   | STRING  (A.StringExp(STRING))                              (* String literal *)
+   | NIL   (A.NilExp)                                         (* Nil *)
+   | LPAREN explist RPAREN   (A.SeqExp(explist, LPARENleft))   (* Sequencing / No value *)
+   | INT  (A.IntExp(INT))                                      (* Integer literal *)
+   | STRING  (A.StringExp(STRING, STRINGleft))                    (* String literal *)
    | MINUS exp %prec UMINUS  (makeOpExp(A.IntExp(0), A.MinusOp, exp, MINUSleft))              (* Gives negation the highest precedence *)
 
    | ID LPAREN paramlist RPAREN   (A.CallExp(Symbol.symbol(ID), paramlist, paramlistleft))         (* Function call *)
@@ -137,8 +142,8 @@ exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
    | exp LE exp  (makeOpExp(exp1, A.LeOp, exp2, exp1left))
    | exp GT exp  (makeOpExp(exp1, A.GtOp, exp2, exp1left))
    | exp GE exp  (makeOpExp(exp1, A.GeOp, exp2, exp1left))
-   | exp AND exp   (makeIfExp(exp1, exp2, A.IntExp(0), exp1left))
-   | exp OR exp   (makeIfExp(exp1, A.IntExp(1), exp2, exp1left)) 
+   | exp AND exp   (makeIfExp(exp1, exp2, SOME(A.IntExp(0)), exp1left))
+   | exp OR exp   (makeIfExp(exp1, A.IntExp(1), SOME(exp2), exp1left)) 
 
    | ID LBRACE recordlist RBRACE   (A.RecordExp {fields=recordList, typ = Symbol.symbol(ID), pos = IDleft})        (* Record creation *)
    | ID LBRACK exp RBRACK OF exp   ()        (* Array creation *)
@@ -150,20 +155,20 @@ exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
    | BREAK   ()                              (* Break *)
    | LET decs IN explist END   ()            (* Let *)
 
-recordlist:   (nil)
-          | ID EQ exp recordlistTail   ((Symbol.symbol(ID), exp, expleft)::recordListTail)
+recordlist:   ([])
+          | ID EQ exp recordlistTail   ((Symbol.symbol(ID), exp, IDleft)::recordListTail)
 
-recordlistTail:   (nil)
-          | COMMA ID EQ exp recordlistTail   ((Symbol.symbol(ID), exp, expleft)::recordListTail)
+recordlistTail:   ([])
+          | COMMA ID EQ exp recordlistTail   ((Symbol.symbol(ID), exp, COMMAleft)::recordListTail)
 
-explist: (nil)
+explist: ([])
        | exp explistTail ((exp, expleft)::explistTail)
 
-explistTail: (nil)
-       | SEMICOLON exp explistTail ((exp, expleft)::explistTail)
+explistTail: ([])
+       | SEMICOLON exp explistTail ((exp, SEMICOLONleft)::explistTail)
 
-paramlist:   (nil)
-         | exp paramlistTail   (exp::paramListTail)
+paramlist:   ([])
+         | exp paramlistTail   ((exp, expleft)::paramListTail)
 
-paramlistTail:   (nil) 
-         | COMMA exp paramlistTail   (exp::paramListTail)
+paramlistTail:   ([]) 
+         | COMMA exp paramlistTail   ((exp, COMMAleft)::paramListTail)
