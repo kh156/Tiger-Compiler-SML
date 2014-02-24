@@ -1,8 +1,8 @@
 (* User Declatations *)
 structure A = Absyn
 
-fun makeOpExp(e1, op, e2, p) = 
-  A.OpExp {left=e1, oper=op, right=e2, pos=p}
+fun makeOpExp(e1, expop, e2, p) = 
+  A.OpExp {left=e1, oper=expop, right=e2, pos=p}
 
 fun makeIfExp(e1, e2, exop, p) =
   A.IfExp {test=e1, then'=e2, else'=exop option, pos=p}
@@ -124,7 +124,7 @@ exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
    | STRING  (A.StringExp(STRING))                              (* String literal *)
    | MINUS exp %prec UMINUS  (makeOpExp(A.IntExp(0), A.MinusOp, exp, MINUSleft))              (* Gives negation the highest precedence *)
 
-   | ID LPAREN paramlist RPAREN   ()         (* Function call *)
+   | ID LPAREN paramlist RPAREN   (A.CallExp(Symbol.symbol(ID), paramlist, paramlistleft))         (* Function call *)
 
                                              (* Arithmetic and Operators *)
    | exp PLUS exp  (makeOpExp(exp1, A.PlusOp, exp2, exp1left))
@@ -140,7 +140,7 @@ exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
    | exp AND exp   (makeIfExp(exp1, exp2, A.IntExp(0), exp1left))
    | exp OR exp   (makeIfExp(exp1, A.IntExp(1), exp2, exp1left)) 
 
-   | ID LBRACE recordlist RBRACE   ()        (* Record creation *)
+   | ID LBRACE recordlist RBRACE   (A.RecordExp {fields=recordList, typ = Symbol.symbol(ID), pos = IDleft})        (* Record creation *)
    | ID LBRACK exp RBRACK OF exp   ()        (* Array creation *)
    | lvalue ASSIGN exp   ()                  (* Assignment *)
    | IF exp THEN exp ELSE exp   ()           (* If-then-else *)
@@ -150,20 +150,20 @@ exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
    | BREAK   ()                              (* Break *)
    | LET decs IN explist END   ()            (* Let *)
 
-recordlist:   ()
-          | ID EQ exp recordlistTail   ()
+recordlist:   (nil)
+          | ID EQ exp recordlistTail   ((Symbol.symbol(ID), exp, expleft)::recordListTail)
 
-recordlistTail:   ()
-          | COMMA ID EQ exp recordlistTail   ()
+recordlistTail:   (nil)
+          | COMMA ID EQ exp recordlistTail   ((Symbol.symbol(ID), exp, expleft)::recordListTail)
 
-explist: exp explistTail ()
-       | ()
+explist: (nil)
+       | exp explistTail ((exp, expleft)::explistTail)
 
-explistTail: SEMICOLON exp explistTail ()
-           | ()
+explistTail: (nil)
+       | SEMICOLON exp explistTail ((exp, expleft)::explistTail)
 
-paramlist:   ()
-         | exp paramlistTail   ()
+paramlist:   (nil)
+         | exp paramlistTail   (exp::paramListTail)
 
-paramlistTail:   () 
-         | COMMA exp paramlistTail   ()
+paramlistTail:   (nil) 
+         | COMMA exp paramlistTail   (exp::paramListTail)
