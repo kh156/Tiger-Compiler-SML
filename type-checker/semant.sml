@@ -4,8 +4,8 @@ sig
 val transVar: venv * tenv * Absyn.var -> expty
 val transExp: venv * tenv * Absyn.exp -> expty
 val transDec: venv * tenv * Absyn.dec -> {venv: venv, tenv: tenv}
-val transTy:  		 tenv * Absyn.ty -> Types.ty
-val transProg: 			 	Absyn.exp -> unit
+val transTy:   	     tenv * Absyn.ty -> Types.ty
+val transProg:        		Absyn.exp -> unit
 
 end
 
@@ -26,7 +26,7 @@ structure S = Symbol
 type venvTable = E.enventry S.table
 type tenvTable = T.ty S.table
 
-
+(*main entry point for type-checking a program*)
 fun transProg(programCode : A.exp) = 
     let 
     	val venv = E.base_venv
@@ -34,15 +34,47 @@ fun transProg(programCode : A.exp) =
     in 
     	transExp(venv, tenv, programCode)
     end
-end
+
 
 fun transExp(venv, tenv, ...) = ... (*to be implemented*)
 
-fun isSameType(t1: ty, t2: ty) = ... (*to be implemented*)
+fun isSameType(t1: T.ty, t2: T.ty) = ... (*to be implemented*)
+
+fun actual_ty(ty: T.ty, pos: A.pos) =
+	case ty of
+		T.NAME(s, tref) => (case !tref of
+							     SOME(t) => actual_t (t,pos)
+							     | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
+		| _ => ty
 
 
-fun transTy(tenv: tenvTable, typeFromAbsyn: A.ty) = ...(* interpret type from Absyn.ty *)
+fun transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
+	case S.lookup(tenv, s) of NONE => (ErrorMsg.error pos "Undefined type with name"^(S.name s); T.ERROR)
+							| SOME(t) => t
 
+| transTy(tenv, A.RecordTy recordTypeList) =
+	let 
+		val fields=
+	    let
+	    	fun checkSingleField ({name: A.symbol, escape: bool ref, typ: A.symbol, pos: A.pos}) =
+		     	case S.look(tenv, typ) of NONE => (ErrorMsg.error pos ("Undefined type: "^(S.name typ)^" when declaring an array type!");
+		     										(name, T.ERROR))
+					   					| SOME(t) => (name, t)
+	     in
+		 	map checkSingleField recordTypeList
+	     end
+    in
+		T.RECORD(fields, ref ())
+    end
+	
+
+| transTy(tenv, A.ArrayTy (s:A.symbol, pos:A.pos)) =
+	case S.lookup(tenv, s) of NONE => (ErrorMsg.error pos "Undefined type "^(S.name s)^" when declaring an array type!";
+										T.ARRAY(T.ERROR, ref())) (*how to use ref()?*)
+							| SOME(t) => T.ARRAY((actual_ty (t,pos)), ref())
+
+
+(*book says type NIL must be constrained by a RECORD type???*)
 fun transDec(venv, tenv, A.VarDec{name: A.symbol,
                                   escape: bool ref,
                                   typ: (A.symbol * A.pos) option,
@@ -52,24 +84,62 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 		val {exp, tyinit} = transExp(venv, tenv, init)
 	in
 		case typ of
-			NONE => case tyinit=T.NIL of 
+			NONE => (case tyinit=T.NIL of 
 				false => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}
-				true => (ErrorMsg.error pos "variable is initialized to NIL type!";
-				    	{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
+				| true => (ErrorMsg.error pos "variable is initialized to NIL type!";
+				    	{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}))
 			| SOME(s, p) => (
 				case of S.look(tenv, s) of
 					NONE => (ErrorMsg.error pos "declared type for variable does not exist!";
 							{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
-					SOME(t) => case of isSameType(tyinit, t)
+					| SOME(t) => (case of isSameType(tyinit, t)
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
 							    	{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
-							true  => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}
-			)
+							| true  => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}))
 	end
 
-	| transDec(venv, tenv, A.TypeDec[{name: A.symbol, ty: A.ty, pos: A.pos}]) = 
-		{tenv = S.enter(tenv, name, transTy(tenv, ty)), venv = venv}
+| transDec(venv, tenv, A.TypeDec typeDecList) = 
+	let
+		fun addSingleType({name: A.symbol, ty: A.ty, pos: A.pos}, tenvCurr) =
+			S.enter(tenvCurr, name, transTy(tenvCurr, ty))
+	in
+		{tenv = foldr addSingleType tenv typeDecList, venv = venv}
+	end
 
-	| transDec(venv, tenv, A.FunctionDec[]) = ...(*to be implemented*)
+| transDec(venv, tenv, A.FunctionDec[]) = ...(*to be implemented*)
+
+
+fun transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
+	case of S.look(venv, s) of
+		SOME(E.VarEntry {ty}) => {exp = (), ty = actual_ty (ty, pos)}
+		| SOME(_)			=> (ErrorMsg.error pos "Var with name "^(S.name s)^" is a function, not a simple variable!"; {exp = (), ty = T.ERROR})
+		| NONE()		    => (ErrorMsg.error pos "Undefined variable "^(S.name s); {exp = (), ty = T.ERROR})
+
+| transVar(venv, tenv, A.FieldVar (var: A.var, s: A.symbol, pos: A.pos)) = 
+	let
+		var {exp = _, ty = parentType} = transVar(venv, tenv, var)
+		fun findMatchField(oneField::rest, symToLook, unique) =
+			case oneField of
+				(name, t) => (if name=symToLook then {exp = (), ty = t} else findMatchField(rest, symToLook, unique))
+				[]	=> (ErrorMsg.error pos "Did not find field "^(S.name s)^" from parent record!"; {exp = (), ty = T.ERROR})
+				_	=> (ErrorMsg.error pos "Error trying to access field "^(S.name s)^" of parent record!"; {exp = (), ty = T.ERROR})
+	in
+		(case parentType of T.RECORD(fields, unique) => findMatchField(fields, s, unique)
+							| _ => (ErrorMsg.error pos "Trying to access field "^(S.name s)^" whose parent is not a record type!";
+									{exp = (), ty = T.ERROR}))
+	end
+
+| transVar(venv, tenv, A.SubscriptVar (var: A.var, exp: A.exp, pos: A.pos)) = 
+	let 
+		val {exp = _, ty = varType} = transVar(venv, tenv, var)
+		val {exp = _, ty = expType} = transExp(venv, tenv, exp) 
+    in 
+		case expType of T.INT => (
+				case varType of T.ARRAY (eleType, unique) => {exp = (), ty = ty}
+		   	  		 | _ => (ErrorMsg.error pos "Var must be an array type to access an indexed element!";
+		      			     {exp = (), ty = T.ERROR}))
+		| _ => (ErrorMsg.error pos "Exp to access an element in an array should be an integer!";
+				{exp = (), ty = T.ERROR})
+    end
 
 end
