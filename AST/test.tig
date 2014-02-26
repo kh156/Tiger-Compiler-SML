@@ -1,16 +1,10 @@
-/* BELOW TEST THE STRING RELATED ERRORS*/
-/*"ld\j\
-\kfd\\asli\n\"k\t\123j^Gsd\
-
-\l\         \f"*/
-
 /*BELOW TEST THE GENERAL CASES*/
 let
-        var TT = 644
-        var xt = 01
-        var s_4 = 0
-    var sss____44__ss_0=1;
-        var T5_ = 7
+        var TT := 644
+        var xt := 01
+        var s_4 := 0
+    	var sss____44__ss_0:=1
+        var T5_ := 7
         type myintT6 = int
         type  arrtype = array of myintT6
         
@@ -18,8 +12,4 @@ let
 in
         arr1
 end
-
-
-/* BELOW TEST THE NESTED COMMENT & UNCLOSED COMMENT*/                                
-/* arr1 is valid since expression 0 is int = myint */
 
