@@ -154,9 +154,10 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 			end
 
 		var venv' = foldr firstPass venv funcs;
-	in 
+	in (
 		secondPass venv' funcs;
 		{venv = venv', tenv = tenv}
+	)
 	end
 
 
