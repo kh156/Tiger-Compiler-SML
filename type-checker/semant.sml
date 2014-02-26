@@ -30,9 +30,9 @@ type tenvTable = T.ty S.table
 fun transProg(programCode : A.exp) = 
     let 
     	val venv = E.base_venv
-		val tenv = E.base_tenv
+    	val tenv = E.base_tenv
     in 
-		transExp(venv, tenv, programCode)
+    	transExp(venv, tenv, programCode)
     end
 end
 
@@ -44,10 +44,10 @@ fun isSameType(t1: ty, t2: ty) = ... (*to be implemented*)
 fun transTy(tenv: tenvTable, typeFromAbsyn: A.ty) = ...(* interpret type from Absyn.ty *)
 
 fun transDec(venv, tenv, A.VarDec{name: A.symbol,
-		     					  escape: bool ref,
-		     					  typ: (A.symbol * A.pos) option,
-		     					  init: A.exp,
-		     					  pos: A.pos}) = 
+                                  escape: bool ref,
+                                  typ: (A.symbol * A.pos) option,
+                                  init: A.exp,
+                                  pos: A.pos}) = 
 	let
 		val {exp, tyinit} = transExp(venv, tenv, init)
 	in
@@ -55,14 +55,14 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 			NONE => case tyinit=T.NIL of 
 				false => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}
 				true => (ErrorMsg.error pos "variable is initialized to NIL type!";
-						{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
+				    	{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
 			| SOME(s, p) => (
 				case of S.look(tenv, s) of
 					NONE => (ErrorMsg.error pos "declared type for variable does not exist!";
 							{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
 					SOME(t) => case of isSameType(tyinit, t)
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
-									{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
+							    	{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
 							true  => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}
 			)
 	end
