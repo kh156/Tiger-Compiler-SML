@@ -24,9 +24,8 @@ struct
                       ("string", T.STRING)
                       ]
 
-
-    val base_venv = foldr (fn ((name, enventry), table) => Symbol.enter(table, Symbol.symbol name, enventry))
-    				Symbol.empty
+  val base_venv = foldr (fn ((name, enventry), table) => Symbol.enter(table, Symbol.symbol name, enventry))
+  	   			Symbol.empty
     				[
     				("print", enventry.FunEntry {formals=[T.SRING], result=T.UNIT}),
     				("flush", enventry.FunEntry {formals=[], result=T.UNIT}),
@@ -37,7 +36,7 @@ struct
     				("substring", enventry.FunEntry {formals=[T.STRING, T.INT, T.INT], result=T.STRING}),
     				("concat", enventry.FunEntry {formals=[T.STRING, T.STRING], result=T.STRING}),
     				("not", enventry.FunEntry {formals=[T.INT], result=T.INT}),
-    				("exit", enventry.FunEntry {formals=[T.INT], result=T.UNIT}),
+    				("exit", enventry.FunEntry {formals=[T.INT], result=T.UNIT})
     				]
 
 end
