@@ -62,7 +62,6 @@ fun makeArrayExp(sym, e1, e2, p) =
 %value INT (1)
 %value STRING ("")
 
-(* Precendence Directives *)
 %nonassoc ID
 (*all these bind less tightly then operators below*)
 %nonassoc DO THEN OF LBRACK
@@ -121,6 +120,7 @@ fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp   (A.FunctionDec [{name=Symbol
 lvalue: ID  (A.SimpleVar(Symbol.symbol(ID),IDleft))
       | lvalue DOT ID   (A.FieldVar(lvalue, Symbol.symbol(ID), lvalueleft))
       | lvalue LBRACK exp RBRACK  (A.SubscriptVar(lvalue, exp, lvalueleft))
+      | ID LBRACK exp RBRACK  (A.SubscriptVar(A.SimpleVar(Symbol.symbol(ID), IDleft), exp, IDleft))
 
 exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
    | NIL   (A.NilExp)                                         (* Nil *)

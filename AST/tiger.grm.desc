@@ -24,7 +24,7 @@ state 0:
 
 state 1:
 
-	exp : lvalue .  (reduce by rule 21)
+	exp : lvalue .  (reduce by rule 22)
 	exp : lvalue . ASSIGN exp 
 	lvalue : lvalue . DOT ID 
 	lvalue : lvalue . LBRACK exp RBRACK 
@@ -34,7 +34,7 @@ state 1:
 	ASSIGN	shift 14
 
 
-	.	reduce by rule 21
+	.	reduce by rule 22
 
 
 state 2:
@@ -72,20 +72,20 @@ state 2:
 
 state 3:
 
-	exp : NIL .  (reduce by rule 22)
+	exp : NIL .  (reduce by rule 23)
 
 
 
-	.	reduce by rule 22
+	.	reduce by rule 23
 
 
 state 4:
 
-	exp : BREAK .  (reduce by rule 47)
+	exp : BREAK .  (reduce by rule 48)
 
 
 
-	.	reduce by rule 47
+	.	reduce by rule 48
 
 
 state 5:
@@ -202,25 +202,25 @@ state 10:
 	lvalue	goto 1
 	explist	goto 41
 
-	.	reduce by rule 53
+	.	reduce by rule 54
 
 
 state 11:
 
-	exp : STRING .  (reduce by rule 25)
+	exp : STRING .  (reduce by rule 26)
 
 
 
-	.	reduce by rule 25
+	.	reduce by rule 26
 
 
 state 12:
 
-	exp : INT .  (reduce by rule 24)
+	exp : INT .  (reduce by rule 25)
 
 
 
-	.	reduce by rule 24
+	.	reduce by rule 25
 
 
 state 13:
@@ -229,6 +229,7 @@ state 13:
 	exp : ID . LBRACE recordlist RBRACE 
 	exp : ID . LBRACK exp RBRACK OF exp 
 	lvalue : ID .  (reduce by rule 18)
+	lvalue : ID . LBRACK exp RBRACK 
 
 	LPAREN	shift 45
 	LBRACK	shift 44
@@ -723,7 +724,7 @@ state 39:
 
 state 40:
 
-	exp : MINUS exp .  (reduce by rule 26)
+	exp : MINUS exp .  (reduce by rule 27)
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
 	exp : exp . TIMES exp 
@@ -739,7 +740,7 @@ state 40:
 
 
 
-	.	reduce by rule 26
+	.	reduce by rule 27
 
 
 state 41:
@@ -784,7 +785,7 @@ state 42:
 
 	explistTail	goto 70
 
-	.	reduce by rule 55
+	.	reduce by rule 56
 
 
 state 43:
@@ -795,12 +796,13 @@ state 43:
 
 	recordlist	goto 72
 
-	.	reduce by rule 49
+	.	reduce by rule 50
 
 
 state 44:
 
 	exp : ID LBRACK . exp RBRACK OF exp 
+	lvalue : ID LBRACK . exp RBRACK 
 
 	ID	shift 13
 	INT	shift 12
@@ -840,7 +842,7 @@ state 45:
 	lvalue	goto 1
 	paramlist	goto 75
 
-	.	reduce by rule 57
+	.	reduce by rule 58
 
 
 state 46:
@@ -857,7 +859,7 @@ state 46:
 	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
-	exp : lvalue ASSIGN exp .  (reduce by rule 42)
+	exp : lvalue ASSIGN exp .  (reduce by rule 43)
 
 	PLUS	shift 28
 	MINUS	shift 27
@@ -873,7 +875,7 @@ state 46:
 	OR	shift 17
 
 
-	.	reduce by rule 42
+	.	reduce by rule 43
 
 
 state 47:
@@ -933,7 +935,7 @@ state 49:
 	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
-	exp : exp OR exp .  (reduce by rule 39)
+	exp : exp OR exp .  (reduce by rule 40)
 
 	PLUS	shift 28
 	MINUS	shift 27
@@ -948,7 +950,7 @@ state 49:
 	AND	shift 18
 
 
-	.	reduce by rule 39
+	.	reduce by rule 40
 
 
 state 50:
@@ -964,7 +966,7 @@ state 50:
 	exp : exp . GT exp 
 	exp : exp . GE exp 
 	exp : exp . AND exp 
-	exp : exp AND exp .  (reduce by rule 38)
+	exp : exp AND exp .  (reduce by rule 39)
 	exp : exp . OR exp 
 
 	PLUS	shift 28
@@ -979,7 +981,7 @@ state 50:
 	GE	shift 19
 
 
-	.	reduce by rule 38
+	.	reduce by rule 39
 
 
 state 51:
@@ -994,7 +996,49 @@ state 51:
 	exp : exp . LE exp 
 	exp : exp . GT exp 
 	exp : exp . GE exp 
-	exp : exp GE exp .  (reduce by rule 37)
+	exp : exp GE exp .  (reduce by rule 38)
+	exp : exp . AND exp 
+	exp : exp . OR exp 
+
+	EOF	reduce by rule 38
+	COMMA	reduce by rule 38
+	SEMICOLON	reduce by rule 38
+	RPAREN	reduce by rule 38
+	RBRACK	reduce by rule 38
+	RBRACE	reduce by rule 38
+	PLUS	shift 28
+	MINUS	shift 27
+	TIMES	shift 26
+	DIVIDE	shift 25
+	AND	reduce by rule 38
+	OR	reduce by rule 38
+	THEN	reduce by rule 38
+	ELSE	reduce by rule 38
+	TO	reduce by rule 38
+	DO	reduce by rule 38
+	IN	reduce by rule 38
+	END	reduce by rule 38
+	FUNCTION	reduce by rule 38
+	VAR	reduce by rule 38
+	TYPE	reduce by rule 38
+
+
+	.	error
+
+
+state 52:
+
+	exp : exp . PLUS exp 
+	exp : exp . MINUS exp 
+	exp : exp . TIMES exp 
+	exp : exp . DIVIDE exp 
+	exp : exp . EQ exp 
+	exp : exp . NEQ exp 
+	exp : exp . LT exp 
+	exp : exp . LE exp 
+	exp : exp . GT exp 
+	exp : exp GT exp .  (reduce by rule 37)
+	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
 
@@ -1024,7 +1068,7 @@ state 51:
 	.	error
 
 
-state 52:
+state 53:
 
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
@@ -1034,8 +1078,8 @@ state 52:
 	exp : exp . NEQ exp 
 	exp : exp . LT exp 
 	exp : exp . LE exp 
+	exp : exp LE exp .  (reduce by rule 36)
 	exp : exp . GT exp 
-	exp : exp GT exp .  (reduce by rule 36)
 	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
@@ -1066,7 +1110,7 @@ state 52:
 	.	error
 
 
-state 53:
+state 54:
 
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
@@ -1075,8 +1119,8 @@ state 53:
 	exp : exp . EQ exp 
 	exp : exp . NEQ exp 
 	exp : exp . LT exp 
+	exp : exp LT exp .  (reduce by rule 35)
 	exp : exp . LE exp 
-	exp : exp LE exp .  (reduce by rule 35)
 	exp : exp . GT exp 
 	exp : exp . GE exp 
 	exp : exp . AND exp 
@@ -1108,7 +1152,7 @@ state 53:
 	.	error
 
 
-state 54:
+state 55:
 
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
@@ -1116,8 +1160,8 @@ state 54:
 	exp : exp . DIVIDE exp 
 	exp : exp . EQ exp 
 	exp : exp . NEQ exp 
+	exp : exp NEQ exp .  (reduce by rule 34)
 	exp : exp . LT exp 
-	exp : exp LT exp .  (reduce by rule 34)
 	exp : exp . LE exp 
 	exp : exp . GT exp 
 	exp : exp . GE exp 
@@ -1150,15 +1194,15 @@ state 54:
 	.	error
 
 
-state 55:
+state 56:
 
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
 	exp : exp . TIMES exp 
 	exp : exp . DIVIDE exp 
 	exp : exp . EQ exp 
+	exp : exp EQ exp .  (reduce by rule 33)
 	exp : exp . NEQ exp 
-	exp : exp NEQ exp .  (reduce by rule 33)
 	exp : exp . LT exp 
 	exp : exp . LE exp 
 	exp : exp . GT exp 
@@ -1192,14 +1236,14 @@ state 55:
 	.	error
 
 
-state 56:
+state 57:
 
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
 	exp : exp . TIMES exp 
 	exp : exp . DIVIDE exp 
+	exp : exp DIVIDE exp .  (reduce by rule 32)
 	exp : exp . EQ exp 
-	exp : exp EQ exp .  (reduce by rule 32)
 	exp : exp . NEQ exp 
 	exp : exp . LT exp 
 	exp : exp . LE exp 
@@ -1208,39 +1252,18 @@ state 56:
 	exp : exp . AND exp 
 	exp : exp . OR exp 
 
-	EOF	reduce by rule 32
-	COMMA	reduce by rule 32
-	SEMICOLON	reduce by rule 32
-	RPAREN	reduce by rule 32
-	RBRACK	reduce by rule 32
-	RBRACE	reduce by rule 32
-	PLUS	shift 28
-	MINUS	shift 27
-	TIMES	shift 26
-	DIVIDE	shift 25
-	AND	reduce by rule 32
-	OR	reduce by rule 32
-	THEN	reduce by rule 32
-	ELSE	reduce by rule 32
-	TO	reduce by rule 32
-	DO	reduce by rule 32
-	IN	reduce by rule 32
-	END	reduce by rule 32
-	FUNCTION	reduce by rule 32
-	VAR	reduce by rule 32
-	TYPE	reduce by rule 32
 
 
-	.	error
+	.	reduce by rule 32
 
 
-state 57:
+state 58:
 
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
 	exp : exp . TIMES exp 
+	exp : exp TIMES exp .  (reduce by rule 31)
 	exp : exp . DIVIDE exp 
-	exp : exp DIVIDE exp .  (reduce by rule 31)
 	exp : exp . EQ exp 
 	exp : exp . NEQ exp 
 	exp : exp . LT exp 
@@ -1255,12 +1278,12 @@ state 57:
 	.	reduce by rule 31
 
 
-state 58:
+state 59:
 
 	exp : exp . PLUS exp 
 	exp : exp . MINUS exp 
+	exp : exp MINUS exp .  (reduce by rule 30)
 	exp : exp . TIMES exp 
-	exp : exp TIMES exp .  (reduce by rule 30)
 	exp : exp . DIVIDE exp 
 	exp : exp . EQ exp 
 	exp : exp . NEQ exp 
@@ -1271,16 +1294,18 @@ state 58:
 	exp : exp . AND exp 
 	exp : exp . OR exp 
 
+	TIMES	shift 26
+	DIVIDE	shift 25
 
 
 	.	reduce by rule 30
 
 
-state 59:
+state 60:
 
 	exp : exp . PLUS exp 
+	exp : exp PLUS exp .  (reduce by rule 29)
 	exp : exp . MINUS exp 
-	exp : exp MINUS exp .  (reduce by rule 29)
 	exp : exp . TIMES exp 
 	exp : exp . DIVIDE exp 
 	exp : exp . EQ exp 
@@ -1297,29 +1322,6 @@ state 59:
 
 
 	.	reduce by rule 29
-
-
-state 60:
-
-	exp : exp . PLUS exp 
-	exp : exp PLUS exp .  (reduce by rule 28)
-	exp : exp . MINUS exp 
-	exp : exp . TIMES exp 
-	exp : exp . DIVIDE exp 
-	exp : exp . EQ exp 
-	exp : exp . NEQ exp 
-	exp : exp . LT exp 
-	exp : exp . LE exp 
-	exp : exp . GT exp 
-	exp : exp . GE exp 
-	exp : exp . AND exp 
-	exp : exp . OR exp 
-
-	TIMES	shift 26
-	DIVIDE	shift 25
-
-
-	.	reduce by rule 28
 
 
 state 61:
@@ -1351,7 +1353,7 @@ state 62:
 	lvalue	goto 1
 	explist	goto 78
 
-	.	reduce by rule 53
+	.	reduce by rule 54
 
 
 state 63:
@@ -1456,20 +1458,20 @@ state 68:
 
 state 69:
 
-	exp : LPAREN explist RPAREN .  (reduce by rule 23)
+	exp : LPAREN explist RPAREN .  (reduce by rule 24)
 
 
 
-	.	reduce by rule 23
+	.	reduce by rule 24
 
 
 state 70:
 
-	explist : exp explistTail .  (reduce by rule 54)
+	explist : exp explistTail .  (reduce by rule 55)
 
 
 
-	.	reduce by rule 54
+	.	reduce by rule 55
 
 
 state 71:
@@ -1529,6 +1531,7 @@ state 74:
 	exp : exp . AND exp 
 	exp : exp . OR exp 
 	exp : ID LBRACK exp . RBRACK OF exp 
+	lvalue : ID LBRACK exp . RBRACK 
 
 	RBRACK	shift 89
 	PLUS	shift 28
@@ -1590,7 +1593,7 @@ state 76:
 
 	paramlistTail	goto 91
 
-	.	reduce by rule 59
+	.	reduce by rule 60
 
 
 state 77:
@@ -1717,7 +1720,7 @@ state 84:
 	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
-	exp : WHILE exp DO exp .  (reduce by rule 45)
+	exp : WHILE exp DO exp .  (reduce by rule 46)
 
 	PLUS	shift 28
 	MINUS	shift 27
@@ -1733,7 +1736,7 @@ state 84:
 	OR	shift 17
 
 
-	.	reduce by rule 45
+	.	reduce by rule 46
 
 
 state 85:
@@ -1751,7 +1754,7 @@ state 85:
 	exp : exp . AND exp 
 	exp : exp . OR exp 
 	exp : IF exp THEN exp . ELSE exp 
-	exp : IF exp THEN exp .  (reduce by rule 44)
+	exp : IF exp THEN exp .  (reduce by rule 45)
 
 	PLUS	shift 28
 	MINUS	shift 27
@@ -1768,7 +1771,7 @@ state 85:
 	ELSE	shift 103
 
 
-	.	reduce by rule 44
+	.	reduce by rule 45
 
 
 state 86:
@@ -1803,16 +1806,16 @@ state 86:
 
 	explistTail	goto 104
 
-	.	reduce by rule 55
+	.	reduce by rule 56
 
 
 state 87:
 
-	exp : ID LBRACE recordlist RBRACE .  (reduce by rule 40)
+	exp : ID LBRACE recordlist RBRACE .  (reduce by rule 41)
 
 
 
-	.	reduce by rule 40
+	.	reduce by rule 41
 
 
 state 88:
@@ -1840,29 +1843,30 @@ state 88:
 state 89:
 
 	exp : ID LBRACK exp RBRACK . OF exp 
+	lvalue : ID LBRACK exp RBRACK .  (reduce by rule 21)
 
 	OF	shift 106
 
 
-	.	error
+	.	reduce by rule 21
 
 
 state 90:
 
-	exp : ID LPAREN paramlist RPAREN .  (reduce by rule 27)
+	exp : ID LPAREN paramlist RPAREN .  (reduce by rule 28)
 
 
 
-	.	reduce by rule 27
+	.	reduce by rule 28
 
 
 state 91:
 
-	paramlist : exp paramlistTail .  (reduce by rule 58)
+	paramlist : exp paramlistTail .  (reduce by rule 59)
 
 
 
-	.	reduce by rule 58
+	.	reduce by rule 59
 
 
 state 92:
@@ -1889,11 +1893,11 @@ state 92:
 
 state 93:
 
-	exp : LET decs IN explist END .  (reduce by rule 48)
+	exp : LET decs IN explist END .  (reduce by rule 49)
 
 
 
-	.	reduce by rule 48
+	.	reduce by rule 49
 
 
 state 94:
@@ -2045,11 +2049,11 @@ state 103:
 
 state 104:
 
-	explistTail : SEMICOLON exp explistTail .  (reduce by rule 56)
+	explistTail : SEMICOLON exp explistTail .  (reduce by rule 57)
 
 
 
-	.	reduce by rule 56
+	.	reduce by rule 57
 
 
 state 105:
@@ -2084,7 +2088,7 @@ state 105:
 
 	recordlistTail	goto 115
 
-	.	reduce by rule 51
+	.	reduce by rule 52
 
 
 state 106:
@@ -2141,7 +2145,7 @@ state 107:
 
 	paramlistTail	goto 118
 
-	.	reduce by rule 59
+	.	reduce by rule 60
 
 
 state 108:
@@ -2256,7 +2260,7 @@ state 114:
 	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
-	exp : IF exp THEN exp ELSE exp .  (reduce by rule 43)
+	exp : IF exp THEN exp ELSE exp .  (reduce by rule 44)
 
 	PLUS	shift 28
 	MINUS	shift 27
@@ -2272,16 +2276,16 @@ state 114:
 	OR	shift 17
 
 
-	.	reduce by rule 43
+	.	reduce by rule 44
 
 
 state 115:
 
-	recordlist : ID EQ exp recordlistTail .  (reduce by rule 50)
+	recordlist : ID EQ exp recordlistTail .  (reduce by rule 51)
 
 
 
-	.	reduce by rule 50
+	.	reduce by rule 51
 
 
 state 116:
@@ -2308,7 +2312,7 @@ state 117:
 	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
-	exp : ID LBRACK exp RBRACK OF exp .  (reduce by rule 41)
+	exp : ID LBRACK exp RBRACK OF exp .  (reduce by rule 42)
 
 	PLUS	shift 28
 	MINUS	shift 27
@@ -2324,16 +2328,16 @@ state 117:
 	OR	shift 17
 
 
-	.	reduce by rule 41
+	.	reduce by rule 42
 
 
 state 118:
 
-	paramlistTail : COMMA exp paramlistTail .  (reduce by rule 60)
+	paramlistTail : COMMA exp paramlistTail .  (reduce by rule 61)
 
 
 
-	.	reduce by rule 60
+	.	reduce by rule 61
 
 
 state 119:
@@ -2538,7 +2542,7 @@ state 131:
 	exp : exp . GE exp 
 	exp : exp . AND exp 
 	exp : exp . OR exp 
-	exp : FOR ID ASSIGN exp TO exp DO exp .  (reduce by rule 46)
+	exp : FOR ID ASSIGN exp TO exp DO exp .  (reduce by rule 47)
 
 	PLUS	shift 28
 	MINUS	shift 27
@@ -2554,7 +2558,7 @@ state 131:
 	OR	shift 17
 
 
-	.	reduce by rule 46
+	.	reduce by rule 47
 
 
 state 132:
@@ -2643,7 +2647,7 @@ state 135:
 
 	recordlistTail	goto 138
 
-	.	reduce by rule 51
+	.	reduce by rule 52
 
 
 state 136:
@@ -2691,11 +2695,11 @@ state 137:
 
 state 138:
 
-	recordlistTail : COMMA ID EQ exp recordlistTail .  (reduce by rule 52)
+	recordlistTail : COMMA ID EQ exp recordlistTail .  (reduce by rule 53)
 
 
 
-	.	reduce by rule 52
+	.	reduce by rule 53
 
 
 state 139:

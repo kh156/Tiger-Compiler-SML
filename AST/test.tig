@@ -1,15 +1,8 @@
-/*BELOW TEST THE GENERAL CASES*/
 let
-        var TT := 644
-        var xt := 01
-        var s_4 := 0
-    	var sss____44__ss_0:=1
-        var T5_ := 7
-        type myintT6 = int
-        type  arrtype = array of myintT6
-        
-        var arr1:arrtype := arrtype [10] of 0
+    type intArray = array of int
+
+    var row := intArray [ 10 ] of 0
 in
-        arr1
+	row [ 5 ]
 end
 
