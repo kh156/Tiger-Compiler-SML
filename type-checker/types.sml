@@ -8,10 +8,10 @@ struct
           | NIL
           | INT
           | STRING
-          | ARRAY of ty * unique
-	 	  | NAME of Symbol.symbol * ty option ref
-	  	  | UNIT
-	  	  | ERROR
+          | ARRAY of ty * unique  
+          | NAME of Symbol.symbol * ty option ref
+	  	    | UNIT
+	  	    | ERROR
 
 end
 
