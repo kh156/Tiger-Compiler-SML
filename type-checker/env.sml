@@ -2,20 +2,19 @@ signature ENV =
 sig
   type access
   type ty
-  datatype enventry = VarEntry of {ty: ty}
-                    | FunEntry of {formals: ty list, result: ty}
-  val base_tenv: ty Symbol.table            (*predefined types*)
+  datatype enventry = VarEntry of {ty: Types.ty}
+                    | FunEntry of {formals: Types.ty list, result: Types.ty}
+  val base_tenv: Types.ty Symbol.table            (*predefined types*)
   val base_venv: enventry Symbol.table      (*predefined functions*)
 end
 
-structure Envir :> ENV
+structure Envir :> ENV = 
 struct
-
+  structure T = Types
+  type ty = T.ty
 	type access = unit
- 	type ty = Types.ty
- 	structure T = Types
- 	datatype enventry = VarEntry of {ty: ty}
-	              	  | FunEntry of {formals: ty list, result: ty}
+ 	datatype enventry = VarEntry of {ty: Types.ty}
+	              	  | FunEntry of {formals: Types.ty list, result: Types.ty}
 
 	val base_tenv = foldr (fn ((name,ty), table) => Symbol.enter(table, Symbol.symbol name, ty)) 
                       Symbol.empty
@@ -27,16 +26,16 @@ struct
   val base_venv = foldr (fn ((name, enventry), table) => Symbol.enter(table, Symbol.symbol name, enventry))
   	   			Symbol.empty
     				[
-    				("print", enventry.FunEntry {formals=[T.SRING], result=T.UNIT}),
-    				("flush", enventry.FunEntry {formals=[], result=T.UNIT}),
-    				("getchar", enventry.FunEntry {formals=[], result=T.STRING}),
-    				("ord", enventry.FunEntry {formals=[T.STRING], result=T.INT}),
-    				("chr", enventry.FunEntry {formals=[T.INT], result=T.STRING}),
-    				("size", enventry.FunEntry {formals=[T.STRING], result=T.INT}),
-    				("substring", enventry.FunEntry {formals=[T.STRING, T.INT, T.INT], result=T.STRING}),
-    				("concat", enventry.FunEntry {formals=[T.STRING, T.STRING], result=T.STRING}),
-    				("not", enventry.FunEntry {formals=[T.INT], result=T.INT}),
-    				("exit", enventry.FunEntry {formals=[T.INT], result=T.UNIT})
+    				("print", FunEntry {formals=[T.STRING], result=T.UNIT}),
+    				("flush", FunEntry {formals=[], result=T.UNIT}),
+    				("getchar", FunEntry {formals=[], result=T.STRING}),
+    				("ord", FunEntry {formals=[T.STRING], result=T.INT}),
+    				("chr", FunEntry {formals=[T.INT], result=T.STRING}),
+    				("size", FunEntry {formals=[T.STRING], result=T.INT}),
+    				("substring", FunEntry {formals=[T.STRING, T.INT, T.INT], result=T.STRING}),
+    				("concat", FunEntry {formals=[T.STRING, T.STRING], result=T.STRING}),
+    				("not", FunEntry {formals=[T.INT], result=T.INT}),
+    				("exit", FunEntry {formals=[T.INT], result=T.UNIT})
     				]
 
 end

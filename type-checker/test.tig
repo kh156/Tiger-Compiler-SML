@@ -1,0 +1,8 @@
+let
+    type intArray = array of int
+    type a = int
+    type b = a
+    type c = a
+in
+	row [ 5 ]
+end
