@@ -9,6 +9,7 @@ symbol.sml
 parse.sml
 tiger.lex
 tiger.grm
+types.sml
 env.sml
 semant.sml
 $/smlnj-lib.cm
