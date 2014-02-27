@@ -51,7 +51,6 @@ fun actual_ty(ty: T.ty, pos: A.pos) =
 							     | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
 		| _ => ty
 
-
 fun transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 	(case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type with name"^(S.name s)); T.ERROR)
 							| SOME(t) => t)
@@ -110,8 +109,60 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 		{tenv = foldr addSingleType tenv typeDecList, venv = venv}
 	end
 
-(*| transDec(venv, tenv, A.FunctionDec[]) = ...(*to be implemented*)*)
+| transDec(venv, tenv, A.FunctionDec funcs) =
+	let 
+		fun secondPass (venv,[]) = ()
+	 	| 	secondPass (venv, {name, params, body, pos, result}::func) =
+			let 
+				val retoption = case result of 
+					SOME(rt,p) => S.look(tenv,rt)
+				| 	NONE => NONE
+				val tyret = case retoption of 
+					SOME(t) => t
+				|	NONE => T.UNIT 
 
+				fun enterparam ({name, escape, typ, pos}, venvCurr) = 
+					let 
+						var ty = case S.look(tenv, typ) of
+					    	SOME t => t
+					    | 	NONE => T.ERROR
+					in
+						S.enter (venvCurr, name, E.VarEntry {ty = ty})
+					end
+				val venv' = foldr enterparam venv params
+				val {exp = _, ty = tybody} = transExp (venv', tenv, body)
+			in (
+				case comparetype(tybody,tyret) of
+					true => ()
+			    | 	false => ErrorMsg.error pos "Function body type and return type do not mactch!";
+				secondPass (venv, func)
+			)
+			end
+
+		fun firstPass ({name, params, body, pos, result}, venvCurr) =
+			let 
+				val retoption = case result of 
+					SOME(rt,p) => S.look(tenv,rt)
+				| 	NONE => NONE
+				val tyret = case retoption of 
+					SOME(t) => t
+				|	NONE => T.UNIT 
+				fun transparam {name, escape, typ, pos} = 
+				    case S.look(tenv, typ) of
+				    	SOME t => t
+				    | 	NONE => (ErrorMsg.error pos "Unknown params type in function declaration"; T.ERROR)
+				val params' = map transparam params
+			in 
+				S.enter(venvCurr, name, E.FunEntry {formals = params', result = tyret})
+			end
+
+		var venv' = foldr firstPass venv funcs;
+	in (
+		secondPass venv' funcs;
+		{venv = venv', tenv = tenv}
+	)
+	end
+	
 
 fun transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
 	(case S.look(venv, s) of
