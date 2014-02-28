@@ -312,7 +312,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				val venv' = foldr enterparam venv params
 				val {exp = _, ty = tybody} = transExp (venv', tenv, body)
 			in (
-				case compareType(tybody,tyret) of
+				case compareType(tybody, tyret, pos) of
 					true => ()
 			    | 	false => ErrorMsg.error pos "Function body type and return type do not mactch!";
 				secondPass (venv, func)
@@ -338,7 +338,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 
 		val venv' = foldr firstPass venv funcs;
 	in (
-		secondPass venv' funcs;
+		secondPass(venv', funcs);
 		{venv = venv', tenv = tenv}
 	)
 	end
