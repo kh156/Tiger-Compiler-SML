@@ -35,9 +35,6 @@ val nestDepth = ref 0
 fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
 
-
-
-
 fun checkInt ({exp,ty},pos) = 
   case ty of
 	T.Int => ()
@@ -59,21 +56,18 @@ fun lookupType (tenv typ pos) =
   | NONE => (err pos ("type is not defined: " ^ S.name n) ; T.UNIT))
 
 fun compareTypes (tenv, [], ) = 
-
-
-
 	(tenv, ty1::lst1, ty2::lst2) =
 		if comparetype(ty1,ty2) then compareTypes(tenv,lst1,lst2)
 		else (err pos ("types do not match") ; T.UNIT))
 
 fun transExp(venv, tenv) =
 	    transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
-	  | transExp (A.IntExp i) = {exp=(), T.INT}
-	  | transExp (A.VarExp v) = trvar v
-	  | transExp (A.StringExp (s, pos)) = (exp=(), T.STRING)
-	  | transExp (A.SeqExp []) = {exp=(), ty=T.UNIT}
-	  | transExp (A.SeqExp exps) = 
-	  | transExp (A.OpExp{left,oper,right,pos}) =
+	  | transExp (venv, tenv, A.IntExp i) = {exp=(), T.INT}
+	  | transExp (venv, tenv, A.VarExp v) = trvar v
+	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), T.STRING)
+	  | transExp (venv, tenv, A.SeqExp []) = {exp=(), ty=T.UNIT}
+	  | transExp (venv, tenv, A.SeqExp exps) = 
+	  | transExp (venv, tenv, A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
   	    then (checkInt(transExp left, pos);
@@ -94,21 +88,21 @@ fun transExp(venv, tenv) =
 			(error pos "Error");
 			{exp=(),ty=T.INT}
 
-	  | transExp (A.RecordExp{fields,typ,exp}) = 
+	  | transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = 
 
-	  | transExp (A.AssignExp{var,exp,pos}) =
+	  | transExp (venv, tenv, A.AssignExp{var,exp,pos}) =
 	  	if #ty trvar(var) = #ty transExp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and expression do not match");
 			{exp=(),ty=T.UNIT}
 
-	  | transExp (A.LetExp{decs,body,pos}) =
+	  | transExp (venv, tenv, A.LetExp{decs,body,pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
 	  			   transDecs(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
-	  | transExp (A.CallExp{func, args, pos}) =
+	  | transExp (venv, tenv, A.CallExp{func, args, pos}) =
 (*	  	case S.look(venv, func) of
 	  		SOME (FunEntry of {formals, result}) =>
 	  			if length(args) <> length(formals) then
@@ -119,7 +113,7 @@ fun transExp(venv, tenv) =
 
 (*	  		_ => (error pos "This function does not exist" ^ Symbol.name(func); {exp=(),ty=T.UNIT})*)
 
-	  | transExp (A.IfExp {test, then', else', pos}) =
+	  | transExp (venv, tenv, A.IfExp {test, then', else', pos}) =
 	  	(case else' of
          NONE => (* if-then *)
          	let 
@@ -142,13 +136,13 @@ fun transExp(venv, tenv) =
          			(error pos "Types of Then and Else statements do not match";
          			 { exp=(), ty=T.UNIT })
          	end
-	  | transExp (A.ForExp {var, escape, lo, hi, body, pos}) =
+	  | transExp (venv, tenv, A.ForExp {var, escape, lo, hi, body, pos}) =
 	  	(checkInt(lo);
 	  	checkInt(hi);
 	  	checkUnit(body);
 	  	S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT});
 	  	{ exp=(), ty=T.UNIT })
-	  | transExp (A.WhileExp {test, body, pos}) =
+	  | transExp (venv, tenv, A.WhileExp {test, body, pos}) =
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv) test
@@ -159,7 +153,7 @@ fun transExp(venv, tenv) =
 	  		checkUnit(b);
 	  		{ exp=(), ty=T.UNIT })
 	  	end
-	  | transExp (A.BreakExp pos) =
+	  | transExp (venv, tenv, A.BreakExp pos) =
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
 	  		  { exp=(), ty=T.UNIT })
