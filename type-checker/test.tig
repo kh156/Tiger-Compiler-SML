@@ -1,6 +1,8 @@
 let
 	type a = int
 	type b = string
+	function fa() = a
+	function fb() = b
 	var x := 5
 	type c = a
 	var y := 6

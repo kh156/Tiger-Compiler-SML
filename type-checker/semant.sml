@@ -55,7 +55,7 @@ fun checkString ({exp, ty}, pos) =
 
 
 
-(*fun isSameType(t1: T.ty, t2: T.ty) = ... (*to be implemented*)
+(*fun isSameType(t1: T.ty, t2: T.ty) = ... (*to be implemented*)*)
 
 fun actual_ty(ty: T.ty, pos: A.pos) =
 	case ty of

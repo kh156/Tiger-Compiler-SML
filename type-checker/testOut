@@ -4,6 +4,18 @@ LetExp([
    NameTy(string)),
   (a,
    NameTy(int))],
+ FunctionDec[
+  (fa,[],
+NONE,
+   VarExp(
+    SimpleVar(a)))],
+ TypeDec[],
+ FunctionDec[
+  (fb,[],
+NONE,
+   VarExp(
+    SimpleVar(b)))],
+ TypeDec[],
  VarDec(x,true,NONE,
   IntExp(5)),
  TypeDec[
