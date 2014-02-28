@@ -11,7 +11,7 @@ tiger.lex
 tiger.grm
 types.sml
 env.sml
-(*semant.sml*)
+semant.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm

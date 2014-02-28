@@ -267,7 +267,7 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 
 				fun enterparam ({name, escape, typ, pos}, venvCurr) = 
 					let 
-						var ty = case S.look(tenv, typ) of
+						val ty = case S.look(tenv, typ) of
 					    	SOME t => t
 					    | 	NONE => T.ERROR
 					in
