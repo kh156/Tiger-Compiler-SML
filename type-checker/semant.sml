@@ -104,7 +104,6 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 			parseExps(exps)
 		end
 
-	  (*| transExp (venv, tenv, A.SeqExp exps) = *)
 	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
@@ -113,16 +112,17 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		 	  {exp=(),ty=T.INT})
 		else if (oper=A.EqOp orelse oper=A.NeqOp 
 		orelse oper=A.LtOp orelse oper=A.LeOp
-		orelse oper=A.GtOp orelse oper=A.LtOp)
+		orelse oper=A.GtOp orelse oper=A.GeOp)
 		then
 			let
-				val leftType = (#ty transExp(venv, tenv, left))
-				val rightType = (#ty transExp(venv, tenv, right))
+				val {exp=exp, ty=leftType} = transExp(venv, tenv, left)
+				val {exp=exp, ty=rightType} = transExp(venv, tenv, right)
 			in
-				if (compareType(leftType, rightType) orelse compareType(rightType, leftType))
+				if (compareType(leftType, rightType, pos, pos) orelse compareType(rightType, leftType, pos, pos))
 			  	   	  then {exp=(), ty=T.INT}
 			  		  else ((ErrorMsg.error pos "Logical comparison on two different types!");
 			  		  		{exp=(),ty=T.ERROR})
+			end
 		else
 			((error pos "Error identifying the operator used!");
 			{exp=(),ty=T.ERROR})
