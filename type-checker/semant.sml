@@ -53,15 +53,20 @@ fun checkString ({exp, ty}, pos) =
 fun lookupType (tenv typ pos) = 
   (case S.look (tenv, typ) of
     SOME ty => ty
-  | NONE => (err pos "type is not defined: " ^ S.name n; T.UNIT))
+  | NONE => (error pos "type is not defined: " ^ S.name n; T.UNIT))
 
-(*fun compareTypes (tenv, [], l2) = {exp=(), ty=T.UNIT}
-	| compareTypes (tenv, l1, []) = {exp=(), ty=T.UNIT}
-	| compareTypes (tenv, ty1::lst1, ty2::lst2) =
-		if compareType(ty1,ty2) then compareTypes(tenv,lst1,lst2)
-=======
-  | NONE => (err pos ("type is not defined: " ^ S.name n) ; T.UNIT))
-*)
+fun compareType (type1, type2, pos) = (* Returns true if ty1 is a subtype of ty2 *)
+	(case type2 of 
+	  T.UNIT => true (* All units are subtype of UNIT *)
+	| _ => (if type1 = type2 then true 
+			else (error pos "type mismatch"; false)
+		   )
+	)
+
+fun compareTypes ([], l2, pos) = {exp=(), ty=T.UNIT}
+	| compareTypes (l1, [], pos) = {exp=(), ty=T.UNIT}
+	| compareTypes (ty1::lst1, ty2::lst2, pos) =
+		(compareType(ty1,ty2, pos); compareTypes(lst1,lst2, pos))
 
 fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
@@ -69,7 +74,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), ty=T.STRING)
 	  | transExp (venv, tenv, A.SeqExp []) = {exp=(), ty=T.UNIT}
 	  (*| transExp (venv, tenv, A.SeqExp exps) = *)
-	  | transExp (venv, tenv, A.OpExp{left,oper,right,pos}) =
+	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
   	    then (checkInt(transExp(venv, tenv, left), pos);
@@ -93,29 +98,33 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 
 	(*| transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = *)
 
-	  | transExp (venv, tenv, A.AssignExp{var,exp,pos}) =
+	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}) =
 	  	if #ty trvar(var) = #ty transExp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and expression do not match";
 			{exp=(),ty=T.UNIT})
 
-	  | transExp (venv, tenv, A.LetExp{decs,body,pos}) =
+	  | transExp (venv, tenv, A.LetExp{decs=decs,body=body,pos=pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
 	  			   transDecs(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
-	  (*| transExp (venv, tenv, A.CallExp{func, args, pos}) =*)
-
-(*	  	case S.look(venv, func) of
-	  		SOME (FunEntry of {formals, result}) =>
-	  			if length(args) <> length(formals) then
-	  				(error pos "Number of arguments incorrect: " ^ length(args); {exp=(),ty=T.UNIT})
-	  			else if*)
-
-
-
-(*	  		_ => (error pos "This function does not exist" ^ Symbol.name(func); {exp=(),ty=T.UNIT})*)
+	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}) =
+	   (case S.look(venv, func) of
+	  		SOME (FunEntry {formals, result}) =>
+	  		  ( let 
+	  				val argTypes = map(transExp, args)
+	  			in
+		  			if length(argTypes) <> length(formals) then
+		  				(error pos "Number of arguments incorrect: " ^ length(args); {exp=(),ty=T.UNIT})
+	            	else
+			            (compareTypes (formals, map(#ty argTypes), pos);
+			             {exp=(),ty=actual_ty result})   
+				end
+			  )
+	  		| NONE => (error pos "This function does not exist" ^ Symbol.name(func); {exp=(),ty=T.UNIT})
+	  	)
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
 	  	(case elseExp of
