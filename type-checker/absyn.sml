@@ -32,6 +32,7 @@ and dec = FunctionDec of fundec list
 		     init: exp,
 		     pos: pos}
         | TypeDec of {name: symbol, ty: ty, pos: pos} list
+        | StartOfDecList of unit
 
 and ty = NameTy of symbol * pos
        | RecordTy of field list
