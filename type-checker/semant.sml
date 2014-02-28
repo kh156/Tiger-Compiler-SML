@@ -165,13 +165,13 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  				val argTypes = map transExpHere args
 	  			in
 		  			if length(argTypes) <> length(formals) then
-		  				(error pos ("Number of arguments incorrect: "^length(args)); {exp=(),ty=T.UNIT})
+		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args))); {exp=(),ty=T.UNIT})
 	            	else
 			            (compareTypes (formals, map (#ty) argTypes, pos);
 			             {exp=(),ty=actual_ty (result,pos)})
 				end
 			  )
-	  		| NONE => (error pos ("This function does not exist" ^ S.name(func)); {exp=(),ty=T.UNIT})
+	  		| _ => (error pos ("This function does not exist" ^ S.name(func)); {exp=(),ty=T.UNIT})
 	  	)
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
@@ -271,7 +271,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				case S.look(tenv, s) of
 					NONE => (ErrorMsg.error pos "declared type for variable does not exist!";
 							{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
-					| SOME(t) => (case isSameType(tyinit, t) of
+					| SOME(t) => (case compareType(tyinit, t, p) of
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
 							    	{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
 							| true  => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}))
