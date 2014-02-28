@@ -140,7 +140,6 @@ fun transExp(venv, tenv) =
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
 	  		  { exp=(), ty=T.UNIT })
-	  | trexp (A.LetExp {decs, body, pos}) =
 	  | trexp (A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
 
 (*main entry point for type-checking a program*)
