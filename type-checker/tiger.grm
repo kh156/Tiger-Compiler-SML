@@ -110,7 +110,7 @@ fun formDecList (oneDec::restOfList, A.StartOfDecList ()) = formDecList(restOfLi
 program : exp   (exp)
 (*how about declarations in a program?*)
 
-decs: dec decs (formDecList(dec::decs, A.StartOfDecList ()))
+decs: dec decs (formDecList(decs @ [dec], A.StartOfDecList ()))
     | ([])
 
 dec: tydec   (tydec)
