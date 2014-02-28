@@ -1,21 +1,8 @@
 let
-	
-	type tree = {key: int, children: treelist}
-	type treelist = {hd: tree, tl:treelist}
 
-	function treeLeaves (t : tree) : int =
-		if t=nil then 1
-		else treelistLeaves(t.children)
-	function treelistLeaves(L : treelist) : int =
-		if L=nil then 0
-		else treeLeaves(L.hd) + treelistLeaves(L.tl)
-	var x := 1
-
-	type a = b
-	type b = a
-
-	var y : int := "abc"
+	type recordTrial = {field1: int, field2: string}
+	var newRecord := recordTrial {field = 1, field2 = 2}
 in
-	x = 1
+	newRecord.field1
 end
 

@@ -142,11 +142,13 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		(*fields is a (symbol * exp * pos) list*)
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
-	  			(case (ty)=(#ty (transExp(venv, tenv, exp))) of 
-	  				true => (case (S.name symbol)=(S.name tySymbol) of 
+	  			(case (S.name symbol)=(S.name tySymbol) of 
+	  				true => (case (ty)=(#ty (transExp(venv, tenv, exp))) of 
 	  						true => checkRecord(otherFields, otherTypes)
-	  						| false => false)
-	  				| false => false)
+	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
+	  							false))
+	  				| false => (ErrorMsg.error pos "Field name does not match record type during record creation!";
+	  					false))
 	  		| checkRecord([], []) = true
 	  		| checkRecord(_, _) = false
 	  	in
