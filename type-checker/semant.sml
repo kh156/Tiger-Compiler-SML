@@ -72,17 +72,17 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
-  	    then (checkInt(transExp left, pos);
-		 	  checkInt(transExp right, pos);
+  	    then (checkInt(transExp(venv, tenv, left), pos);
+		 	  checkInt(transExp(venv, tenv, right), pos);
 		 	  {exp=(),ty=T.INT})
 		else if (oper=A.EqOp orelse oper=A.NeqOp 
 		orelse oper=A.LtOp orelse oper=A.LeOp
 		orelse oper=A.GtOp orelse oper=A.LtOp)
 		then
-			(case #ty transExp(left) of
-				T.INT => (checkInt(transExp right, pos);
+			(case #ty transExp(venv,tenv,left) of
+				T.INT => (checkInt(transExp(venv, tenv, right), pos);
 	 	  				   {exp=(),ty=T.INT})
-			  | T.STRING => (checkString(transExp right, pos);
+			  | T.STRING => (checkString(transExp(venv, tenv, right), pos);
 	 	  				      {exp=(),ty=T.STRING})
 
 			  | _ => (error pos "Can't perform an operation on this type");
@@ -223,7 +223,7 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
                                   init: A.exp,
                                   pos: A.pos}) = 
 	let
-		val {exp, tyinit} = transExp(venv, tenv, init)
+		val {exp=exp, ty=ty} = transExp(venv, tenv, init)
 	in
 		case typ of
 			NONE => (case tyinit=T.NIL of 
@@ -278,7 +278,7 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 			)
 			end
 
-		fun firstPass ({name, params, body, pos, result}, venvCurr) =
+		fun firstPass ({name=name, params=params, body=body, pos=pos, result=result}, venvCurr) =
 			let 
 				val retoption = case result of 
 					SOME(rt,p) => S.look(tenv,rt)
