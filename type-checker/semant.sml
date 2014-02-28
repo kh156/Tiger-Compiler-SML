@@ -36,36 +36,36 @@ fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
 
 fun checkInt ({exp,ty},pos) = 
-  case ty of
+  (case ty of
 	T.Int => ()
-  | _ => error pos "integer required"
+  | _ => error pos "integer required")
 
 fun checkUnit ({exp, ty}, pos) =
-  case ty of
+  (case ty of
     T.UNIT => ()
-  | _ => error pos "unit required"
+  | _ => error pos "unit required")
 
 fun checkString ({exp, ty}, pos) =
-  case ty of
+  (case ty of
     T.STRING => ()
-  | _ => error pos "string required"
+  | _ => error pos "string required")
 
 fun lookupType (tenv typ pos) = 
-  case S.look (tenv, typ) of
+  (case S.look (tenv, typ) of
     SOME ty => ty
   | NONE => (err pos ("type is not defined: " ^ S.name n) ; T.UNIT))
-
+(*
 fun compareTypes (tenv, [], ) = 
 	(tenv, ty1::lst1, ty2::lst2) =
 		if comparetype(ty1,ty2) then compareTypes(tenv,lst1,lst2)
-		else (err pos ("types do not match") ; T.UNIT))
+		else (err pos ("types do not match") ; T.UNIT))*)
 
-fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
-	  | transExp (venv, tenv, A.IntExp i) = {exp=(), T.INT}
+fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
+	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
 	  | transExp (venv, tenv, A.VarExp v) = trvar v
-	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), T.STRING)
+	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), ty=T.STRING)
 	  | transExp (venv, tenv, A.SeqExp []) = {exp=(), ty=T.UNIT}
-	  | transExp (venv, tenv, A.SeqExp exps) = 
+	  (*| transExp (venv, tenv, A.SeqExp exps) = *)
 	  | transExp (venv, tenv, A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
@@ -76,32 +76,32 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
 		orelse oper=A.LtOp orelse oper=A.LeOp
 		orelse oper=A.GtOp orelse oper=A.LtOp)
 		then
-			case #ty transExp(left) of
+			(case #ty transExp(left) of
 				T.INT => (checkInt(transExp right, pos);
 	 	  				   {exp=(),ty=T.INT})
 			  | T.STRING => (checkString(transExp right, pos);
 	 	  				      {exp=(),ty=T.STRING})
 			  | _ => (error pos "Can't perform an operation on this type");
-			  		  {exp=(),ty=T.INT}
+			  		  {exp=(),ty=T.INT})
 		else
-			(error pos "Error");
-			{exp=(),ty=T.INT}
+			((error pos "Error");
+			{exp=(),ty=T.INT})
 
-	  | transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = 
+	  (*| transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = *)
 
 	  | transExp (venv, tenv, A.AssignExp{var,exp,pos}) =
 	  	if #ty trvar(var) = #ty transExp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
-	  		(error pos "Types of variable and expression do not match");
-			{exp=(),ty=T.UNIT}
+	  		((error pos "Types of variable and expression do not match");
+			{exp=(),ty=T.UNIT})
 
 	  | transExp (venv, tenv, A.LetExp{decs,body,pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
 	  			   transDecs(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
-	  | transExp (venv, tenv, A.CallExp{func, args, pos}) =
+	  (*| transExp (venv, tenv, A.CallExp{func, args, pos}) =*)
 (*	  	case S.look(venv, func) of
 	  		SOME (FunEntry of {formals, result}) =>
 	  			if length(args) <> length(formals) then
@@ -112,29 +112,29 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
 
 (*	  		_ => (error pos "This function does not exist" ^ Symbol.name(func); {exp=(),ty=T.UNIT})*)
 
-	  | transExp (venv, tenv, A.IfExp {test, then', else', pos}) =
-	  	(case else' of
+	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
+	  	(case elseExp of
          NONE => (* if-then *)
-         	let 
+         	(let 
          		val t = transExp(venv, tenv) test
          	in
          		(checkInt(t);
-         		checkUnit('then);
+         		checkUnit(thenExp);
          		{ exp=(), ty=T.UNIT })
-         	end
-         SOME else' => (* if-then-else *)
-         	let 
+         	end)
+         | SOME elseExp => (* if-then-else *)
+         	(let 
          		val t = transExp(venv, tenv) test
-         		val thenType = transExp(venv, tenv) then'
-         		val elseType = transExp(venv, tenv) else'
+         		val thenType = transExp(venv, tenv) thenExp
+         		val elseType = transExp(venv, tenv) elseExp
          	in
-         		checkInt(t);
+         		(checkInt(t);
          		if #ty thenType = #ty elseType then
          			{ exp=(), ty=#ty thenType }
          		else
          			(error pos "Types of Then and Else statements do not match";
-         			 { exp=(), ty=T.UNIT })
-         	end
+         			 { exp=(), ty=T.UNIT }))
+         	end)
 	  | transExp (venv, tenv, A.ForExp {var, escape, lo, hi, body, pos}) =
 	  	(checkInt(lo);
 	  	checkInt(hi);
