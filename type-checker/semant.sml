@@ -60,8 +60,7 @@ fun compareTypes (tenv, [], ) =
 		if comparetype(ty1,ty2) then compareTypes(tenv,lst1,lst2)
 		else (err pos ("types do not match") ; T.UNIT))
 
-fun transExp(venv, tenv) =
-	    transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
+fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
 	  | transExp (venv, tenv, A.IntExp i) = {exp=(), T.INT}
 	  | transExp (venv, tenv, A.VarExp v) = trvar v
 	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), T.STRING)
