@@ -194,7 +194,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 			        )
 				end
 			  )
-	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=(),ty=T.ERROR})
+	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=(),ty=T.ERROR}))
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
 	  	(case elseExp of
