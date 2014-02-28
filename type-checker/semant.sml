@@ -77,16 +77,16 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 		val trueType1 = actual_ty(type1, pos1)
 		val trueType2 = actual_ty(type2, pos2)
 	in
-		case trueType2 of
-		  	T.UNIT => true (* All units are subtype of UNIT *)
-			| T.RECORD(l,u) => 
-				if trueType1 = T.NIL
-					then true
-					else trueType1 = trueType2
-			| _ =>
-				if trueType1 = T.NIL andalso trueType2 = T.NIL 
-					then false 
-					else trueType1 = trueType2
+		if trueType1=T.ERROR orelse trueType2=T.ERROR
+			then true 
+			else if trueType2 = T.UNIT 
+				then true
+				else if trueType1 = T.NIL
+					then case trueType2 of
+						T.NIL => false
+						| T.RECORD(l,u) => true
+						| _ => trueType1=trueType2
+					else trueType1=trueType2
 	end
 
 fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
@@ -195,7 +195,6 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 				end
 			  )
 	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=(),ty=T.ERROR})
-	  	)
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
 	  	(case elseExp of
