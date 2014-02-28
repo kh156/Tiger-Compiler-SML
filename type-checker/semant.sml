@@ -81,6 +81,16 @@ fun transExp(venv, tenv, A.NilExp) = {exp=(), T.NIL}
 | transExp(venv, tenv, A.SeqExp []) = {exp=(), ty=T.UNIT}
 
 | transExp(venv, tenv, A.SeqExp exps) = 
+	let
+		fun parseExps([]) = {exp = (), ty = T.UNIT}
+		|	parseExps((e, p)::[]) = transExp(venv, tenv, e)
+		|	parseExps((e, p)::l) = (
+				transExp(venv, tenv, e);
+				parseExps(l);
+			)
+	in
+		parseExps(exps)
+	end
 	  
 | transExp(venv, tenv, A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
