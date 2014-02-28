@@ -13,7 +13,10 @@ fun makeAssignExp(v, e, p) =
 fun makeArrayExp(sym, e1, e2, p) =
   A.ArrayExp {typ=sym, size=e1, init=e2, pos=p}
 
-fun formDecList(oneDec::restOfList, curList) =
+
+fun formDecList (oneDec::restOfList, A.StartOfDecList ()) = formDecList(restOfList, oneDec)
+
+| formDecList(oneDec::restOfList, curList) =
   (case oneDec of 
     A.TypeDec singleTypeDecList => 
           (case curList of
@@ -27,6 +30,8 @@ fun formDecList(oneDec::restOfList, curList) =
 
     | A.VarDec {name:A.symbol, escape:bool ref, typ:(A.symbol * A.pos) option, init:A.exp, pos:A.pos} =>
           (curList :: formDecList(restOfList, A.VarDec {name=name, escape=escape, typ=typ, init=init, pos=pos}))
+
+    | A.StartOfDecList () => formDecList(restOfList, oneDec)
 
   )
 
@@ -105,7 +110,7 @@ fun formDecList(oneDec::restOfList, curList) =
 program : exp   (exp)
 (*how about declarations in a program?*)
 
-decs: dec decs (formDecList(dec::decs, A.TypeDec []))
+decs: dec decs (formDecList(dec::decs, A.StartOfDecList ()))
     | ([])
 
 dec: tydec   (tydec)
