@@ -1,0 +1,18 @@
+LetExp([
+ TypeDec[
+  (b,
+   NameTy(string)),
+  (a,
+   NameTy(int))],
+ VarDec(x,true,NONE,
+  IntExp(5)),
+ TypeDec[
+  (c,
+   NameTy(a))],
+ VarDec(y,true,NONE,
+  IntExp(6))],
+ SeqExp[
+  VarExp(
+   SubscriptVar(
+    SimpleVar(row),
+    IntExp(5)))])

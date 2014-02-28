@@ -1,7 +1,6 @@
 signature ENV =
 sig
   type access
-  type ty
   datatype enventry = VarEntry of {ty: Types.ty}
                     | FunEntry of {formals: Types.ty list, result: Types.ty}
   val base_tenv: Types.ty Symbol.table            (*predefined types*)
@@ -11,10 +10,9 @@ end
 structure Envir :> ENV = 
 struct
   structure T = Types
-  type ty = T.ty
 	type access = unit
- 	datatype enventry = VarEntry of {ty: Types.ty}
-	              	  | FunEntry of {formals: Types.ty list, result: Types.ty}
+ 	datatype enventry = VarEntry of {ty: T.ty}
+	              	  | FunEntry of {formals: T.ty list, result: T.ty}
 
 	val base_tenv = foldr (fn ((name,ty), table) => Symbol.enter(table, Symbol.symbol name, ty)) 
                       Symbol.empty

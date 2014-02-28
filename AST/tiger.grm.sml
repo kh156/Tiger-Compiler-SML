@@ -23,6 +23,25 @@ fun makeAssignExp(v, e, p) =
 fun makeArrayExp(sym, e1, e2, p) =
   A.ArrayExp {typ=sym, size=e1, init=e2, pos=p}
 
+fun formDecList(oneDec::restOfList, curList) =
+  (case oneDec of 
+    A.TypeDec singleTypeDecList => 
+          (case curList of
+          A.TypeDec typeDecList => formDecList(restOfList, A.TypeDec (singleTypeDecList @ typeDecList))
+          | _   =>  (curList :: formDecList(restOfList, A.TypeDec singleTypeDecList)))
+
+    | A.FunctionDec singleFunDecList =>
+          (case curList of
+          A.FunctionDec funDecList => formDecList(restOfList, A.FunctionDec (singleFunDecList @ funDecList))
+          | _   =>  (curList :: formDecList(restOfList, A.FunctionDec singleFunDecList)))
+
+    | A.VarDec {name:A.symbol, escape:bool ref, typ:(A.symbol * A.pos) option, init:A.exp, pos:A.pos} =>
+          (curList :: formDecList(restOfList, A.VarDec {name=name, escape=escape, typ=typ, init=init, pos=pos}))
+
+  )
+
+| formDecList ([], curList) = [curList]
+
 (* Parser Declarations *)
 
 end
@@ -593,7 +612,7 @@ end
 MlyValue.dec dec1, dec1left, _)) :: rest671)) => let val  result = 
 MlyValue.decs (fn _ => let val  (dec as dec1) = dec1 ()
  val  (decs as decs1) = decs1 ()
- in (dec::decs)
+ in (formDecList(dec::decs, A.TypeDec []))
 end)
  in ( LrTable.NT 1, ( result, dec1left, decs1right), rest671)
 end
@@ -741,6 +760,7 @@ A.FunctionDec [{name=Symbol.symbol(ID1),
        result=SOME(Symbol.symbol(ID2),ID2left),
        body=exp,
        pos=FUNCTIONleft}]
+       
 )
 end)
  in ( LrTable.NT 7, ( result, FUNCTION1left, exp1right), rest671)
@@ -776,7 +796,7 @@ rest671)) => let val  result = MlyValue.lvalue (fn _ => let val  (ID
  as ID1) = ID1 ()
  val  (exp as exp1) = exp1 ()
  in (
-A.SubscriptVar(A.SimpleVar(Symbol.symbol(ID), IDleft), exp, IDleft))
+A.SubscriptVar(A.SimpleVar(Symbol.symbol(ID),IDleft), exp, IDleft))
 
 end)
  in ( LrTable.NT 8, ( result, ID1left, RBRACK1right), rest671)
