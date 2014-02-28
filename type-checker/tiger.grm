@@ -153,7 +153,7 @@ exp: lvalue   (A.VarExp(lvalue))                             (* L-value *)
 
    | ID LPAREN paramlist RPAREN   (A.CallExp {func=Symbol.symbol(ID), args=paramlist, pos=IDleft})         (* Function call *)
 
-                                             (* Arithmetic and Operators *)
+   (* Arithmetic and Operators *)
    | exp PLUS exp  (makeOpExp(exp1, A.PlusOp, exp2, exp1left))
    | exp MINUS exp  (makeOpExp(exp1, A.MinusOp, exp2, exp1left))
    | exp TIMES exp  (makeOpExp(exp1, A.TimesOp, exp2, exp1left))

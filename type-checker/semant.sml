@@ -53,27 +53,40 @@ fun checkString ({exp, ty}, pos) =
     T.STRING => ()
   | _ => error pos "string required"
 
+fun lookupType (tenv typ pos) = 
+  case S.look (tenv, typ) of
+    SOME ty => ty
+  | NONE => (err pos ("type is not defined: " ^ S.name n) ; T.UNIT))
+
+fun compareTypes (tenv, [], ) = 
+
+
+
+	(tenv, ty1::lst1, ty2::lst2) =
+		if comparetype(ty1,ty2) then compareTypes(tenv,lst1,lst2)
+		else (err pos ("types do not match") ; T.UNIT))
+
 fun transExp(venv, tenv) =
-	    trexp (A.NilExp) = {exp=(), T.NIL}
-	  | trexp (A.IntExp i) = {exp=(), T.INT}
-	  | trexp (A.VarExp v) = trvar v
-	  | trexp (A.StringExp (s, pos)) = (exp=(), T.STRING)
-	  | trexp (A.SeqExp []) = {exp=(), ty=T.UNIT}
-	  | trexp (A.SeqExp exps) = 
-	  | trexp (A.OpExp{left,oper,right,pos}) =
+	    transExp (A.NilExp) = {exp=(), T.NIL}
+	  | transExp (A.IntExp i) = {exp=(), T.INT}
+	  | transExp (A.VarExp v) = trvar v
+	  | transExp (A.StringExp (s, pos)) = (exp=(), T.STRING)
+	  | transExp (A.SeqExp []) = {exp=(), ty=T.UNIT}
+	  | transExp (A.SeqExp exps) = 
+	  | transExp (A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
-  	    then (checkInt(trexp left, pos);
-		 	  checkInt(trexp right, pos);
+  	    then (checkInt(transExp left, pos);
+		 	  checkInt(transExp right, pos);
 		 	  {exp=(),ty=T.INT})
 		else if (oper=A.EqOp orelse oper=A.NeqOp 
 		orelse oper=A.LtOp orelse oper=A.LeOp
 		orelse oper=A.GtOp orelse oper=A.LtOp)
 		then
-			case #ty trexp(left) of
-				T.INT => (checkInt(trexp right, pos);
+			case #ty transExp(left) of
+				T.INT => (checkInt(transExp right, pos);
 	 	  				   {exp=(),ty=T.INT})
-			  | T.STRING => (checkString(trexp right, pos);
+			  | T.STRING => (checkString(transExp right, pos);
 	 	  				      {exp=(),ty=T.STRING})
 			  | _ => (error pos "Can't perform an operation on this type");
 			  		  {exp=(),ty=T.INT}
@@ -81,22 +94,32 @@ fun transExp(venv, tenv) =
 			(error pos "Error");
 			{exp=(),ty=T.INT}
 
-	  | trexp (A.RecordExp{fields,typ,exp}) = 
+	  | transExp (A.RecordExp{fields,typ,exp}) = 
 
-	  | trexp (A.AssignExp{var,exp,pos}) =
-	  	if #ty trvar(var) = #ty trexp(exp)
+	  | transExp (A.AssignExp{var,exp,pos}) =
+	  	if #ty trvar(var) = #ty transExp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and expression do not match");
 			{exp=(),ty=T.UNIT}
 
-	  | trexp (A.LetExp{decs,body,pos}) =
+	  | transExp (A.LetExp{decs,body,pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
 	  			   transDecs(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
-	  | trexp (A.CallExp{func, args, pos}) =
-	  | trexp (A.IfExp {test, then', else', pos}) =
+	  | transExp (A.CallExp{func, args, pos}) =
+(*	  	case S.look(venv, func) of
+	  		SOME (FunEntry of {formals, result}) =>
+	  			if length(args) <> length(formals) then
+	  				(error pos "Number of arguments incorrect: " ^ length(args); {exp=(),ty=T.UNIT})
+	  			else if*)
+
+
+
+(*	  		_ => (error pos "This function does not exist" ^ Symbol.name(func); {exp=(),ty=T.UNIT})*)
+
+	  | transExp (A.IfExp {test, then', else', pos}) =
 	  	(case else' of
          NONE => (* if-then *)
          	let 
@@ -119,13 +142,13 @@ fun transExp(venv, tenv) =
          			(error pos "Types of Then and Else statements do not match";
          			 { exp=(), ty=T.UNIT })
          	end
-	  | trexp (A.ForExp {var, escape, lo, hi, body, pos}) =
+	  | transExp (A.ForExp {var, escape, lo, hi, body, pos}) =
 	  	(checkInt(lo);
 	  	checkInt(hi);
 	  	checkUnit(body);
 	  	S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT});
 	  	{ exp=(), ty=T.UNIT })
-	  | trexp (A.WhileExp {test, body, pos}) =
+	  | transExp (A.WhileExp {test, body, pos}) =
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv) test
@@ -136,11 +159,11 @@ fun transExp(venv, tenv) =
 	  		checkUnit(b);
 	  		{ exp=(), ty=T.UNIT })
 	  	end
-	  | trexp (A.BreakExp pos) =
+	  | transExp (A.BreakExp pos) =
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
 	  		  { exp=(), ty=T.UNIT })
-	  | trexp (A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
+	  | transExp (A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
 
 (*main entry point for type-checking a program*)
 fun transProg(programCode : A.exp) = 
