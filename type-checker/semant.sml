@@ -51,21 +51,22 @@ fun checkString ({exp, ty}, pos) =
   | _ => error pos "string required"
 
 fun lookupType (tenv typ pos) = 
-  case S.look (tenv, typ) of
+  (case S.look (tenv, typ) of
     SOME ty => ty
-  | NONE => (err pos ("type is not defined: " ^ S.name n) ; T.UNIT))
+  | NONE => (err pos "type is not defined: " ^ S.name n; T.UNIT))
 
-fun compareTypes (tenv, [], ) = 
-	(tenv, ty1::lst1, ty2::lst2) =
-		if comparetype(ty1,ty2) then compareTypes(tenv,lst1,lst2)
-		else (err pos ("types do not match") ; T.UNIT))
+(*fun compareTypes (tenv, [], l2) = {exp=(), ty=T.UNIT}
+	| compareTypes (tenv, l1, []) = {exp=(), ty=T.UNIT}
+	| compareTypes (tenv, ty1::lst1, ty2::lst2) =
+		if compareType(ty1,ty2) then compareTypes(tenv,lst1,lst2)
+		else (err pos ("types do not match") ; T.UNIT))*)
 
-fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
-	  | transExp (venv, tenv, A.IntExp i) = {exp=(), T.INT}
+fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
+	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
 	  | transExp (venv, tenv, A.VarExp v) = trvar v
-	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), T.STRING)
+	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), ty=T.STRING)
 	  | transExp (venv, tenv, A.SeqExp []) = {exp=(), ty=T.UNIT}
-	  | transExp (venv, tenv, A.SeqExp exps) = 
+	  | transExp (venv, tenv, A.SeqExp exps) = {exp=(), ty=T.UNIT}
 	  | transExp (venv, tenv, A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
@@ -81,27 +82,27 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
 	 	  				   {exp=(),ty=T.INT})
 			  | T.STRING => (checkString(transExp right, pos);
 	 	  				      {exp=(),ty=T.STRING})
-			  | _ => (error pos "Can't perform an operation on this type");
-			  		  {exp=(),ty=T.INT}
+			  | _ => (error pos "Can't perform an operation on this type";
+			  		  {exp=(),ty=T.INT})
 		else
-			(error pos "Error");
-			{exp=(),ty=T.INT}
+			(error pos "Error";
+			{exp=(),ty=T.INT})
 
-	  | transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = 
+	  | transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = {exp=(),ty=T.UNIT}
 
 	  | transExp (venv, tenv, A.AssignExp{var,exp,pos}) =
 	  	if #ty trvar(var) = #ty transExp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
-	  		(error pos "Types of variable and expression do not match");
-			{exp=(),ty=T.UNIT}
+	  		(error pos "Types of variable and expression do not match";
+			{exp=(),ty=T.UNIT})
 
 	  | transExp (venv, tenv, A.LetExp{decs,body,pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
 	  			   transDecs(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
-	  | transExp (venv, tenv, A.CallExp{func, args, pos}) =
+	  | transExp (venv, tenv, A.CallExp{func, args, pos}) = {exp=(),ty=T.UNIT}
 (*	  	case S.look(venv, func) of
 	  		SOME (FunEntry of {formals, result}) =>
 	  			if length(args) <> length(formals) then
@@ -141,7 +142,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
 	  	checkUnit(body);
 	  	S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT});
 	  	{ exp=(), ty=T.UNIT })
-	  | transExp (venv, tenv, A.WhileExp {test, body, pos}) =
+	  | transExp (venv, tenv, A.WhileExp {test=t, body=b, pos=p}) =
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv) test
@@ -156,7 +157,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
 	  		  { exp=(), ty=T.UNIT })
-	  | transExp (A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
+	  | transExp (venv, tenv, A.ArrayExp {typ=t, size=s, init=s, pos=p}) = { exp=(), ty=T.UNIT }
 
 (*main entry point for type-checking a program*)
 fun transProg(programCode : A.exp) = 
@@ -251,7 +252,7 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 
 				fun enterparam ({name, escape, typ, pos}, venvCurr) = 
 					let 
-						var ty = case S.look(tenv, typ) of
+						val ty = case S.look(tenv, typ) of
 					    	SOME t => t
 					    | 	NONE => T.ERROR
 					in
