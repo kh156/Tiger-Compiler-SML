@@ -67,7 +67,7 @@ fun compareTypes (tenv, [], ) =
 		else (err pos ("types do not match") ; T.UNIT))
 
 fun transExp(venv, tenv) =
-	    transExp (A.NilExp) = {exp=(), T.NIL}
+	    transExp (venv, tenv, A.NilExp) = {exp=(), T.NIL}
 	  | transExp (A.IntExp i) = {exp=(), T.INT}
 	  | transExp (A.VarExp v) = trvar v
 	  | transExp (A.StringExp (s, pos)) = (exp=(), T.STRING)
