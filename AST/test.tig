@@ -1,7 +1,9 @@
 let
-    type intArray = array of int
-
-    var row := intArray [ 10 ] of 0
+	type a = int
+	type b = string
+	var x := 5
+	type c = a
+	var y := 6
 in
 	row [ 5 ]
 end
