@@ -110,17 +110,17 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		orelse oper=A.LtOp orelse oper=A.LeOp
 		orelse oper=A.GtOp orelse oper=A.LtOp)
 		then
-			(case (#ty (transExp(venv,tenv,left))) of
-				T.INT => (checkInt(transExp(venv, tenv, right), pos);
-	 	  				   {exp=(),ty=T.INT})
-			  | T.STRING => (checkString(transExp(venv, tenv, right), pos);
-	 	  				      {exp=(),ty=T.STRING})
-
-			  | _ => ((ErrorMsg.error pos "Can't perform an operation on this type");
-			  		  {exp=(),ty=T.INT}))
+			let
+				val leftType = (#ty transExp(venv, tenv, left))
+				val rightType = (#ty transExp(venv, tenv, right))
+			in
+				if (compareType(leftType, rightType) orelse compareType(rightType, leftType))
+			  	   	  then {exp=(), ty=T.INT}
+			  		  else ((ErrorMsg.error pos "Logical comparison on two different types!");
+			  		  		{exp=(),ty=T.ERROR})
 		else
-			((error pos "Error");
-			{exp=(),ty=T.INT})
+			((error pos "Error identifying the operator used!");
+			{exp=(),ty=T.ERROR})
 
 	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}) = 
 	  	let

@@ -1,14 +1,15 @@
 let
 	
-	type intlist = {hd: int, tl: intlist}
 	type tree = {key: int, children: treelist}
-	type treelist = {hd: tree, tl: treelist}
+	type treelist = {hd: tree, tl:treelist}
 
-	type intarray = array of string
-	var row := intarray [8] of "a"
-	type b = c
-	type c = b
+	function treeLeaves (t : tree) : int =
+		if t=nil then 1
+		else treelistLeaves(t.children)
+	function treelistLeaves(L : treelist) : int =
+		if L=nil then 0
+		else treeLeaves(L.hd) + treelistLeaves(L.tl)
 in
-	row [ 5 ]
+	x = 1
 end
 
