@@ -1,11 +1,13 @@
 let
-	type a = int
-	type b = string
-	function fa() = a
-	function fb() = b
-	var x := 5
-	type c = a
-	var y := 6
+	
+	type intlist = {hd: int, tl: intlist}
+	type tree = {key: int, children: treelist}
+	type treelist = {hd: tree, tl: treelist}
+
+	type intarray = array of string
+	var row := intarray [8] of "a"
+	type b = c
+	type c = b
 in
 	row [ 5 ]
 end

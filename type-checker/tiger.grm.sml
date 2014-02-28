@@ -617,7 +617,7 @@ end
 MlyValue.dec dec1, dec1left, _)) :: rest671)) => let val  result = 
 MlyValue.decs (fn _ => let val  (dec as dec1) = dec1 ()
  val  (decs as decs1) = decs1 ()
- in (formDecList(dec::decs, A.StartOfDecList ()))
+ in (formDecList(decs @ [dec], A.StartOfDecList ()))
 end)
  in ( LrTable.NT 1, ( result, dec1left, decs1right), rest671)
 end
