@@ -35,21 +35,18 @@ val nestDepth = ref 0
 fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
 
-
-
-
 fun checkInt ({exp,ty},pos) = 
-  case ty of
+  (case ty of
 	T.Int => ()
-  | _ => error pos "integer required"
+  | _ => error pos "integer required")
 
 fun checkUnit ({exp, ty}, pos) =
-  case ty of
+  (case ty of
     T.UNIT => ()
-  | _ => error pos "unit required"
+  | _ => error pos "unit required")
 
 fun checkString ({exp, ty}, pos) =
-  case ty of
+  (case ty of
     T.STRING => ()
   | _ => error pos "string required"
 
@@ -88,72 +85,79 @@ fun transExp(venv, tenv, A.NilExp) = {exp=(), T.NIL}
 | transExp(venv, tenv, A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
-  	    then (checkInt(trexp left, pos);
-		 	  checkInt(trexp right, pos);
+  	    then (checkInt(transExp left, pos);
+		 	  checkInt(transExp right, pos);
 		 	  {exp=(),ty=T.INT})
 		else if (oper=A.EqOp orelse oper=A.NeqOp 
 		orelse oper=A.LtOp orelse oper=A.LeOp
 		orelse oper=A.GtOp orelse oper=A.LtOp)
 		then
-			case #ty trexp(left) of
-				T.INT => (checkInt(trexp right, pos);
+			(case #ty transExp(left) of
+				T.INT => (checkInt(transExp right, pos);
 	 	  				   {exp=(),ty=T.INT})
-			  | T.STRING => (checkString(trexp right, pos);
+			  | T.STRING => (checkString(transExp right, pos);
 	 	  				      {exp=(),ty=T.STRING})
 			  | _ => (error pos "Can't perform an operation on this type");
-			  		  {exp=(),ty=T.INT}
+			  		  {exp=(),ty=T.INT})
 		else
-			(error pos "Error");
-			{exp=(),ty=T.INT}
+			((error pos "Error");
+			{exp=(),ty=T.INT})
 
-| transExp(venv, tenv, A.RecordExp{fields,typ,exp}) = 
+	  (*| transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = *)
 
-| transExp(venv, tenv, A.AssignExp{var,exp,pos}) =
-	  	if #ty trvar(var) = #ty trexp(exp)
+	  | transExp (venv, tenv, A.AssignExp{var,exp,pos}) =
+	  	if #ty trvar(var) = #ty transExp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
-	  		(error pos "Types of variable and expression do not match");
-			{exp=(),ty=T.UNIT}
+	  		((error pos "Types of variable and expression do not match");
+			{exp=(),ty=T.UNIT})
 
-| transExp(venv, tenv, A.LetExp{decs,body,pos}) =
+	  | transExp (venv, tenv, A.LetExp{decs,body,pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
 	  			   transDecs(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
-| transExp(venv, tenv, A.CallExp{func, args, pos}) =
-	  
-| transExp(venv, tenv, A.IfExp {test, then', else', pos}) =
-	  	(case else' of
+	  (*| transExp (venv, tenv, A.CallExp{func, args, pos}) =*)
+(*	  	case S.look(venv, func) of
+	  		SOME (FunEntry of {formals, result}) =>
+	  			if length(args) <> length(formals) then
+	  				(error pos "Number of arguments incorrect: " ^ length(args); {exp=(),ty=T.UNIT})
+	  			else if*)
+
+
+
+(*	  		_ => (error pos "This function does not exist" ^ Symbol.name(func); {exp=(),ty=T.UNIT})*)
+
+	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
+	  	(case elseExp of
          NONE => (* if-then *)
-         	let 
+         	(let 
          		val t = transExp(venv, tenv) test
          	in
          		(checkInt(t);
-         		checkUnit('then);
+         		checkUnit(thenExp);
          		{ exp=(), ty=T.UNIT })
-         	end
-         SOME else' => (* if-then-else *)
-         	let 
+         	end)
+         | SOME elseExp => (* if-then-else *)
+         	(let 
          		val t = transExp(venv, tenv) test
-         		val thenType = transExp(venv, tenv) then'
-         		val elseType = transExp(venv, tenv) else'
+         		val thenType = transExp(venv, tenv) thenExp
+         		val elseType = transExp(venv, tenv) elseExp
          	in
-         		checkInt(t);
+         		(checkInt(t);
          		if #ty thenType = #ty elseType then
          			{ exp=(), ty=#ty thenType }
          		else
          			(error pos "Types of Then and Else statements do not match";
-         			 { exp=(), ty=T.UNIT })
-         	end
-
-| transExp(venv, tenv, A.ForExp {var, escape, lo, hi, body, pos}) =
+         			 { exp=(), ty=T.UNIT }))
+         	end)
+	  | transExp (venv, tenv, A.ForExp {var, escape, lo, hi, body, pos}) =
 	  	(checkInt(lo);
 	  	checkInt(hi);
 	  	checkUnit(body);
 	  	S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT});
 	  	{ exp=(), ty=T.UNIT })
-
-| transExp(venv, tenv, A.WhileExp {test, body, pos}) =
+	  | transExp (venv, tenv, A.WhileExp {test, body, pos}) =
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv) test
@@ -164,17 +168,34 @@ fun transExp(venv, tenv, A.NilExp) = {exp=(), T.NIL}
 	  		checkUnit(b);
 	  		{ exp=(), ty=T.UNIT })
 	  	end
-| transExp(venv, tenv, A.BreakExp pos) =
+	  | transExp (venv, tenv, A.BreakExp pos) =
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
 	  		  { exp=(), ty=T.UNIT })
+	  | transExp (A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
 
-| transExp(venv, tenv, A.LetExp {decs, body, pos}) =
-	  
-| transExp(venv, tenv, A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
+(*main entry point for type-checking a program*)
+fun transProg(programCode : A.exp) = 
+    let 
+    	val venv = E.base_venv
+    	val tenv = E.base_tenv
+    in 
+    	transExp(venv, tenv, programCode)
+    end
 
 
-and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
+(*fun transExp(venv, tenv, ...) = ... (*to be implemented*)*)
+
+(*fun isSameType(t1: T.ty, t2: T.ty) = ... (*to be implemented*)*)
+
+fun actual_ty(ty: T.ty, pos: A.pos) =
+	case ty of
+		T.NAME(s, tref) => (case !tref of
+							     SOME(t) => actual_ty (t,pos)
+							     | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
+		| _ => ty
+
+fun transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 	(case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type with name"^(S.name s)); T.ERROR)
 							| SOME(t) => t)
 
@@ -201,7 +222,7 @@ and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 
 
 (*book says type NIL must be constrained by a RECORD type???*)
-and transDec(venv, tenv, A.VarDec{name: A.symbol,
+fun transDec(venv, tenv, A.VarDec{name: A.symbol,
                                   escape: bool ref,
                                   typ: (A.symbol * A.pos) option,
                                   init: A.exp,
@@ -287,7 +308,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 	end
 	
 
-and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
+fun transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
 	(case S.look(venv, s) of
 		SOME(E.VarEntry {varType}) => {exp = (), ty = actual_ty (varType, pos)}
 		| SOME(_)			=> (ErrorMsg.error pos ("Var with name "^(S.name s)^" is a function, not a simple variable!"); {exp = (), ty = T.ERROR})

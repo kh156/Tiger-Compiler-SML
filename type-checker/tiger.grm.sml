@@ -23,7 +23,10 @@ fun makeAssignExp(v, e, p) =
 fun makeArrayExp(sym, e1, e2, p) =
   A.ArrayExp {typ=sym, size=e1, init=e2, pos=p}
 
-fun formDecList(oneDec::restOfList, curList) =
+
+fun formDecList (oneDec::restOfList, A.StartOfDecList ()) = formDecList(restOfList, oneDec)
+
+| formDecList(oneDec::restOfList, curList) =
   (case oneDec of 
     A.TypeDec singleTypeDecList => 
           (case curList of
@@ -37,6 +40,8 @@ fun formDecList(oneDec::restOfList, curList) =
 
     | A.VarDec {name:A.symbol, escape:bool ref, typ:(A.symbol * A.pos) option, init:A.exp, pos:A.pos} =>
           (curList :: formDecList(restOfList, A.VarDec {name=name, escape=escape, typ=typ, init=init, pos=pos}))
+
+    | A.StartOfDecList () => formDecList(restOfList, oneDec)
 
   )
 
@@ -612,7 +617,7 @@ end
 MlyValue.dec dec1, dec1left, _)) :: rest671)) => let val  result = 
 MlyValue.decs (fn _ => let val  (dec as dec1) = dec1 ()
  val  (decs as decs1) = decs1 ()
- in (formDecList(dec::decs, A.TypeDec []))
+ in (formDecList(dec::decs, A.StartOfDecList ()))
 end)
  in ( LrTable.NT 1, ( result, dec1left, decs1right), rest671)
 end

@@ -12,6 +12,5 @@ struct
           | NAME of Symbol.symbol * ty option ref
 	  	    | UNIT
 	  	    | ERROR
-
 end
 

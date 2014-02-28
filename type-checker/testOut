@@ -5,6 +5,7 @@ LetExp([
   (a,
    NameTy(int))],
  FunctionDec[
+<<<<<<< HEAD
   (fa,[],
 NONE,
    VarExp(
@@ -16,6 +17,16 @@ NONE,
    VarExp(
     SimpleVar(b)))],
  TypeDec[],
+=======
+  (fb,[],
+NONE,
+   VarExp(
+    SimpleVar(b))),
+  (fa,[],
+NONE,
+   VarExp(
+    SimpleVar(a)))],
+>>>>>>> dfbdb753bc38929e3cf8b749a9b31555db718718
  VarDec(x,true,NONE,
   IntExp(5)),
  TypeDec[
