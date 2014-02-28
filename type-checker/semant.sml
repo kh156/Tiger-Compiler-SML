@@ -125,8 +125,9 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}) = 
 	  	let
 	  		val T.RECORD (symbolTypeList,unique) = (case S.look(tenv, typ) of 
-	  							          SOME(v) => v
-	  							          | NONE => (ErrorMsg.error pos ""; T.RECORD([], ref())))
+	  							          SOME(v) => actual_ty (v,pos)
+	  							          | NONE => (ErrorMsg.error pos "Expression with undefined record type!";
+	  							           T.RECORD([], ref())))
 	  		(*fields is a (symbol * exp * pos) list*)
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
@@ -147,8 +148,8 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  	if (#ty (transVar(venv, tenv, var))) = (#ty (transExp(venv, tenv, exp)))
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
-	  		(error pos "Types of variable and expression do not match";
-			{exp=(),ty=T.UNIT})
+	  		(error pos "Types of variable and assigned expression do not match";
+			{exp=(),ty=T.ERROR})
 
 	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}) =
 	  	let 
@@ -166,18 +167,18 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  				val argTypes = map transExpHere args
 	  			in
 		  			if length(argTypes) <> length(formals) then
-		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args))); {exp=(),ty=T.UNIT})
+		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args))); {exp=(),ty=T.ERROR})
 	            	else
 			            (compareTypes (formals, map (#ty) argTypes, pos);
 			             {exp=(),ty=actual_ty (result,pos)})
 				end
 			  )
-	  		| _ => (error pos ("This function does not exist" ^ S.name(func)); {exp=(),ty=T.UNIT})
+	  		| NONE => (error pos ("This function does not exist " ^ S.name(func)); {exp=(),ty=T.ERROR})
 	  	)
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
 	  	(case elseExp of
-         NONE => (* if-then *)
+           NONE => (* if-then *)
          	(let 
          		val t = transExp(venv, tenv, test)
          	in
@@ -192,11 +193,11 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
          		val elseType = transExp(venv, tenv, elseExp)
          	in
          		(checkInt(t, pos);
-         		if #ty thenType = #ty elseType then
+         		if (#ty thenType) = (#ty elseType) then
          			{ exp=(), ty= (#ty thenType) }
          		else
-         			(error pos "Types of Then and Else statements do not match";
-         			 { exp=(), ty=T.UNIT })
+         			(error pos "Types of Then and Else statements do not match!";
+         			 { exp=(), ty=T.ERROR})
          		)
          	end)
          )
@@ -227,7 +228,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.BreakExp pos) =
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
-	  		  { exp=(), ty=T.UNIT })
+	  		  { exp=(), ty=T.ERROR })
 
 	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}) = 
 	  	(case (#ty (transExp(venv, tenv, size))) of 
