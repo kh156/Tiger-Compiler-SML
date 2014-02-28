@@ -63,6 +63,33 @@ fun lookupType (tenv typ pos) =
   | NONE => (err pos ("type is not defined: " ^ S.name n) ; T.UNIT))
 *)
 
+(*main entry point for type-checking a program*)
+fun transProg(programCode : A.exp) = 
+    let 
+    	val venv = E.base_venv
+    	val tenv = E.base_tenv
+    in 
+    	transExp(venv, tenv, programCode)
+    end
+
+
+(*fun transExp(venv, tenv, ...) = ... (*to be implemented*)*)
+
+(*fun isSameType(t1: T.ty, t2: T.ty) = *)
+
+
+fun actual_ty(ty: T.ty, pos: A.pos) =
+	(case ty of
+		T.NAME(s, tref) => (case !tref of
+						SOME(t) => actual_ty (t,pos)
+					   | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
+		| _ => ty)
+
+fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty) =
+	(case S.look(tenv, name) of 
+		T.NAME(s, tref) => (tref := realTy; tenv)
+		| _ => (ErrorMsg.error pos "Error processing mutually recursive types!"; tenv))
+
 fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
 	  | transExp (venv, tenv, A.VarExp v) = trvar v
@@ -79,21 +106,38 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		orelse oper=A.LtOp orelse oper=A.LeOp
 		orelse oper=A.GtOp orelse oper=A.LtOp)
 		then
-			(case #ty transExp(venv,tenv,left) of
+			(case (#ty transExp(venv,tenv,left)) of
 				T.INT => (checkInt(transExp(venv, tenv, right), pos);
 	 	  				   {exp=(),ty=T.INT})
 			  | T.STRING => (checkString(transExp(venv, tenv, right), pos);
 	 	  				      {exp=(),ty=T.STRING})
 
-			  | _ => (error pos "Can't perform an operation on this type");
-			  		  {exp=(),ty=T.INT})
+			  | _ => ((error pos "Can't perform an operation on this type");
+			  		  {exp=(),ty=T.INT}))
 		else
 			((error pos "Error");
 			{exp=(),ty=T.INT})
 
-	(*| transExp (venv, tenv, A.RecordExp{fields,typ,exp}) = *)
+	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}) = 
+	  	let
+	  		val (symbolTypeList,unique) = S.look(tenv, typ)
+	  		(*fields is a (symbol * exp * pos) list*)
+	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
+	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
+	  			(case (ty)=(#ty transExp(venv, tenv, exp)) of 
+	  				true => (case (S.name symbol)=(S.name tySymbol) of 
+	  						true => checkRecord(otherFields, otherTypes)
+	  						| false => false)
+	  				| false => false)
+	  		| checkRecord([], []) = true
+	  		| checkRecord(_, _) = false
+	  	in
+	  		if checkRecord(fields, symbolTypeList)
+	  		then {exp=(), ty=T.RECORD symbolTypeList}
+	  		else {exp=(), ty=T.ERROR}
+	  	end
 
-	  | transExp (venv, tenv, A.AssignExp{var,exp,pos}) =
+	  | transExp (venv, tenv, A.AssignExp {var,exp,pos}) =
 	  	if #ty trvar(var) = #ty transExp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
@@ -155,8 +199,8 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}) =
 	    let
 	    	val _ = incNestDepth()
-	  		val t = transExp(venv, tenv) test
-	  		val b = transExp(venv, tenv) body
+	  		val t = transExp(venv, tenv, test)
+	  		val b = transExp(venv, tenv, body)
 	  		val _ = decNestDepth()
 	  	in
 	  		(checkInt(t);
@@ -169,37 +213,17 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		  { exp=(), ty=T.UNIT })
 	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}) = { exp=(), ty=T.UNIT }
 
-(*main entry point for type-checking a program*)
-fun transProg(programCode : A.exp) = 
-    let 
-    	val venv = E.base_venv
-    	val tenv = E.base_tenv
-    in 
-    	transExp(venv, tenv, programCode)
-    end
 
-
-(*fun transExp(venv, tenv, ...) = ... (*to be implemented*)*)
-
-(*fun isSameType(t1: T.ty, t2: T.ty) = ... (*to be implemented*)*)
-
-fun actual_ty(ty: T.ty, pos: A.pos) =
-	case ty of
-		T.NAME(s, tref) => (case !tref of
-							     SOME(t) => actual_ty (t,pos)
-							     | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
-		| _ => ty
-
-fun transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
+and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 	(case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type with name"^(S.name s)); T.ERROR)
 							| SOME(t) => t)
 
-| transTy(tenv, A.RecordTy recordTypeList) =
+| transTy(tenv, A.RecordTy fieldList) =
 	let 
 		val fields=
 	    let
 	    	fun checkSingleField ({name: A.symbol, escape: bool ref, typ: A.symbol, pos: A.pos}) =
-		     	(case S.look(tenv, typ) of NONE => (ErrorMsg.error pos (("Undefined type: "^(S.name typ)^" when declaring an array type!"));
+		     	(case S.look(tenv, typ) of NONE => (ErrorMsg.error pos ("Undefined type: "^(S.name typ)^" when declaring an record type!");
 		     										(name, T.ERROR))
 					   					| SOME(t) => (name, t))
 	     in
@@ -213,17 +237,17 @@ fun transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 | transTy(tenv, A.ArrayTy (s:A.symbol, pos:A.pos)) =
 	(case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type "^(S.name s)^" when declaring an array type!");
 										T.ARRAY(T.ERROR, ref())) (*how to use ref()?*)
-							| SOME(t) => T.ARRAY((actual_ty (t,pos)), ref()))
+							| SOME(t) => T.ARRAY(t, ref()))
 
 
 (*book says type NIL must be constrained by a RECORD type???*)
-fun transDec(venv, tenv, A.VarDec{name: A.symbol,
+and transDec(venv, tenv, A.VarDec{name: A.symbol,
                                   escape: bool ref,
                                   typ: (A.symbol * A.pos) option,
                                   init: A.exp,
                                   pos: A.pos}) = 
 	let
-		val {exp=exp, ty=ty} = transExp(venv, tenv, init)
+		val {exp=exp, ty=tyinit} = transExp(venv, tenv, init)
 	in
 		case typ of
 			NONE => (case tyinit=T.NIL of 
@@ -242,10 +266,19 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 
 | transDec(venv, tenv, A.TypeDec typeDecList) = 
 	let
-		fun addSingleType({name: A.symbol, ty: A.ty, pos: A.pos}, tenvCurr) =
-			S.enter(tenvCurr, name, transTy(tenvCurr, ty))
+		fun addNameType({name: A.symbol, ty: A.ty, pos: A.pos}, tenvCurr) =
+			S.enter(tenvCurr, name, T.Name(name, ref NONE))
+
+		val newtenv = foldr addNameType tenv typeDecList
+
+		fun figureOutRealType({name: A.symbol, ty: A.ty, pos: A.pos}, tenvCurr)=
+			let
+				val realType = transTy(tenvCurr, ty)
+			in
+				changeRefToRealType(tenvCurr, name, realType)
+			end
 	in
-		{tenv = foldr addSingleType tenv typeDecList, venv = venv}
+		{tenv = foldr figureOutRealType newtenv typeDecList, venv = venv}
 	end
 
 | transDec(venv, tenv, A.FunctionDec funcs) =
@@ -303,9 +336,9 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 	end
 	
 
-fun transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
+and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
 	(case S.look(venv, s) of
-		SOME(E.VarEntry {varType}) => {exp = (), ty = actual_ty (varType, pos)}
+		SOME(E.VarEntry {ty=varType}) => {exp = (), ty = actual_ty (varType, pos)}
 		| SOME(_)			=> (ErrorMsg.error pos ("Var with name "^(S.name s)^" is a function, not a simple variable!"); {exp = (), ty = T.ERROR})
 		| NONE  		    => (ErrorMsg.error pos ("Undefined variable "^(S.name s)); {exp = (), ty = T.ERROR}))
 
@@ -314,8 +347,8 @@ fun transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) =
 		val {exp = _, ty = parentType} = transVar(venv, tenv, var)
 		fun findMatchField(oneField::rest, symToLook, unique) =
 			(case oneField of
-				(name:A.symbol, t:T.ty) => (if name=symToLook then {exp = (), ty = t} else findMatchField(rest, symToLook, unique))
-				| _	    => (ErrorMsg.error pos ("Error trying to access field "^(S.name s)^" of parent record!"); {exp = (), ty = T.ERROR}))
+				(sym, t) => (if (S.name sym)=(S.name symToLook) then {exp = (), ty = t} else findMatchField(rest, symToLook, unique))
+				| _	    => (ErrorMsg.error pos ("Error trying to access field "^(S.name symToLook)^" of parent record!"); {exp = (), ty = T.ERROR}))
 	in
 		(case parentType of T.RECORD(fields, unique) => findMatchField(fields, s, unique)
 							| _ => (ErrorMsg.error pos ("Trying to access field "^(S.name s)^" whose parent is not a record type!");
