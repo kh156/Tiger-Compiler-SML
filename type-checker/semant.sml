@@ -35,25 +35,25 @@ val nestDepth = ref 0
 fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
 
-fun checkInt ({exp,ty},pos) = 
+fun checkInt ({exp=exp,ty=ty},pos) = 
   (case ty of
-	T.Int => ()
+	T.INT => ()
   | _ => error pos "integer required")
 
-fun checkUnit ({exp, ty}, pos) =
+fun checkUnit ({exp=exp, ty=ty}, pos) =
   (case ty of
     T.UNIT => ()
   | _ => error pos "unit required")
 
-fun checkString ({exp, ty}, pos) =
+fun checkString ({exp=exp, ty=ty}, pos) =
   (case ty of
     T.STRING => ()
   | _ => error pos "string required")
 
-fun lookupType (tenv typ pos) = 
-  (case S.look (tenv, typ) of
+fun lookupType (tenv, typSymbol, pos) = 
+  (case S.look (tenv, typSymbol) of
     SOME ty => ty
-  | NONE => (error pos "type is not defined: " ^ S.name n; T.UNIT))
+  | NONE => (error pos ("type is not defined: "^(S.name typSymbol)); T.UNIT))
 
 fun compareType (type1, type2, pos) = (* Returns true if ty1 is a subtype of ty2 *)
 	(case type2 of 
@@ -68,18 +68,6 @@ fun compareTypes ([], l2, pos) = {exp=(), ty=T.UNIT}
 	| compareTypes (ty1::lst1, ty2::lst2, pos) =
 		(compareType(ty1,ty2, pos); compareTypes(lst1,lst2, pos))
 
-(*main entry point for type-checking a program*)
-fun transProg(programCode : A.exp) = 
-    let 
-    	val venv = E.base_venv
-    	val tenv = E.base_tenv
-    in 
-    	transExp(venv, tenv, programCode)
-    end
-
-
-(*fun transExp(venv, tenv, ...) = ... (*to be implemented*)*)
-
 (*fun isSameType(t1: T.ty, t2: T.ty) = *)
 
 
@@ -90,15 +78,15 @@ fun actual_ty(ty: T.ty, pos: A.pos) =
 					   | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
 		| _ => ty)
 
-fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty) =
+fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 	(case S.look(tenv, name) of 
-		T.NAME(s, tref) => (tref := realTy; tenv)
+		SOME(T.NAME(s, tref)) => (let val temp = (tref := SOME(realTy)) in tenv end)
 		| _ => (ErrorMsg.error pos "Error processing mutually recursive types!"; tenv))
 
 fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
-	  | transExp (venv, tenv, A.VarExp v) = trvar v
-	  | transExp (venv, tenv, A.StringExp (s, pos)) = (exp=(), ty=T.STRING)
+	  | transExp (venv, tenv, A.VarExp v) = transVar(v)
+	  | transExp (venv, tenv, A.StringExp (s, pos)) = {exp=(), ty=T.STRING}
 	  | transExp (venv, tenv, A.SeqExp exps) =
 		let
 			fun parseExps([]) = {exp = (), ty = T.UNIT}
@@ -154,7 +142,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  	end
 
 	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}) =
-	  	if #ty trvar(var) = #ty transExp(exp)
+	  	if (#ty transVar(var)) = (#ty transExp(exp))
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and expression do not match";
@@ -162,12 +150,12 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 
 	  | transExp (venv, tenv, A.LetExp{decs=decs,body=body,pos=pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
-	  			   transDecs(venv,tenv,decs)
+	  			   transDec(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
 	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}) =
 	   (case S.look(venv, func) of
-	  		SOME (FunEntry {formals, result}) =>
+	  		SOME (E.FunEntry {formals=formals, result=result}) =>
 	  		  ( let 
 	  				val argTypes = map(transExp, args)
 	  			in
@@ -208,7 +196,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
          )
 	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}) =
 	  	let 
-	  		val venvNew = S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT})
+	  		val venvNew = S.enter (venv, var, E.VarEntry {ty=Types.INT})
 	  		val bodyType = transExp(venvNew, tenv, body)
 	  	in
 		  	(checkInt(lo);
@@ -247,7 +235,7 @@ and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 		     										(name, T.ERROR))
 					   					| SOME(t) => (name, t))
 	     in
-		 	map checkSingleField recordTypeList
+		 	map checkSingleField fieldList
 	     end
     in
 		T.RECORD(fields, ref ())
@@ -287,7 +275,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 | transDec(venv, tenv, A.TypeDec typeDecList) = 
 	let
 		fun addNameType({name: A.symbol, ty: A.ty, pos: A.pos}, tenvCurr) =
-			S.enter(tenvCurr, name, T.Name(name, ref NONE))
+			S.enter(tenvCurr, name, T.NAME(name, ref NONE))
 
 		val newtenv = foldr addNameType tenv typeDecList
 
@@ -295,7 +283,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 			let
 				val realType = transTy(tenvCurr, ty)
 			in
-				changeRefToRealType(tenvCurr, name, realType)
+				changeRefToRealType(tenvCurr, name, realType, pos)
 			end
 	in
 		{tenv = foldr figureOutRealType newtenv typeDecList, venv = venv}
@@ -324,7 +312,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				val venv' = foldr enterparam venv params
 				val {exp = _, ty = tybody} = transExp (venv', tenv, body)
 			in (
-				case comparetype(tybody,tyret) of
+				case compareType(tybody,tyret) of
 					true => ()
 			    | 	false => ErrorMsg.error pos "Function body type and return type do not mactch!";
 				secondPass (venv, func)
@@ -348,7 +336,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				S.enter(venvCurr, name, E.FunEntry {formals = params', result = tyret})
 			end
 
-		var venv' = foldr firstPass venv funcs;
+		val venv' = foldr firstPass venv funcs;
 	in (
 		secondPass venv' funcs;
 		{venv = venv', tenv = tenv}
@@ -387,4 +375,14 @@ and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) =
 		| _ => (ErrorMsg.error pos "Exp to access an element in an array should be an integer!";
 				{exp = (), ty = T.ERROR})
     end)
+
+(*main entry point for type-checking a program*)
+fun transProg(programCode : A.exp) = 
+    let 
+    	val venv = E.base_venv
+    	val tenv = E.base_tenv
+    in 
+    	transExp(venv, tenv, programCode)
+    end
+
 end
