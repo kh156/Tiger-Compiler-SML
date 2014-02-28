@@ -85,7 +85,7 @@ fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 
 fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
-	  | transExp (venv, tenv, A.VarExp v) = transVar(v)
+	  | transExp (venv, tenv, A.VarExp v) = transVar(venv, tenv, v)
 	  | transExp (venv, tenv, A.StringExp (s, pos)) = {exp=(), ty=T.STRING}
 	  | transExp (venv, tenv, A.SeqExp exps) =
 		let
@@ -110,13 +110,13 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		orelse oper=A.LtOp orelse oper=A.LeOp
 		orelse oper=A.GtOp orelse oper=A.LtOp)
 		then
-			(case (#ty transExp(venv,tenv,left)) of
+			(case (#ty (transExp(venv,tenv,left))) of
 				T.INT => (checkInt(transExp(venv, tenv, right), pos);
 	 	  				   {exp=(),ty=T.INT})
 			  | T.STRING => (checkString(transExp(venv, tenv, right), pos);
 	 	  				      {exp=(),ty=T.STRING})
 
-			  | _ => ((error pos "Can't perform an operation on this type");
+			  | _ => ((ErrorMsg.error pos "Can't perform an operation on this type");
 			  		  {exp=(),ty=T.INT}))
 		else
 			((error pos "Error");
@@ -124,11 +124,13 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 
 	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}) = 
 	  	let
-	  		val (symbolTypeList,unique) = S.look(tenv, typ)
+	  		val T.RECORD (symbolTypeList,unique) = (case S.look(tenv, typ) of 
+	  							          SOME(v) => v
+	  							          | NONE => (ErrorMsg.error pos ""; T.RECORD([], ref())))
 	  		(*fields is a (symbol * exp * pos) list*)
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
-	  			(case (ty)=(#ty transExp(venv, tenv, exp)) of 
+	  			(case (ty)=(#ty (transExp(venv, tenv, exp))) of 
 	  				true => (case (S.name symbol)=(S.name tySymbol) of 
 	  						true => checkRecord(otherFields, otherTypes)
 	  						| false => false)
@@ -137,55 +139,58 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		| checkRecord(_, _) = false
 	  	in
 	  		if checkRecord(fields, symbolTypeList)
-	  		then {exp=(), ty=T.RECORD symbolTypeList}
+	  		then {exp=(), ty=T.RECORD (symbolTypeList, unique)}
 	  		else {exp=(), ty=T.ERROR}
 	  	end
 
 	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}) =
-	  	if (#ty transVar(var)) = (#ty transExp(exp))
+	  	if (#ty (transVar(venv, tenv, var))) = (#ty (transExp(venv, tenv, exp)))
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and expression do not match";
 			{exp=(),ty=T.UNIT})
 
-	  | transExp (venv, tenv, A.LetExp{decs=decs,body=body,pos=pos}) =
-	  	let val {venv=venv',tenv=tenv'} =
-	  			   transDec(venv,tenv,decs)
-	  	 in transExp(venv',tenv') body
+	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}) =
+	  	let 
+	  		fun transOneDec(oneDec, {venv=venv, tenv=tenv}) = 
+	  			transDec(venv, tenv, oneDec)
+	  		val {venv=venv',tenv=tenv'} = foldr transOneDec {venv=venv, tenv=tenv} decs
+	  	 in transExp(venv',tenv', body)
 	  	end
 	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}) =
 	   (case S.look(venv, func) of
 	  		SOME (E.FunEntry {formals=formals, result=result}) =>
 	  		  ( let 
-	  				val argTypes = map(transExp, args)
+	  		  		fun transExpHere(oneExp) = transExp(venv, tenv, oneExp)
+	  				val argTypes = map transExpHere args
 	  			in
 		  			if length(argTypes) <> length(formals) then
-		  				(error pos "Number of arguments incorrect: " ^ length(args); {exp=(),ty=T.UNIT})
+		  				(error pos ("Number of arguments incorrect: "^length(args)); {exp=(),ty=T.UNIT})
 	            	else
-			            (compareTypes (formals, map(#ty argTypes), pos);
-			             {exp=(),ty=actual_ty result})   
+			            (compareTypes (formals, map (#ty) argTypes, pos);
+			             {exp=(),ty=actual_ty (result,pos)})
 				end
 			  )
-	  		| NONE => (error pos "This function does not exist" ^ Symbol.name(func); {exp=(),ty=T.UNIT})
+	  		| NONE => (error pos ("This function does not exist" ^ S.name(func)); {exp=(),ty=T.UNIT})
 	  	)
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
 	  	(case elseExp of
          NONE => (* if-then *)
          	(let 
-         		val t = transExp(venv, tenv) test
+         		val t = transExp(venv, tenv, test)
          	in
-         		(checkInt(t);
-         		checkUnit(thenExp);
+         		(checkInt(t, pos);
+         		checkUnit(transExp(venv, tenv, thenExp), pos);
          		{ exp=(), ty=T.UNIT })
          	end)
          | SOME elseExp => (* if-then-else *)
          	(let 
-         		val t = transExp(venv, tenv) test
+         		val t = transExp(venv, tenv, test)
          		val thenType = transExp(venv, tenv, thenExp)
          		val elseType = transExp(venv, tenv, elseExp)
          	in
-         		(checkInt(t);
+         		(checkInt(t, pos);
          		if #ty thenType = #ty elseType then
          			{ exp=(), ty= (#ty thenType) }
          		else
@@ -199,9 +204,9 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		val venvNew = S.enter (venv, var, E.VarEntry {ty=Types.INT})
 	  		val bodyType = transExp(venvNew, tenv, body)
 	  	in
-		  	(checkInt(lo);
-		  	checkInt(hi);
-		  	checkUnit(bodyType);
+		  	(checkInt(transExp(venvNew, tenv, lo), pos);
+		  	checkInt(transExp(venvNew, tenv, hi), pos);
+		  	checkUnit(bodyType, pos);
 		  	{ exp=(), ty=T.UNIT })
 	    end
 	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}) =
@@ -211,8 +216,8 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		val b = transExp(venv, tenv, body)
 	  		val _ = decNestDepth()
 	  	in
-	  		(checkInt(t);
-	  		checkUnit(b);
+	  		(checkInt(t, pos);
+	  		checkUnit(b, pos);
 	  		{ exp=(), ty=T.UNIT })
 	  	end
 	  | transExp (venv, tenv, A.BreakExp pos) =
@@ -381,8 +386,9 @@ fun transProg(programCode : A.exp) =
     let 
     	val venv = E.base_venv
     	val tenv = E.base_tenv
+    	val temp = transExp(venv, tenv, programCode)
     in 
-    	transExp(venv, tenv, programCode)
+    	()
     end
 
 end
