@@ -347,6 +347,8 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 		{venv = venv', tenv = tenv}
 	)
 	end
+
+| transDec(venv, tenv, A.StartOfDecList ()) = {venv=venv, tenv=tenv}
 	
 
 and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
@@ -358,12 +360,13 @@ and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) =
 | transVar(venv, tenv, A.FieldVar (var: A.var, s: A.symbol, pos: A.pos)) = 
 	(let
 		val {exp = _, ty = parentType} = transVar(venv, tenv, var)
-		fun findMatchField(oneField::rest, symToLook, unique) =
-			(case oneField of
-				(sym, t) => (if (S.name sym)=(S.name symToLook) then {exp = (), ty = t} else findMatchField(rest, symToLook, unique))
-				| _	    => (ErrorMsg.error pos ("Error trying to access field "^(S.name symToLook)^" of parent record!"); {exp = (), ty = T.ERROR}))
+		fun findMatchField((sym, t)::rest, symToLook, unique, pos) =
+			    (if (S.name sym)=(S.name symToLook)
+			    	then {exp = (), ty = t}
+			    	else findMatchField(rest, symToLook, unique, pos))
+		| findMatchField([], symToLook, unique, pos) = (ErrorMsg.error pos ("Did not find matched field "^(S.name symToLook)^" in record type!");{exp = (), ty = T.ERROR})
 	in
-		(case parentType of T.RECORD(fields, unique) => findMatchField(fields, s, unique)
+		(case parentType of T.RECORD(fields, unique) => findMatchField(fields, s, unique, pos)
 							| _ => (ErrorMsg.error pos ("Trying to access field "^(S.name s)^" whose parent is not a record type!");
 									{exp = (), ty = T.ERROR}))
 	end)

@@ -108,6 +108,8 @@ fun print (outstream, e0) =
 					    ty(t,d+1); say ")")
 	  in indent d; say "TypeDec["; dolist d tdec l; say "]"
          end
+
+    | dec(A.StartOfDecList (), d) = say ""
    
   and ty(A.NameTy(s,p), d) = (indent d; say "NameTy("; say(Symbol.name s);
 			      say ")")
