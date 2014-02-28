@@ -61,12 +61,7 @@ fun lookupType (tenv typ pos) =
 		if compareType(ty1,ty2) then compareTypes(tenv,lst1,lst2)
 =======
   | NONE => (err pos ("type is not defined: " ^ S.name n) ; T.UNIT))
-(*
-fun compareTypes (tenv, [], ) = 
-	(tenv, ty1::lst1, ty2::lst2) =
-		if comparetype(ty1,ty2) then compareTypes(tenv,lst1,lst2)
->>>>>>> bd5f16da01cce71796345b8b548dc184924076f6
-		else (err pos ("types do not match") ; T.UNIT))*)
+*)
 
 fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
@@ -135,23 +130,29 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
          | SOME elseExp => (* if-then-else *)
          	(let 
          		val t = transExp(venv, tenv) test
-         		val thenType = transExp(venv, tenv) thenExp
-         		val elseType = transExp(venv, tenv) elseExp
+         		val thenType = transExp(venv, tenv, thenExp)
+         		val elseType = transExp(venv, tenv, elseExp)
          	in
          		(checkInt(t);
          		if #ty thenType = #ty elseType then
-         			{ exp=(), ty=#ty thenType }
+         			{ exp=(), ty= (#ty thenType) }
          		else
          			(error pos "Types of Then and Else statements do not match";
-         			 { exp=(), ty=T.UNIT }))
+         			 { exp=(), ty=T.UNIT })
+         		)
          	end)
-	  | transExp (venv, tenv, A.ForExp {var, escape, lo, hi, body, pos}) =
-	  	(checkInt(lo);
-	  	checkInt(hi);
-	  	checkUnit(body);
-	  	S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT});
-	  	{ exp=(), ty=T.UNIT })
-	  | transExp (venv, tenv, A.WhileExp {test=t, body=b, pos=p}) =
+         )
+	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}) =
+	  	let 
+	  		val venvNew = S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT})
+	  		val bodyType = transExp(venvNew, tenv, body)
+	  	in
+		  	(checkInt(lo);
+		  	checkInt(hi);
+		  	checkUnit(bodyType);
+		  	{ exp=(), ty=T.UNIT })
+	    end
+	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}) =
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv) test
@@ -166,7 +167,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
 	  		  { exp=(), ty=T.UNIT })
-	  | transExp (venv, tenv, A.ArrayExp {typ=t, size=s, init=s, pos=p}) = { exp=(), ty=T.UNIT }
+	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}) = { exp=(), ty=T.UNIT }
 
 (*main entry point for type-checking a program*)
 fun transProg(programCode : A.exp) = 
