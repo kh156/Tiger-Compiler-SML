@@ -53,14 +53,39 @@ fun checkString ({exp, ty}, pos) =
     T.STRING => ()
   | _ => error pos "string required"
 
-fun transExp(venv, tenv) =
-	    trexp (A.NilExp) = {exp=(), T.NIL}
-	  | trexp (A.IntExp i) = {exp=(), T.INT}
-	  | trexp (A.VarExp v) = trvar v
-	  | trexp (A.StringExp (s, pos)) = (exp=(), T.STRING)
-	  | trexp (A.SeqExp []) = {exp=(), ty=T.UNIT}
-	  | trexp (A.SeqExp exps) = 
-	  | trexp (A.OpExp{left,oper,right,pos}) =
+
+
+(*fun isSameType(t1: T.ty, t2: T.ty) = ... (*to be implemented*)
+
+fun actual_ty(ty: T.ty, pos: A.pos) =
+	case ty of
+		T.NAME(s, tref) => (case !tref of
+							     SOME(t) => actual_ty (t,pos)
+							     | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
+		| _ => ty
+
+(*main entry point for type-checking a program*)
+fun transProg(programCode : A.exp) = 
+    let 
+    	val venv = E.base_venv
+    	val tenv = E.base_tenv
+    in 
+    	transExp(venv, tenv, programCode)
+    end
+
+fun transExp(venv, tenv, A.NilExp) = {exp=(), T.NIL}
+
+| transExp(venv, tenv, A.IntExp i) = {exp=(), T.INT}
+	  
+| transExp(venv, tenv, A.VarExp v) = trvar v
+	  
+| transExp(venv, tenv, A.StringExp (s, pos)) = (exp=(), T.STRING)
+
+| transExp(venv, tenv, A.SeqExp []) = {exp=(), ty=T.UNIT}
+
+| transExp(venv, tenv, A.SeqExp exps) = 
+	  
+| transExp(venv, tenv, A.OpExp{left,oper,right,pos}) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp 
   		orelse oper=A.TimesOp orelse oper=A.DivideOp)
   	    then (checkInt(trexp left, pos);
@@ -81,22 +106,23 @@ fun transExp(venv, tenv) =
 			(error pos "Error");
 			{exp=(),ty=T.INT}
 
-	  | trexp (A.RecordExp{fields,typ,exp}) = 
+| transExp(venv, tenv, A.RecordExp{fields,typ,exp}) = 
 
-	  | trexp (A.AssignExp{var,exp,pos}) =
+| transExp(venv, tenv, A.AssignExp{var,exp,pos}) =
 	  	if #ty trvar(var) = #ty trexp(exp)
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and expression do not match");
 			{exp=(),ty=T.UNIT}
 
-	  | trexp (A.LetExp{decs,body,pos}) =
+| transExp(venv, tenv, A.LetExp{decs,body,pos}) =
 	  	let val {venv=venv',tenv=tenv'} =
 	  			   transDecs(venv,tenv,decs)
 	  	 in transExp(venv',tenv') body
 	  	end
-	  | trexp (A.CallExp{func, args, pos}) =
-	  | trexp (A.IfExp {test, then', else', pos}) =
+| transExp(venv, tenv, A.CallExp{func, args, pos}) =
+	  
+| transExp(venv, tenv, A.IfExp {test, then', else', pos}) =
 	  	(case else' of
          NONE => (* if-then *)
          	let 
@@ -119,13 +145,15 @@ fun transExp(venv, tenv) =
          			(error pos "Types of Then and Else statements do not match";
          			 { exp=(), ty=T.UNIT })
          	end
-	  | trexp (A.ForExp {var, escape, lo, hi, body, pos}) =
+
+| transExp(venv, tenv, A.ForExp {var, escape, lo, hi, body, pos}) =
 	  	(checkInt(lo);
 	  	checkInt(hi);
 	  	checkUnit(body);
 	  	S.enter (venv, var, Env.VarEntry {access=access, ty=Types.INT});
 	  	{ exp=(), ty=T.UNIT })
-	  | trexp (A.WhileExp {test, body, pos}) =
+
+| transExp(venv, tenv, A.WhileExp {test, body, pos}) =
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv) test
@@ -136,35 +164,17 @@ fun transExp(venv, tenv) =
 	  		checkUnit(b);
 	  		{ exp=(), ty=T.UNIT })
 	  	end
-	  | trexp (A.BreakExp pos) =
+| transExp(venv, tenv, A.BreakExp pos) =
 	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
 	  	else (error pos "Invalid nesting depth for a Break";
 	  		  { exp=(), ty=T.UNIT })
-	  | trexp (A.LetExp {decs, body, pos}) =
-	  | trexp (A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
 
-(*main entry point for type-checking a program*)
-fun transProg(programCode : A.exp) = 
-    let 
-    	val venv = E.base_venv
-    	val tenv = E.base_tenv
-    in 
-    	transExp(venv, tenv, programCode)
-    end
+| transExp(venv, tenv, A.LetExp {decs, body, pos}) =
+	  
+| transExp(venv, tenv, A.ArrayExp {typ, size, init, pos}) = { exp=(), ty=T.UNIT }
 
 
-(*fun transExp(venv, tenv, ...) = ... (*to be implemented*)*)
-
-(*fun isSameType(t1: T.ty, t2: T.ty) = ... (*to be implemented*)*)
-
-fun actual_ty(ty: T.ty, pos: A.pos) =
-	case ty of
-		T.NAME(s, tref) => (case !tref of
-							     SOME(t) => actual_ty (t,pos)
-							     | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
-		| _ => ty
-
-fun transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
+and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 	(case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type with name"^(S.name s)); T.ERROR)
 							| SOME(t) => t)
 
@@ -191,7 +201,7 @@ fun transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 
 
 (*book says type NIL must be constrained by a RECORD type???*)
-fun transDec(venv, tenv, A.VarDec{name: A.symbol,
+and transDec(venv, tenv, A.VarDec{name: A.symbol,
                                   escape: bool ref,
                                   typ: (A.symbol * A.pos) option,
                                   init: A.exp,
@@ -277,7 +287,7 @@ fun transDec(venv, tenv, A.VarDec{name: A.symbol,
 	end
 	
 
-fun transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
+and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
 	(case S.look(venv, s) of
 		SOME(E.VarEntry {varType}) => {exp = (), ty = actual_ty (varType, pos)}
 		| SOME(_)			=> (ErrorMsg.error pos ("Var with name "^(S.name s)^" is a function, not a simple variable!"); {exp = (), ty = T.ERROR})
