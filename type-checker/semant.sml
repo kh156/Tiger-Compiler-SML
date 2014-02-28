@@ -55,18 +55,6 @@ fun lookupType (tenv, typSymbol, pos) =
     SOME ty => ty
   | NONE => (error pos ("type is not defined: "^(S.name typSymbol)); T.UNIT))
 
-fun compareType (type1, type2, pos) = (* Returns true if ty1 is a subtype of ty2 *)
-	(case type2 of 
-	  T.UNIT => true (* All units are subtype of UNIT *)
-	| _ => (if type1 = type2 then true 
-			else (error pos "type mismatch"; false)
-		   )
-	)
-
-fun compareTypes ([], l2, pos) = {exp=(), ty=T.UNIT}
-	| compareTypes (l1, [], pos) = {exp=(), ty=T.UNIT}
-	| compareTypes (ty1::lst1, ty2::lst2, pos) =
-		(compareType(ty1,ty2, pos); compareTypes(lst1,lst2, pos))
 
 (*fun isSameType(t1: T.ty, t2: T.ty) = *)
 
@@ -77,6 +65,23 @@ fun actual_ty(ty: T.ty, pos: A.pos) =
 						SOME(t) => actual_ty (t,pos)
 					   | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
 		| _ => ty)
+
+fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Returns true if ty1 is a subtype of ty2 *)
+	let
+		val trueType1 = actual_ty(type1, pos1)
+		val trueType2 = actual_ty(type2, pos2)
+	in
+		case trueType2 of
+		  	T.UNIT => true (* All units are subtype of UNIT *)
+			| T.RECORD(l,u) => 
+				if trueType1 = T.NIL
+					then true
+					else trueType1 = trueType2
+			| _ =>
+				if trueType1 = T.NIL andalso trueType2 = T.NIL 
+					then false 
+					else trueType1 = trueType2
+	end
 
 fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 	(case S.look(tenv, name) of 
@@ -163,12 +168,22 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		  ( let 
 	  		  		fun transExpHere(oneExp) = transExp(venv, tenv, oneExp)
 	  				val argTypes = map transExpHere args
+	  				fun compareTypes (ty1::lst1, ty2::lst2, pos) =
+							if compareType(ty1,ty2, pos, pos) 
+								then compareTypes(lst1,lst2, pos)
+								else false
+					|	compareTypes ([], [], pos) = true
+	  				|	compareTypes (_, [], pos) = false
+	  				|	compareTypes ([], _, pos) = false
 	  			in
 		  			if length(argTypes) <> length(formals) then
 		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args))); {exp=(),ty=T.UNIT})
-	            	else
-			            (compareTypes (formals, map (#ty) argTypes, pos);
-			             {exp=(),ty=actual_ty (result,pos)})
+	            	else (
+	            		if compareTypes (formals, map (#ty) argTypes, pos) 
+	            			then ()
+	            			else (error pos ("Params do not match with function: "^S.name(func)));
+			            {exp=(),ty=actual_ty (result, pos)}
+			        )
 				end
 			  )
 	  		| _ => (error pos ("This function does not exist" ^ S.name(func)); {exp=(),ty=T.UNIT})
@@ -271,7 +286,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				case S.look(tenv, s) of
 					NONE => (ErrorMsg.error pos "declared type for variable does not exist!";
 							{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
-					| SOME(t) => (case compareType(tyinit, t, p) of
+					| SOME(t) => (case compareType(tyinit, t, pos, p) of
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
 							    	{tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})})
 							| true  => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}))
@@ -317,7 +332,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				val venv' = foldr enterparam venv params
 				val {exp = _, ty = tybody} = transExp (venv', tenv, body)
 			in (
-				case compareType(tybody, tyret, pos) of
+				case compareType(tybody, tyret, pos, pos) of
 					true => ()
 			    | 	false => ErrorMsg.error pos "Function body type and return type do not mactch!";
 				secondPass (venv, func)
