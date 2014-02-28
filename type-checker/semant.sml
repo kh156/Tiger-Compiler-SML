@@ -35,29 +35,10 @@ val nestDepth = ref 0
 fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
 
-fun checkInt ({exp=exp,ty=ty},pos) = 
-  (case ty of
-	T.INT => ()
-  | _ => error pos "integer required")
-
-fun checkUnit ({exp=exp, ty=ty}, pos) =
-  (case ty of
-    T.UNIT => ()
-  | _ => error pos "unit required")
-
-fun checkString ({exp=exp, ty=ty}, pos) =
-  (case ty of
-    T.STRING => ()
-  | _ => error pos "string required")
-
 fun lookupType (tenv, typSymbol, pos) = 
   (case S.look (tenv, typSymbol) of
     SOME ty => ty
   | NONE => (error pos ("type is not defined: "^(S.name typSymbol)); T.UNIT))
-
-
-(*fun isSameType(t1: T.ty, t2: T.ty) = *)
-
 
 fun actual_ty(ty: T.ty, pos: A.pos) =
 	(case ty of
@@ -77,11 +58,26 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 				then true
 				else if trueType1 = T.NIL
 					then case trueType2 of
-						T.NIL => false
+						T.NIL => (error pos1 "Error compairing two nils!"; false)
 						| T.RECORD(l,u) => true
 						| _ => trueType1=trueType2
 					else trueType1=trueType2
 	end
+
+fun checkInt ({exp=exp,ty=ty},pos) = 
+	if compareType(ty, T.INT, pos, pos)
+		then ()
+  		else error pos "integer required"
+
+fun checkUnit ({exp=exp, ty=ty}, pos) =
+	if compareType(ty, T.UNIT, pos, pos)
+		then ()
+  		else error pos "unit required"
+
+fun checkString ({exp=exp, ty=ty}, pos) =
+	if compareType(ty, T.STRING, pos, pos)
+		then ()
+  		else error pos "string required"
 
 fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 	(case S.look(tenv, name) of 
@@ -105,14 +101,14 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		end
 
 	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}) =
-  		if (oper=A.PlusOp orelse oper=A.MinusOp 
-  		orelse oper=A.TimesOp orelse oper=A.DivideOp)
+  		if (oper=A.PlusOp orelse oper=A.MinusOp orelse
+  			oper=A.TimesOp orelse oper=A.DivideOp orelse
+			oper=A.LtOp orelse oper=A.LeOp orelse
+  			oper=A.GtOp orelse oper=A.GeOp)
   	    then (checkInt(transExp(venv, tenv, left), pos);
 		 	  checkInt(transExp(venv, tenv, right), pos);
 		 	  {exp=(),ty=T.INT})
-		else if (oper=A.EqOp orelse oper=A.NeqOp 
-		orelse oper=A.LtOp orelse oper=A.LeOp
-		orelse oper=A.GtOp orelse oper=A.GeOp)
+		else if (oper=A.EqOp orelse oper=A.NeqOp)
 		then
 			let
 				val {exp=exp, ty=leftType} = transExp(venv, tenv, left)

@@ -1,7 +1,7 @@
 structure Types =
 struct
 
-  type unique = unit ref
+  type unique = int ref
 
   datatype ty = 
             RECORD of (Symbol.symbol * ty) list * unique
