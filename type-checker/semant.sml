@@ -48,7 +48,7 @@ fun lookupType (tenv, typSymbol, pos) =
 
 structure MySet = ListSetFn (struct
   type ord_key = A.symbol
-  val compare = (fn (_,_) => General.EQUAL)
+  val compare = (fn (_,_) => General.LESS)
 end)
 
 fun noRepeatName(decList) = 
