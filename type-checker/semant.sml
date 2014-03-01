@@ -31,9 +31,12 @@ type expty = {exp: Translate.exp, ty: T.ty}
 type ty = T.ty
 val error = ErrorMsg.error
 val nestDepth = ref 0
+val numBreaks = ref 0
 
 val refCount = ref 0
 
+fun incNumBreaks () = numBreaks := !numBreaks + 1
+fun decNumBreaks () = numBreaks := !numBreaks - 1
 fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
 
@@ -227,8 +230,11 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 
 	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}) =
 	  	let 
+	  		val _ = incNestDepth()
 	  		val venvNew = S.enter (venv, var, E.VarEntry {ty=Types.INT})
 	  		val bodyType = transExp(venvNew, tenv, body)
+	  		val _ = decNestDepth()
+	  		val _ = numBreaks := 0
 	  	in
 		  	(checkInt(transExp(venvNew, tenv, lo), pos);
 		  	checkInt(transExp(venvNew, tenv, hi), pos);
@@ -242,6 +248,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		val t = transExp(venv, tenv, test)
 	  		val b = transExp(venv, tenv, body)
 	  		val _ = decNestDepth()
+	  		val _ = numBreaks := 0
 	  	in
 	  		(checkInt(t, pos);
 	  		checkUnit(b, pos);
@@ -249,9 +256,18 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  	end
 
 	  | transExp (venv, tenv, A.BreakExp pos) =
-	  	if !nestDepth > 0 then { exp=(), ty=T.UNIT }
-	  	else (error pos "Invalid nesting depth for a Break";
-	  		  { exp=(), ty=T.ERROR })
+	 	let
+	 		val _ = incNumBreaks()
+	 	in
+		  	if !nestDepth = 0 then 
+		  		(error pos "Invalid nesting depth for a Break";
+		  		{ exp=(), ty=T.ERROR })
+		    else if !numBreaks > 1 then 
+		    	(error pos "Excessive breaks!";
+		    	{ exp=(), ty=T.ERROR })
+		  	else
+		  		{ exp=(), ty=T.UNIT }
+		end
 
 	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}) = 
 	  	(case (#ty (transExp(venv, tenv, size))) of 
