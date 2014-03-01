@@ -32,28 +32,16 @@ type ty = T.ty
 val error = ErrorMsg.error
 val nestDepth = ref 0
 
+val refCount = ref 0
+
 fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
-
-fun checkInt ({exp=exp,ty=ty},pos) = 
-  (case ty of
-	T.INT => ()
-  | _ => error pos "integer required")
-
-fun checkUnit ({exp=exp, ty=ty}, pos) =
-  (case ty of
-    T.UNIT => ()
-  | _ => error pos "unit required")
-
-fun checkString ({exp=exp, ty=ty}, pos) =
-  (case ty of
-    T.STRING => ()
-  | _ => error pos "string required")
 
 fun lookupType (tenv, typSymbol, pos) = 
   (case S.look (tenv, typSymbol) of
     SOME ty => ty
   | NONE => (error pos ("type is not defined: "^(S.name typSymbol)); T.UNIT))
+
 
 structure MySet = ListSetFn (struct
   type ord_key = A.symbol
@@ -105,11 +93,26 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 				then true
 				else if trueType1 = T.NIL
 					then case trueType2 of
-						T.NIL => false
+						T.NIL => (error pos1 "Error compairing two nils!"; false)
 						| T.RECORD(l,u) => true
 						| _ => trueType1=trueType2
 					else trueType1=trueType2
 	end
+
+fun checkInt ({exp=exp,ty=ty},pos) = 
+	if compareType(ty, T.INT, pos, pos)
+		then ()
+  		else error pos "integer required"
+
+fun checkUnit ({exp=exp, ty=ty}, pos) =
+	if compareType(ty, T.UNIT, pos, pos)
+		then ()
+  		else error pos "unit required"
+
+fun checkString ({exp=exp, ty=ty}, pos) =
+	if compareType(ty, T.STRING, pos, pos)
+		then ()
+  		else error pos "string required"
 
 fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 	(case S.look(tenv, name) of 
@@ -133,14 +136,14 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		end
 
 	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}) =
-  		if (oper=A.PlusOp orelse oper=A.MinusOp 
-  		orelse oper=A.TimesOp orelse oper=A.DivideOp)
+  		if (oper=A.PlusOp orelse oper=A.MinusOp orelse
+  			oper=A.TimesOp orelse oper=A.DivideOp orelse
+			oper=A.LtOp orelse oper=A.LeOp orelse
+  			oper=A.GtOp orelse oper=A.GeOp)
   	    then (checkInt(transExp(venv, tenv, left), pos);
 		 	  checkInt(transExp(venv, tenv, right), pos);
 		 	  {exp=(),ty=T.INT})
-		else if (oper=A.EqOp orelse oper=A.NeqOp 
-		orelse oper=A.LtOp orelse oper=A.LeOp
-		orelse oper=A.GtOp orelse oper=A.GeOp)
+		else if (oper=A.EqOp orelse oper=A.NeqOp)
 		then
 			let
 				val {exp=exp, ty=leftType} = transExp(venv, tenv, left)
@@ -157,10 +160,10 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 
 	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}) = 
 	  	let
-	  		val T.RECORD (symbolTypeList,unique) = (case S.look(tenv, typ) of 
+	  		val T.RECORD (symbolTypeList,unique) = case S.look(tenv, typ) of 
 	  							          SOME(v) => actual_ty (v,pos)
 	  							          | NONE => (ErrorMsg.error pos "Expression with undefined record type!";
-	  							           T.RECORD([], ref())))
+	  							           T.RECORD([], ref 0))
 	  		(*fields is a (symbol * exp * pos) list*)
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
@@ -279,7 +282,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		  T.INT => (case S.look(tenv, typ) of
 	  		  	    	 SOME(t) => (case actual_ty (t,pos) of
 	  		  	    	 	   			T.ARRAY(eleType, unique) => if (actual_ty (eleType,pos)) = (#ty (transExp(venv, tenv, init)))
-	  		  	    	    							then {exp=(), ty=T.ARRAY(actual_ty (eleType,pos), ref())}
+	  		  	    	    							then {exp=(), ty=actual_ty(t,pos)}
 	  		  	    	    							else (ErrorMsg.error pos "Type mismatch during array creation!"; {exp=(), ty=T.ERROR})
 	  		  	    	    			| _ => (ErrorMsg.error pos "Type ID used to create array is not an array type!"; {exp=(), ty=T.ERROR}))
 	  		  	    	 | NONE => (ErrorMsg.error pos "Undefined type during array creation!"; {exp=(), ty=T.ERROR}))
@@ -301,15 +304,20 @@ and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 	     in
 		 	map checkSingleField fieldList
 	     end
-    in
-		T.RECORD(fields, ref ())
+    in (
+		refCount := !refCount + 1;
+		T.RECORD(fields, refCount)
+	)
     end
 	
 
 | transTy(tenv, A.ArrayTy (s:A.symbol, pos:A.pos)) =
-	(case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type "^(S.name s)^" when declaring an array type!");
-										T.ARRAY(T.ERROR, ref())) (*how to use ref()?*)
-							| SOME(t) => T.ARRAY(t, ref()))
+	case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type "^(S.name s)^" when declaring an array type!");
+										T.ERROR)
+							| SOME(t) => (
+								refCount := !refCount + 1;
+								T.ARRAY(t, refCount)
+							)
 
 
 (*book says type NIL must be constrained by a RECORD type???*)
