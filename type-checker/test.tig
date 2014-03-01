@@ -1,8 +1,12 @@
-let
-
-	type recordTrial = {field1: int, field2: string}
-	var newRecord := recordTrial {field = 1, field2 = 2}
+let 
+	var i := "a"
+	type a = int
+	type b = a
+	type a = string
+	function fa() = "ab"
+	function fb() = b
+	function fa() = 3
 in
-	newRecord.field1
+	for i := 0 to 5 do
+		i := 3
 end
-

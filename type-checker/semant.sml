@@ -55,6 +55,28 @@ fun lookupType (tenv, typSymbol, pos) =
     SOME ty => ty
   | NONE => (error pos ("type is not defined: "^(S.name typSymbol)); T.UNIT))
 
+structure MySet = ListSetFn (struct
+  type ord_key = A.symbol
+  val compare = (fn (_,_) => General.EQUAL)
+end)
+
+fun noRepeatName(decList) = 
+	let
+		fun enterOneDec({name=name, ty=typ, pos=pos}, setSoFar)= MySet.add(setSoFar, name)
+	in
+		if MySet.numItems(foldr enterOneDec MySet.empty decList) = List.length(decList)
+		then true
+		else (ErrorMsg.error 0 "Mutually recursive type declarations have repeated names!";false)
+	end
+
+fun noRepeatNameFunction(decList) = 
+	let
+		fun enterOneDec({name=name, params=params, result=result, body=body, pos=pos}, setSoFar) = MySet.add(setSoFar, name)
+	in
+		if MySet.numItems(foldr enterOneDec MySet.empty decList) = List.length(decList)
+		then true
+		else (ErrorMsg.error 0 "Mutually recursive function declarations have repeated names!";false)
+	end
 
 fun actual_ty(ty: T.ty, pos: A.pos) =
 	(case ty of
@@ -337,7 +359,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 		| checkTypeCycle ([]) = true
 	in
 		if checkTypeCycle(typeDecList)
-		then {venv = venv, tenv = settledtenv}
+		then (if noRepeatName(typeDecList) then {venv = venv, tenv = settledtenv} else {venv= venv, tenv = tenv})
 		else {venv= venv, tenv = tenv}
 	end
 
@@ -391,6 +413,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 		val venv' = foldr firstPass venv funcs;
 	in (
 		secondPass(venv', funcs);
+		noRepeatNameFunction(funcs);
 		{venv = venv', tenv = tenv}
 	)
 	end
