@@ -32,6 +32,8 @@ type ty = T.ty
 val error = ErrorMsg.error
 val nestDepth = ref 0
 
+val refCount = ref 0
+
 fun incNestDepth () = nestDepth := !nestDepth + 1
 fun decNestDepth () = nestDepth := !nestDepth - 1
 
@@ -125,10 +127,10 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 
 	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}) = 
 	  	let
-	  		val T.RECORD (symbolTypeList,unique) = (case S.look(tenv, typ) of 
+	  		val T.RECORD (symbolTypeList,unique) = case S.look(tenv, typ) of 
 	  							          SOME(v) => actual_ty (v,pos)
 	  							          | NONE => (ErrorMsg.error pos "Expression with undefined record type!";
-	  							           T.RECORD([], ref())))
+	  							           T.RECORD([], ref 0))
 	  		(*fields is a (symbol * exp * pos) list*)
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
@@ -246,7 +248,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		  T.INT => (case S.look(tenv, typ) of
 	  		  	    	 SOME(t) => (case actual_ty (t,pos) of
 	  		  	    	 	   			T.ARRAY(eleType, unique) => if (actual_ty (eleType,pos)) = (#ty (transExp(venv, tenv, init)))
-	  		  	    	    							then {exp=(), ty=T.ARRAY(actual_ty (eleType,pos), ref())}
+	  		  	    	    							then {exp=(), ty=actual_ty(t,pos)}
 	  		  	    	    							else (ErrorMsg.error pos "Type mismatch during array creation!"; {exp=(), ty=T.ERROR})
 	  		  	    	    			| _ => (ErrorMsg.error pos "Type ID used to create array is not an array type!"; {exp=(), ty=T.ERROR}))
 	  		  	    	 | NONE => (ErrorMsg.error pos "Undefined type during array creation!"; {exp=(), ty=T.ERROR}))
@@ -268,15 +270,20 @@ and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 	     in
 		 	map checkSingleField fieldList
 	     end
-    in
-		T.RECORD(fields, ref ())
+    in (
+		refCount := !refCount + 1;
+		T.RECORD(fields, refCount)
+	)
     end
 	
 
 | transTy(tenv, A.ArrayTy (s:A.symbol, pos:A.pos)) =
-	(case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type "^(S.name s)^" when declaring an array type!");
-										T.ARRAY(T.ERROR, ref())) (*how to use ref()?*)
-							| SOME(t) => T.ARRAY(t, ref()))
+	case S.look(tenv, s) of NONE => (ErrorMsg.error pos ("Undefined type "^(S.name s)^" when declaring an array type!");
+										T.ERROR)
+							| SOME(t) => (
+								refCount := !refCount + 1;
+								T.ARRAY(t, refCount)
+							)
 
 
 (*book says type NIL must be constrained by a RECORD type???*)
