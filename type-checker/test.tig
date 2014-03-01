@@ -1,13 +1,6 @@
 let
-	var y := 4
+	val x : int := (4;"aa")
 in
-	while y > 0 do (
-		print("a");
-		for i := 0 to 5 do (
-			print("b");
-			break
-		);
-		break
-	)
+	x
 end
 

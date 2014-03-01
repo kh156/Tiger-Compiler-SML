@@ -100,7 +100,6 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 						| T.RECORD(l,u) => true
 						| _ => trueType1=trueType2
 					else trueType1=trueType2
-	)
 	end
 
 fun checkInt ({exp=exp,ty=ty},pos) = 
