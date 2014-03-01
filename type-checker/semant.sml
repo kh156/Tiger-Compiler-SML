@@ -89,7 +89,7 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 	let
 		val trueType1 = actual_ty(type1, pos1)
 		val trueType2 = actual_ty(type2, pos2)
-	in
+	in 
 		if trueType1=T.ERROR orelse trueType2=T.ERROR
 			then true 
 			else if trueType2 = T.UNIT 
@@ -100,6 +100,7 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 						| T.RECORD(l,u) => true
 						| _ => trueType1=trueType2
 					else trueType1=trueType2
+	)
 	end
 
 fun checkInt ({exp=exp,ty=ty},pos) = 
@@ -322,7 +323,7 @@ and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 	     end
     in (
 		refCount := !refCount + 1;
-		T.RECORD(fields, refCount)
+		T.RECORD(fields, ref (!refCount+1))
 	)
     end
 	
@@ -332,7 +333,7 @@ and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =
 										T.ERROR)
 							| SOME(t) => (
 								refCount := !refCount + 1;
-								T.ARRAY(t, refCount)
+								T.ARRAY(t, ref (!refCount + 1))
 							)
 
 
