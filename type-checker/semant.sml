@@ -49,6 +49,15 @@ fun actual_ty(ty: T.ty, pos: A.pos) =
 					   | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); T.ERROR))
 		| _ => ty)
 
+fun checkHasConcreteType(originalName: A.symbol, ty: T.ty, pos: A.pos, firstTime: int) = 
+		(case ty of
+		T.NAME(s, tref) => if (originalName=s andalso firstTime=0)
+						then (ErrorMsg.error pos ("Cyclic type declaration detected: "^(S.name s)); false)
+						else (case !tref of
+						SOME(t) => (checkHasConcreteType (originalName,t,pos,0))
+					   | NONE => (ErrorMsg.error pos ("Undefined type with name: "^(S.name s)); false))
+		| _ => true)
+
 fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Returns true if ty1 is a subtype of ty2 *)
 	let
 		val trueType1 = actual_ty(type1, pos1)
@@ -134,11 +143,13 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		(*fields is a (symbol * exp * pos) list*)
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
-	  			(case (ty)=(#ty (transExp(venv, tenv, exp))) of 
-	  				true => (case (S.name symbol)=(S.name tySymbol) of 
+	  			(case (S.name symbol)=(S.name tySymbol) of 
+	  				true => (case (ty)=(#ty (transExp(venv, tenv, exp))) of 
 	  						true => checkRecord(otherFields, otherTypes)
-	  						| false => false)
-	  				| false => false)
+	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
+	  							false))
+	  				| false => (ErrorMsg.error pos "Field name does not match record type during record creation!";
+	  					false))
 	  		| checkRecord([], []) = true
 	  		| checkRecord(_, _) = false
 	  	in
@@ -186,8 +197,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 			        )
 				end
 			  )
-	  		| _ => (error pos ("This function does not exist " ^ S.name(func)); {exp=(),ty=T.ERROR})
-	  	)
+	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=(),ty=T.ERROR}))
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
 	  	(case elseExp of
@@ -323,8 +333,18 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 			in
 				changeRefToRealType(tenvCurr, name, realType, pos)
 			end
+
+		val settledtenv = foldr figureOutRealType newtenv typeDecList
+
+		fun checkTypeCycle({name: A.symbol, ty: A.ty, pos: A.pos}::otherDecs) = 
+			(case S.look(settledtenv, name) of 
+				SOME(t) => if checkHasConcreteType(name, t, pos, 1) then checkTypeCycle(otherDecs) else false
+				| NONE => (ErrorMsg.error pos "Could not find the type that was just defined!"; false))
+		| checkTypeCycle ([]) = true
 	in
-		{venv = venv, tenv = foldr figureOutRealType newtenv typeDecList}
+		if checkTypeCycle(typeDecList)
+		then {venv = venv, tenv = settledtenv}
+		else {venv= venv, tenv = tenv}
 	end
 
 | transDec(venv, tenv, A.FunctionDec funcs) =
