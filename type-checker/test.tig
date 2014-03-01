@@ -1,12 +1,13 @@
-let 
-	var i := "a"
-	type a = int
-	type b = a
-	type a = string
-	function fa() = "ab"
-	function fb() = b
-	function fa() = 3
+let
+	var y := 4
 in
-	for i := 0 to 5 do
-		i := 3
+	while y > 0 do (
+		print("a");
+		for i := 0 to 5 do (
+			print("b");
+			break
+		);
+		break
+	)
 end
+
