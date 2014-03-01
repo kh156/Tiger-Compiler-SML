@@ -95,12 +95,11 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 			else if trueType2 = T.UNIT 
 				then true
 				else if trueType1 = T.NIL
-					then case trueType2 of
+					then (case trueType2 of
 						T.NIL => (error pos1 "Error compairing two nils!"; false)
 						| T.RECORD(l,u) => true
-						| _ => trueType1=trueType2
+						| _ => trueType1=trueType2)
 					else trueType1=trueType2
-	)
 	end
 
 fun checkInt ({exp=exp,ty=ty},pos) = 
@@ -172,7 +171,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
 	  			(case (S.name symbol)=(S.name tySymbol) of 
-	  				true => (case (ty)=(#ty (transExp(venv, tenv, exp))) of 
+	  				true => (case (actual_ty (ty,pos))=(#ty (transExp(venv, tenv, exp))) of 
 	  						true => checkRecord(otherFields, otherTypes)
 	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
 	  							false))

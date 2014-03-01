@@ -1,13 +1,8 @@
 let
-	var y := 4
+	var a := 5
+	var b := 6
+	var c := "abc"
 in
-	while y > 0 do (
-		print("a");
-		for i := 0 to 5 do (
-			print("b");
-			break
-		);
-		break
-	)
+	a=b=c
 end
 
