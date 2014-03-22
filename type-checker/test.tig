@@ -1,7 +1,12 @@
 let
-	var a := 5
-	var b := 6
-	var c := "abc"
+	type recordType = {field1: int, field2: string}
+
+	type a = int
+
+	var temp := let
+		var a :a := "abc"
+	in
+	end
 in
-	a=b=c
+	a
 end
