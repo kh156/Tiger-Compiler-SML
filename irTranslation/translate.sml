@@ -88,6 +88,12 @@ structure Translate : TRANSLATE =
     | unCx (Tr.CONST 1) = fn (t, f) => Tr.JUMP(Tr.NAME(t), [t])
     | unCx (Ex e) = fn (t, f) => Tr.CJUMP(Tr.NE, e, Tr.CONST 0, t, f)
 
-
+  (*how is the current level useful here? I guess static links come into play here...*)
+  fun simpleVar((varL: level, fa: F.access), l: level) =
+    let
+      f = (#frame varL) (*this is the frame the variable was declared*)
+    in
+      f.exp(fa) Tr.TEMP(f.FP)
+    end
 
 end

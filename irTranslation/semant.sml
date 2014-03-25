@@ -14,7 +14,7 @@ sig
 
 	val transVar: venvTable * tenvTable * Absyn.var -> expty
 	val transExp: venvTable * tenvTable * Absyn.exp -> expty
-	val transDec: venvTable * tenvTable * Absyn.dec -> {venv: venvTable, tenv: tenvTable}
+	val transDec: venvTable * tenvTable * Absyn.dec -> {venv: venvTable, tenv: tenvTable, trExpList: Translate.exp list}
 	val transTy:   	     	  tenvTable * Absyn.ty -> ty
 	val transProg:        			      Absyn.exp -> unit
 end
@@ -346,17 +346,17 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 	in
 		case typ of
 			NONE => (case tyinit=T.NIL of 
-				false => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit})}
+				false => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), trExpList = []}
 				| true => (ErrorMsg.error pos "variable is initialized to NIL type!";
-				    	{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv}))
+				    	{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv, trExpList = []}))
 			| SOME(s, p) => (
 				case S.look(tenv, s) of
 					NONE => (ErrorMsg.error pos "declared type for variable does not exist!";
-							{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv})
+							{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv, trExpList = []})
 					| SOME(t) => (case compareType(tyinit, t, pos, p) of
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
-							    	{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv})
-							| true  => {venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv}))
+							    	{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv, trExpList = []})
+							| true  => {venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv, trExpList = []}))
 	end
 
 | transDec(venv, tenv, A.TypeDec typeDecList) = 
@@ -383,7 +383,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 	in
 		if checkTypeCycle(typeDecList)
 		then (if noRepeatName(typeDecList) then {venv = venv, tenv = settledtenv} else {venv= venv, tenv = tenv})
-		else {venv= venv, tenv = tenv}
+		else {venv= venv, tenv = tenv, trExpList = []}
 	end
 
 | transDec(venv, tenv, A.FunctionDec funcs) =
@@ -437,11 +437,11 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 	in (
 		secondPass(venv', funcs);
 		noRepeatNameFunction(funcs);
-		{venv = venv', tenv = tenv}
+		{venv = venv', tenv = tenv, trExpList = []}
 	)
 	end
 
-| transDec(venv, tenv, A.StartOfDecList ()) = {venv=venv, tenv=tenv}
+| transDec(venv, tenv, A.StartOfDecList ()) = {venv=venv, tenv=tenv, trExpList = []}
 	
 
 and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 
