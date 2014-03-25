@@ -8,7 +8,7 @@ sig
 					formals: bool list} -> frame
 	val name : frame -> Temp.label
 	val formals : frame -> access list
-	val allocLocal : frame -> bool -> access (* what's this ????????? *)
+	val allocLocal : frame -> bool -> access
 end
 
 
@@ -36,7 +36,7 @@ struct
 
 	fun name (f:frame) = #name f
 	fun formals (f:frame) = #formals f
-	fun allocLocal ({ _, _, offset}) =  (* ????????????? *)
+	fun allocLocal ({ _, _, offset}) =
 		let 
 			fun ret b:bool = 
 				if b 
