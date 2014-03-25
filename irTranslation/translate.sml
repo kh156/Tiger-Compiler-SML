@@ -22,6 +22,8 @@ structure Translate : TRANSLATE =
   structure Te = Temp
   structure Tr = Tree
 
+  type frag = FRAME.frag
+
   datatype level = ROOT
                   | CHILD of {parent: level, frame: F.frame}
   type access = level * F.access
@@ -85,7 +87,7 @@ structure Translate : TRANSLATE =
 
   fun unNx (Ex e) = Tr.EXP(e)
     | unNx (Nx s) = s
-    | unNx (Cx genstm) = Tr.EXP(unEx(genstm))(*not sure about this...transform a conditional exp into a stm???*)
+    | unNx (Cx genstm) = Tr.EXP(unEx(genstm)) (*evaluate the exp for side-effects and discard the result*)
 
   fun unCx (Cx genstm) = genstm
     | unCx (Nx _) = ErrorMsg.impossible "Error: cannot unCx(Nx stm)!"
@@ -98,12 +100,16 @@ structure Translate : TRANSLATE =
     let
       f = (#frame varL) (*this is the frame the variable was declared*)
     in
-      f.exp(fa) Tr.TEMP(f.FP)
+      Ex (f.exp(fa) Tr.TEMP(f.FP))
     end
 
-  fun procEntryExit(level, body) = (funFragList := (!funFragList)::F.PROC({body = unNx(body), frame = (#frame level)}))
+  fun procEntryExit(level, body) = (funFragList := F.PROC({body = unNx(body), frame = (#frame level)})::(!funFragList))
 
   fun getResult() = !funFragList
+
+
+  (*all kinds of transformations*)
+  fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
 
 
 end
