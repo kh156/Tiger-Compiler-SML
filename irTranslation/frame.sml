@@ -14,6 +14,11 @@ sig
   val wordSize : int
   val exp : access -> Tree.exp -> Tree.exp
 
+  val RV : Temp.temp
+  val procEntryExit1 : frame * Tree.stm -> Tree.stm
+
+  datatype frag = PROC of {body: Tree.stm, frame: frame}
+                | STRING of Temp.label * string
 end
 
 
@@ -23,6 +28,8 @@ struct
   datatype access = InFrame of int
                   | InReg of Temp.temp
 
+  datatype frag = PROC of {body: Tree.stm, frame: frame}
+                | STRING of Temp.label * string
   (*sp is the offset for the stack pointer of the current frame from the fp*)
   type frame = {name: Temp.label, formals: access list, spOffset: int ref}
 
@@ -32,6 +39,7 @@ struct
 
   val FP = Te.newtemp()
   val wordSize = 4
+  val RV = Te.newtemp()
 
   fun name(frame) = (#name frame)
   fun formals(frame) = (#formals frame)
@@ -64,5 +72,8 @@ struct
       addFP
     end
   | exp(InReg t) = fn _ => Tr.TEMP(t)
+
+
+  fun procEntryExit1(frame, stm) = (*...to be implemented--generated a new Tr.stm*)
 
 end

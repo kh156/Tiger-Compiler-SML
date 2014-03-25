@@ -11,9 +11,10 @@ structure Envir :> ENV =
 struct
   structure T = Types
   structure Te = Temp
+  structure Trans = Translate
 	type access = unit
- 	datatype enventry = VarEntry of {access: Translate.access, ty: T.ty}
-	              	  | FunEntry of {level: Translate.level, label: Te.Label, formals: T.ty list, result: T.ty}
+ 	datatype enventry = VarEntry of {access: Trans.access, ty: T.ty}
+	              	  | FunEntry of {level: Trans.level, label: Te.Label, formals: T.ty list, result: T.ty}
 
 	val base_tenv = foldr (fn ((name,ty), table) => Symbol.enter(table, Symbol.symbol name, ty)) 
                       Symbol.empty

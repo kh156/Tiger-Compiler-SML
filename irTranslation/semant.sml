@@ -3,6 +3,7 @@ structure A = Absyn
 structure T = Types
 structure E = Envir
 structure S = Symbol
+structure Trans = Translate
 
 signature SEM = 
 sig
@@ -13,8 +14,8 @@ sig
 	type ty
 
 	val transVar: venvTable * tenvTable * Absyn.var -> expty
-	val transExp: venvTable * tenvTable * Absyn.exp -> expty
-	val transDec: venvTable * tenvTable * Absyn.dec -> {venv: venvTable, tenv: tenvTable, trExpList: Translate.exp list}
+	val transExp: venvTable * tenvTable * Absyn.exp * Trans.exp list -> expty
+	val transDec: venvTable * tenvTable * Absyn.dec * Trans.exp list -> {venv: venvTable, tenv: tenvTable, trExpList: Trans.exp list}
 	val transTy:   	     	  tenvTable * Absyn.ty -> ty
 	val transProg:        			      Absyn.exp -> unit
 end
@@ -26,7 +27,7 @@ struct
 (*more meaningful/easier to read types*)
 type venvTable = E.enventry S.table
 type tenvTable = T.ty S.table
-type expty = {exp: Translate.exp, ty: T.ty}
+type expty = {exp: Trans.exp, ty: T.ty}
 type ty = T.ty
 val error = ErrorMsg.error
 val nestDepth = ref 0
@@ -121,11 +122,11 @@ fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 		SOME(T.NAME(s, tref)) => (let val temp = (tref := SOME(realTy)) in tenv end)
 		| _ => (ErrorMsg.error pos "Error processing mutually recursive types!"; tenv))
 
-fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
-	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
-	  | transExp (venv, tenv, A.VarExp v) = transVar(venv, tenv, v)
-	  | transExp (venv, tenv, A.StringExp (s, pos)) = {exp=(), ty=T.STRING}
-	  | transExp (venv, tenv, A.SeqExp exps) =
+fun transExp (venv, tenv, A.NilExp, initExpList) = {exp=(), ty=T.NIL}
+	  | transExp (venv, tenv, A.IntExp i, initExpList) = {exp=(), ty=T.INT}
+	  | transExp (venv, tenv, A.VarExp v, initExpList) = transVar(venv, tenv, v)
+	  | transExp (venv, tenv, A.StringExp (s, pos), initExpList) = {exp=(), ty=T.STRING}
+	  | transExp (venv, tenv, A.SeqExp exps, initExpList) =
 		let
 			fun parseExps([]) = {exp = (), ty = T.UNIT}
 			|	parseExps((e, p)::[]) = transExp(venv, tenv, e)
@@ -137,7 +138,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 			parseExps(exps)
 		end
 
-	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}) =
+	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}, initExpList) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp orelse
   			oper=A.TimesOp orelse oper=A.DivideOp orelse
 			oper=A.LtOp orelse oper=A.LeOp orelse
@@ -160,7 +161,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 			((error pos "Error identifying the operator used!");
 			{exp=(),ty=T.ERROR})
 
-	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}) = 
+	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}, initExpList) = 
 	  	let
 	  		val T.RECORD (symbolTypeList,unique) = case S.look(tenv, typ) of 
 	  							          SOME(v) => actual_ty (v,pos)
@@ -184,22 +185,22 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		else {exp=(), ty=T.ERROR}
 	  	end
 
-	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}) =
+	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}, initExpList) =
 	  	if (#ty (transVar(venv, tenv, var))) = (#ty (transExp(venv, tenv, exp)))
 	  	then {exp=(),ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and assigned expression do not match";
 			{exp=(),ty=T.ERROR})
 
-	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}) =
+	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}, initExpList) =
 	  	let 
 	  		fun transOneDec(oneDec, {venv=venv, tenv=tenv}) = 
-	  			transDec(venv, tenv, oneDec)
+	  			transDec(venv, tenv, oneDec, initExpList)
 	  		val {venv=venv',tenv=tenv'} = foldr transOneDec {venv=venv, tenv=tenv} decs
-	  	 in transExp(venv',tenv', body)
+	  	 in transExp(venv',tenv', body, initExpList)
 	  	end
 
-	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}) =
+	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}, initExpList) =
 	   (case S.look(venv, func) of
 	  		SOME (E.FunEntry {formals=formals, result=result}) =>
 	  		  ( let 
@@ -225,7 +226,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 			  )
 	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=(),ty=T.ERROR}))
 
-	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}) =
+	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}, initExpList) =
 	  	(case elseExp of
            NONE => (* if-then *)
          	(let 
@@ -251,7 +252,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
          	end)
          )
 
-	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}) =
+	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}, initExpList) =
 	  	let 
 	  		val _ = incNestDepth()
 	  		val venvNew = S.enter (venv, var, E.VarEntry {ty=Types.INT})
@@ -265,7 +266,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		  	{ exp=(), ty=T.UNIT })
 	    end
 
-	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}) =
+	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}, initExpList) =
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv, test)
@@ -278,7 +279,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		{ exp=(), ty=T.UNIT })
 	  	end
 
-	  | transExp (venv, tenv, A.BreakExp pos) =
+	  | transExp (venv, tenv, A.BreakExp pos, initExpList) =
 	 	let
 	 		val _ = incNumBreaks()
 	 	in
@@ -292,7 +293,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 		  		{ exp=(), ty=T.UNIT }
 		end
 
-	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}) = 
+	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}, initExpList) = 
 	  	(case (#ty (transExp(venv, tenv, size))) of 
 	  		  T.INT => (case S.look(tenv, typ) of
 	  		  	    	 SOME(t) => (case actual_ty (t,pos) of
@@ -340,7 +341,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
                                   escape: bool ref,
                                   typ: (A.symbol * A.pos) option,
                                   init: A.exp,
-                                  pos: A.pos}) = 
+                                  pos: A.pos}, initExpList) = 
 	let
 		val {exp=exp, ty=tyinit} = transExp(venv, tenv, init)
 	in
@@ -359,7 +360,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 							| true  => {venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv, trExpList = []}))
 	end
 
-| transDec(venv, tenv, A.TypeDec typeDecList) = 
+| transDec(venv, tenv, A.TypeDec typeDecList, initExpList) = 
 	let
 		fun addNameType({name: A.symbol, ty: A.ty, pos: A.pos}, tenvCurr) =
 			S.enter(tenvCurr, name, T.NAME(name, ref NONE))
@@ -383,10 +384,10 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 	in
 		if checkTypeCycle(typeDecList)
 		then (if noRepeatName(typeDecList) then {venv = venv, tenv = settledtenv} else {venv= venv, tenv = tenv})
-		else {venv= venv, tenv = tenv, trExpList = []}
+		else {venv= venv, tenv = tenv, trExpList = initExpList}
 	end
 
-| transDec(venv, tenv, A.FunctionDec funcs) =
+| transDec(venv, tenv, A.FunctionDec funcs, initExpList) =
 	let 
 		fun secondPass (venv,[]) = ()
 	 	| 	secondPass (venv, {name, params, body, pos, result}::func) =
@@ -437,11 +438,11 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 	in (
 		secondPass(venv', funcs);
 		noRepeatNameFunction(funcs);
-		{venv = venv', tenv = tenv, trExpList = []}
+		{venv = venv', tenv = tenv, trExpList = initExpList}
 	)
 	end
 
-| transDec(venv, tenv, A.StartOfDecList ()) = {venv=venv, tenv=tenv, trExpList = []}
+| transDec(venv, tenv, A.StartOfDecList (), initExpList) = {venv=venv, tenv=tenv, trExpList = initExpList}
 	
 
 and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos)) = 

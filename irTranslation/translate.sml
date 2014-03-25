@@ -9,6 +9,9 @@ sig
 	val formals : level -> access list
 	val allocLocal : level -> bool -> access
 	
+  val procEntryExit : {level: level, body: exp} -> unit
+  val getResult : unit -> FRAME.frag list
+
   val simpleVar : access * level -> exp
 end
 
@@ -25,10 +28,12 @@ structure Translate : TRANSLATE =
 
   val outermost = ROOT
 
+  val funFragList = ref []
+
   fun newLevel {parent: level, name: Te.label, formals: bool list} = 
     let 
       val formals' = true::formals
-      val newframe = Frame.newFrame(name, formals')
+      val newframe = F.newFrame(name, formals')
     in
       CHILD(parent, newframe)
     end
@@ -47,7 +52,7 @@ structure Translate : TRANSLATE =
       fun allocL escape:bool = 
         let
           val theFrame = (#frame level)
-          val frameAccess = Frame.allocLocal theFrame escape
+          val frameAccess = F.allocLocal theFrame escape
         in
           (level, frameAccess)
         end
@@ -95,5 +100,10 @@ structure Translate : TRANSLATE =
     in
       f.exp(fa) Tr.TEMP(f.FP)
     end
+
+  fun procEntryExit(level, body) = (funFragList := (!funFragList)::F.PROC({body = unNx(body), frame = (#frame level)}))
+
+  fun getResult() = !funFragList
+
 
 end
