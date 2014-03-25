@@ -9,6 +9,11 @@ sig
 	val name : frame -> Temp.label
 	val formals : frame -> access list
 	val allocLocal : frame -> bool -> access
+
+  val FP : Temp.temp
+  val wordSize : int
+  val exp : access -> Tree.exp -> Tree.exp
+
 end
 
 
@@ -25,6 +30,7 @@ struct
   structure Tr = Tree
   structure S = Symbol
 
+  val FP = Te.newtemp()
   val wordSize = 4
 
   fun name(frame) = (#name frame)
@@ -50,5 +56,13 @@ struct
     in
       allocL
     end
+
+  fun exp(InFrame offset) = 
+    let 
+      fun addFP(fp: Tr.exp) = Tr.MEM(Tr.BINOP(PLUS, fp, Tr.CONST(offset)))
+    in
+      addFP
+    end
+  | exp(InReg t) = fn _ => Tr.TEMP(t)
 
 end

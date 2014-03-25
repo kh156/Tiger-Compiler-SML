@@ -3,8 +3,6 @@ structure A = Absyn
 structure T = Types
 structure E = Envir
 structure S = Symbol
-(*define return type of trans* functions*)
-structure Translate = struct type exp = unit end
 
 signature SEM = 
 sig
@@ -21,6 +19,7 @@ sig
 	val transProg:        			      Absyn.exp -> unit
 end
 
+(*Notes on IR translation: semant.sml should never contain direct reference to Tree or Frame module!!!*)
 structure Semant :> SEM = 
 struct
 

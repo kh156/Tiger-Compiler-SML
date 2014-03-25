@@ -2,12 +2,14 @@ signature TRANSLATE =
 sig
 	type level 
 	type access (*not same as Frame.access*)
+  type exp
 
 	val outermost : level
 	val newLevel : {parent: level, name: Temp.label, formals: bool list} -> level
 	val formals : level -> access list
 	val allocLocal : level -> bool -> access
 	
+  val simpleVar : access * level -> exp
 end
 
 
@@ -86,6 +88,6 @@ structure Translate : TRANSLATE =
     | unCx (Tr.CONST 1) = fn (t, f) => Tr.JUMP(Tr.NAME(t), [t])
     | unCx (Ex e) = fn (t, f) => Tr.CJUMP(Tr.NE, e, Tr.CONST 0, t, f)
 
-  
+
 
 end
