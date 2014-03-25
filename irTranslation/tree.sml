@@ -30,7 +30,7 @@ end
 
 structure Tree : TREE = 
 struct
-  type label=Temp.label
+  type label= Temp.label
   type size = int
 
 datatype stm = SEQ of stm * stm
