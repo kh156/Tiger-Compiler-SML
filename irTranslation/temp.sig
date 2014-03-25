@@ -8,4 +8,3 @@ sig
   val newlabel : unit -> label
   val namedlabel : string -> label
 end
-
