@@ -11,6 +11,7 @@ sig
 end
 
 structure Translate : TRANSLATE = 
+
 struct
 
 end
