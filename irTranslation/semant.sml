@@ -406,8 +406,10 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 						val ty = case S.look(tenv, typ) of
 					    	SOME t => t
 					    | 	NONE => T.ERROR
+
+					    val SOME(E.FunEntry entryRecord) = S.look(venv, name)
 					in
-						S.enter (venvCurr, name, E.VarEntry {ty = ty})
+						S.enter (venvCurr, name, E.VarEntry {access = Trans.allocLocal (#level entryRecord) (!escape), ty = ty})
 					end
 				val venv' = foldr enterparam venv params
 				val {exp = _, ty = tybody} = transExp (venv', tenv, body)
@@ -432,13 +434,28 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				    	SOME t => t
 				    | 	NONE => (ErrorMsg.error pos "Unknown params type in function declaration"; T.ERROR)
 				val params' = map transparam params
+
+				(*should this be here?*)
+				fun extractEscape({name=name, escape=escape, typ=typ, pos=pos}) = escape
+				val newLabel = Te.newlabel()
+				val newLevel = Trans.newLevel {parent = level, name = newLabel, formals = (map extractEscape params)}
 			in 
-				S.enter(venvCurr, name, E.FunEntry {formals = params', result = tyret})
+				S.enter(venvCurr, name, E.FunEntry {level = newLevel, label = newLabel, formals = params', result = tyret})
+			end
+
+		fun addFunFrags ({name=name, params=params, body=body, pos=pos, result=result}, venvCurr) =
+			let
+				val SOME(E.FunEntry entryRecord) = S.look(venv, name)
+				val {exp = bodyExp, ty = ty} = transExp(venvCurr, tenv, body, (#level entryRecord), initExpList)
+				val unitResult = Trans.procEntryExit((#level entryRecord), bodyExp)
+			in
+				venvCurr
 			end
 
 		val venv' = foldr firstPass venv funcs;
 	in (
 		secondPass(venv', funcs);
+		foldr addFunFrags venv' funcs;
 		noRepeatNameFunction(funcs);
 		{venv = venv', tenv = tenv, trExpList = initExpList}
 	)
