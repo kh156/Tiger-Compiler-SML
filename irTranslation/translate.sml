@@ -13,23 +13,28 @@ end
 
 structure Translate : TRANSLATE = 
   
+  structure F = Frame
+  structure Te = Temp
+  structure Tr = Tree
+
   datatype level = ROOT
-                  |CHILD of {parent: level, frame: F.frame}
-  type access = level * Frame.access
+                  | CHILD of {parent: level, frame: F.frame}
+  type access = level * F.access
+
   val outermost = ROOT
 
-  fun newLevel {parent: level, name: label, formals: bool list} = 
+  fun newLevel {parent: level, name: Te.label, formals: bool list} = 
     let 
       val formals' = true::formals
-      val newframe = Frame.newFrame(label, formals')
+      val newframe = Frame.newFrame(name, formals')
     in
       CHILD(parent, newframe)
     end
 
   fun formals(level) = 
     let
-      val theFrame = #frame level
-      val theFormals = Frame.formals(theFrame)
+      val theFrame = (#frame level)
+      val theFormals = F.formals(theFrame)
     in
       case theFormals 
         of a::rest => rest
@@ -37,15 +42,50 @@ structure Translate : TRANSLATE =
 
   fun allocLocal(level) = 
     let 
-      fun ret b:bool = 
+      fun allocL escape:bool = 
         let
-          val theFrame = #frame level
-          val frameAccess = Frame.allocLocal theFrame b
+          val theFrame = (#frame level)
+          val frameAccess = Frame.allocLocal theFrame escape
         in
           (level, frameAccess)
         end
     in
-      ret
+      allocL
     end
+
+
+  datatype exp = Ex of Tr.exp
+               | Nx of Tr.stm
+               | Cx of Te.label * Te.label
+
+  fun seq stm:[] = stm
+    | seq [stm::rest] = Tr.SEQ(stm, seq(rest))
+
+  fun unEx (Ex e) = e
+    | unEx (Nx s) = Tr.ESEQ(s, Tr.CONST 0)
+    | unEx (Cx genstm) = 
+      let
+        val r = Te.newtemp()
+        val t = Te.newlabel() and f = Te.newlable()
+      in
+        Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, Tr.CONST 1),
+                    genstm(t, f),
+                    Tr.LABEL f,
+                    Tr.MOVE(Tr.TEMP r, Tr.CONST 0),
+                    Tr.LABEL t],
+                Tr.TEMP r)
+      end
+
+  fun unNx (Ex e) = Tr.EXP(e)
+    | unNx (Nx s) = s
+    | unNx (Cx genstm) = Tr.EXP(unEx(genstm))(*not sure about this...transform a conditional exp into a stm???*)
+
+  fun unCx (Cx genstm) = genstm
+    | unCx (Nx _) = ErrorMsg.impossible "Error: cannot unCx(Nx stm)!"
+    | unCx (Tr.CONST 0) = fn (t, f) => Tr.JUMP(Tr.NAME(f), [f])
+    | unCx (Tr.CONST 1) = fn (t, f) => Tr.JUMP(Tr.NAME(t), [t])
+    | unCx (Ex e) = fn (t, f) => Tr.CJUMP(Tr.NE, e, Tr.CONST 0, t, f)
+
+  
 
 end
