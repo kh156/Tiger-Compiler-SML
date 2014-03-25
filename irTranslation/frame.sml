@@ -74,6 +74,11 @@ struct
   | exp(InReg t) = fn _ => Tr.TEMP(t)
 
 
-  fun procEntryExit1(frame, body) = body(*...to be implemented--generated a new Tr.stm*)
+  fun procEntryExit1(frame, body) = 
+    let
+      (*steps 4, 5, 8 on page 168*)
+    in
+      body
+    end
 
 end

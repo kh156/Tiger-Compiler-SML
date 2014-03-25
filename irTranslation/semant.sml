@@ -435,8 +435,8 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				    | 	NONE => (ErrorMsg.error pos "Unknown params type in function declaration"; T.ERROR)
 				val params' = map transparam params
 
-				(*should this be here?*)
-				fun extractEscape({name=name, escape=escape, typ=typ, pos=pos}) = escape
+				(*ir translation stuff*)
+				fun extractEscape({name=name, escape=escape, typ=typ, pos=pos}) = !escape
 				val newLabel = Te.newlabel()
 				val newLevel = Trans.newLevel {parent = level, name = newLabel, formals = (map extractEscape params)}
 			in 

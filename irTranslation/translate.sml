@@ -103,7 +103,15 @@ structure Translate : TRANSLATE =
       Ex (f.exp(fa) Tr.TEMP(f.FP))
     end
 
-  fun procEntryExit(level, body) = (funFragList := F.PROC({body = unNx(body), frame = (#frame level)})::(!funFragList))
+  fun procEntryExit(level, body) = 
+    let
+      val funFrame = (#frame level)
+      val addedSteps = F.procEntryExit1(funFrame, unNx(body))
+      val moveStm = Tr.MOVE((Tr.TEMP funFrame.RV), body)
+      val addedMove = Tr.SEQ(addedSteps, moveStm)
+    in
+      funFragList := (F.PROC {body = addedMove, frame = funFrame})::(!funFragList)
+    end
 
   fun getResult() = !funFragList
 
