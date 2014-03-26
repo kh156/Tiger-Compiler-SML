@@ -125,7 +125,7 @@ fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  | transExp (venv, tenv, A.IntExp i) = {exp=(), ty=T.INT}
 	  | transExp (venv, tenv, A.VarExp v) = transVar(venv, tenv, v)
-	  | transExp (venv, tenv, A.StringExp (s, pos)) = {exp=(), ty=T.STRING}
+	  | transExp (venv, tenv, A.(s, pos)) = {exp=(), ty=T.STRING}
 	  | transExp (venv, tenv, A.SeqExp exps) =
 		let
 			fun parseExps([]) = {exp = (), ty = T.UNIT}
