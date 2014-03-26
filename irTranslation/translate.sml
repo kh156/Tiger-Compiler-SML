@@ -1,76 +1,142 @@
 signature TRANSLATE = 
 sig
-  type access (*not the same as Frame.access*)
-  type level 
-  type frag
-  type breakpoint
-  datatype exp  = Ex of Tree.exp
-                | Nx of Tree.stm
-                | Cx of Temp.label * Temp.label -> Tree.stm
+	type level 
+	type access (*not same as Frame.access*)
+  type exp
 
-  val frags : frag list ref
-  val outermost : level
-  val newLevel : {parent: level, name: Temp.label, formals: bool list} -> level
-  val formals : level -> access list
-  val allocLocal : level -> bool -> access
-  val assign : exp * exp -> exp
-  
-  val unEx : exp -> Tree.exp
-  val unNx : exp -> Tree.stm
-  val unCx : exp -> (Temp.label * Temp.label -> Tree.stm)
-  val seq : Tree.stm list ->Tree.stm
-  val newbreakpoint : unit -> breakpoint
-  val assignExp : exp * exp -> exp
-  val breakExp : Tree.label -> exp
-  val intExp : int -> exp
-  val nilExp : unit -> exp
-  val ifThenExp : exp * exp -> exp
-  val ifThenElseExp : exp * exp * exp -> exp
-  val intOpExp : Absyn.oper * exp * exp -> exp
-  val letExp : exp list * exp -> exp
-  val seqExp : exp list -> exp
-  val stringExp : string -> exp
-  val stringOpExp : Absyn.oper * exp * exp -> exp
-  val whileExp : exp * exp * Tree.label -> exp
-  val forExp : exp * Tree.label * exp * exp * exp -> exp
-  val callExp : level * Tree.label * exp list  -> exp
-  val recordExp : exp list  -> exp
-  
+	val outermost : level
+	val newLevel : {parent: level, name: Temp.label, formals: bool list} -> level
+	val formals : level -> access list
+	val allocLocal : level -> bool -> access
+	
+  val procEntryExit : {level: level, body: exp} -> unit
+  val getResult : unit -> FRAME.frag list
+
   val simpleVar : access * level -> exp
-  val subscriptExp : exp * exp -> exp
-  val fieldVar : exp * exp -> exp
-  val empty : exp
-
-  val procEntryExit: {level: level, body: exp} -> unit
-  val getResult : unit -> frag list
-  (*val breakExp : exp -> Temp.label*)
-  
 end
 
 
-structure Translate : TRANSLATE = struct
-  structure Frame : FRAME = MipsFrame
+structure Translate : TRANSLATE = 
+
+  structure Te = Temp
+  structure Tr = Tree
+  structure F : FRAME = MipsFrame
   structure A = Absyn
-  structure T = Tree
-  type breakpoint = Tree.label
   val err = ErrorMsg.error
   exception ErrMsg
 
-  fun nilExp () = Ex (T.CONST (0))
-  fun intExp (i) = Ex (T.CONST (i))
+  type frag = FRAME.frag
+
+  datatype level = ROOT
+                  | CHILD of {parent: level, frame: F.frame}
+  type access = level * F.access
+
+  val outermost = ROOT
+
+  val funFragList = ref []
+
+  fun newLevel {parent: level, name: Te.label, formals: bool list} = 
+    let 
+      val formals' = true::formals
+      val newframe = F.newFrame(name, formals')
+    in
+      CHILD(parent, newframe)
+    end
+
+  fun formals(level) = 
+    let
+      val theFrame = (#frame level)
+      val theFormals = F.formals(theFrame)
+    in
+      case theFormals 
+        of a::rest => rest
+    end
+
+  fun allocLocal(level) = 
+    let 
+      fun allocL escape:bool = 
+        let
+          val theFrame = (#frame level)
+          val frameAccess = F.allocLocal theFrame escape
+        in
+          (level, frameAccess)
+        end
+    in
+      allocL
+    end
+
+
+  datatype exp = Ex of Tr.exp
+               | Nx of Tr.stm
+               | Cx of Te.label * Te.label
+
+  fun seq stm:[] = stm
+    | seq [stm::rest] = Tr.SEQ(stm, seq(rest))
+
+  fun unEx (Ex e) = e
+    | unEx (Nx s) = Tr.ESEQ(s, Tr.CONST 0)
+    | unEx (Cx genstm) = 
+      let
+        val r = Te.newtemp()
+        val t = Te.newlabel() and f = Te.newlable()
+      in
+        Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, Tr.CONST 1),
+                    genstm(t, f),
+                    Tr.LABEL f,
+                    Tr.MOVE(Tr.TEMP r, Tr.CONST 0),
+                    Tr.LABEL t],
+                Tr.TEMP r)
+      end
+
+  fun unNx (Ex e) = Tr.EXP(e)
+    | unNx (Nx s) = s
+    | unNx (Cx genstm) = Tr.EXP(unEx(genstm)) (*evaluate the exp for side-effects and discard the result*)
+
+  fun unCx (Cx genstm) = genstm
+    | unCx (Nx _) = ErrorMsg.impossible "Error: cannot unCx(Nx stm)!"
+    | unCx (Tr.CONST 0) = fn (t, f) => Tr.JUMP(Tr.NAME(f), [f])
+    | unCx (Tr.CONST 1) = fn (t, f) => Tr.JUMP(Tr.NAME(t), [t])
+    | unCx (Ex e) = fn (t, f) => Tr.CJUMP(Tr.NE, e, Tr.CONST 0, t, f)
+
+  (*how is the current level useful here? I guess static links come into play here...*)
+  fun simpleVar((varL: level, fa: F.access), l: level) =
+    let
+      f = (#frame varL) (*this is the frame the variable was declared*)
+    in
+      Ex (f.exp(fa) Tr.TEMP(f.FP))
+    end
+
+  fun procEntryExit(level, body) = 
+    let
+      val funFrame = (#frame level)
+      val addedSteps = F.procEntryExit1(funFrame, unNx(body))
+      val moveStm = Tr.MOVE((Tr.TEMP funFrame.RV), body)
+      val addedMove = Tr.SEQ(addedSteps, moveStm)
+    in
+      funFragList := (F.PROC {body = addedMove, frame = funFrame})::(!funFragList)
+    end
+
+  fun getResult() = !funFragList
+
+  fun nilExp () = Ex (Tr.CONST (0))
+  fun intExp (i) = Ex (Tr.CONST (i))
 
   fun stringExp str =
   let
     val label = Temp.newlabel()
   in
     frags := Frame.STRING (label, str) :: !frags;
-    Ex (T.NAME label)
+    Ex (Tr.NAME label)
   end
 
-  fun seqExp [] = Ex (T.CONST 0)
+  fun seq [] = Tr.EXP (T.CONST 0)
+    | seq [s]  = s
+    | seq(h::t) = Tr.SEQ(h,seq(t))
+
+  fun seqExp [] = Ex (Tr.CONST 0)
       | seqExp [exp] = exp
       | seqExp (exp :: exps) =
-          Ex (T.ESEQ (unNx exp, unEx (seqExp exps)))
+          Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
 
 
 fun binOpExp (oper, l, r) = 
@@ -78,36 +144,35 @@ fun binOpExp (oper, l, r) =
     val unexL = unEx l
     val unexR = unEx r
   in
-    Ex (T.BINOP(oper, unexL, unexR))
+    Ex (Tr.BINOP(oper, unexL, unexR))
   end
 
-fun intOpExp (A.PlusOp, l, r) = binOpExp(T.PLUS, l, r)
-  | intOpExp (A.MinusOp, l, r) = binOpExp(T.MINUS, l, r)
-  | intOpExp (A.TimesOp, l, r) = binOpExp(T.MUL, l, r)
-  | intOpExp (A.DivideOp, l, r) = binOpExp(T.DIV, l, r)
-  | intOpExp (A.LtOp, l, r) = binOpExp(T.LT, l, r)
-  | intOpExp (A.GtOp, l, r) = binOpExp(T.GT, l, r)
-  | intOpExp (A.GeOp, l, r) = binOpExp(T.GE, l, r)
-  | intOpExp (A.LeOp, l, r) = binOpExp(T.LE, l, r)
-  | intOpExp (A.EqOp, l, r) = binOpExp(T.EQ, l, r)
-  | intOpExp (A.NeOp, l, r) = binOpExp(T.NE, l, r)
-
+fun intOpExp (A.PlusOp, l, r) = binOpExp(Tr.PLUS, l, r)
+  | intOpExp (A.MinusOp, l, r) = binOpExp(Tr.MINUS, l, r)
+  | intOpExp (A.TimesOp, l, r) = binOpExp(Tr.MUL, l, r)
+  | intOpExp (A.DivideOp, l, r) = binOpExp(Tr.DIV, l, r)
+  | intOpExp (A.LtOp, l, r) = binOpExp(Tr.LT, l, r)
+  | intOpExp (A.GtOp, l, r) = binOpExp(Tr.GT, l, r)
+  | intOpExp (A.GeOp, l, r) = binOpExp(Tr.GE, l, r)
+  | intOpExp (A.LeOp, l, r) = binOpExp(Tr.LE, l, r)
+  | intOpExp (A.EqOp, l, r) = binOpExp(Tr.EQ, l, r)
+  | intOpExp (A.NeOp, l, r) = binOpExp(Tr.NE, l, r)
 
 
 fun stringOpExp
+
 fun recordExp
 
+fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
 
-fun assignExp (var, exp) =
-  let
-    val unxVar = unEx var
-    val unxExp = unEx exp
-  in
-    Nx (T.MOVE(var, exp))
-  end
+fun callExp (l:level, label, exps : exp list) = Ex(Tr.CALL(Tr.NAME(label),map(unEx, exps)))
 
-fun callExp (l:level, label, exps : exp list) = Ex(T.CALL(T.NAME(label),sl::exps))
+fun letExp ([], body) = body
+      | letExp (decs, body) = Ex (T.ESEQ (seq (map unNx decs), unEx body))
 
+
+  (*all kinds of transformations*)
+  
 
 
 end
