@@ -20,7 +20,7 @@ structure Translate : TRANSLATE =
 
   structure Te = Temp
   structure Tr = Tree
-  structure F : FRAME = MipsFrame
+  structure F = Frame
   structure A = Absyn
   val err = ErrorMsg.error
   exception ErrMsg
@@ -121,7 +121,7 @@ structure Translate : TRANSLATE =
   fun nilExp () = Ex (Tr.CONST (0))
   fun intExp (i) = Ex (Tr.CONST (i))
 
-  fun stringExp str =
+  fun strExp str =
   let
     val label = Temp.newlabel()
   in
@@ -129,46 +129,50 @@ structure Translate : TRANSLATE =
     Ex (Tr.NAME label)
   end
 
-  fun seq [] = Tr.EXP (T.CONST 0)
-    | seq [s]  = s
-    | seq(h::t) = Tr.SEQ(h,seq(t))
 
-  fun seqExp [] = Ex (Tr.CONST 0)
-      | seqExp [exp] = exp
-      | seqExp (exp :: exps) =
-          Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
+fun seq [] = Tr.EXP (T.CONST 0)
+  | seq [s]  = s
+  | seq(h::t) = Tr.SEQ(h,seq(t))
 
-
-fun binOpExp (oper, l, r) = 
-  let 
-    val unexL = unEx l
-    val unexR = unEx r
-  in
-    Ex (Tr.BINOP(oper, unexL, unexR))
-  end
-
-fun intOpExp (A.PlusOp, l, r) = binOpExp(Tr.PLUS, l, r)
-  | intOpExp (A.MinusOp, l, r) = binOpExp(Tr.MINUS, l, r)
-  | intOpExp (A.TimesOp, l, r) = binOpExp(Tr.MUL, l, r)
-  | intOpExp (A.DivideOp, l, r) = binOpExp(Tr.DIV, l, r)
-  | intOpExp (A.LtOp, l, r) = binOpExp(Tr.LT, l, r)
-  | intOpExp (A.GtOp, l, r) = binOpExp(Tr.GT, l, r)
-  | intOpExp (A.GeOp, l, r) = binOpExp(Tr.GE, l, r)
-  | intOpExp (A.LeOp, l, r) = binOpExp(Tr.LE, l, r)
-  | intOpExp (A.EqOp, l, r) = binOpExp(Tr.EQ, l, r)
-  | intOpExp (A.NeOp, l, r) = binOpExp(Tr.NE, l, r)
+fun seqExp [] = Ex (Tr.CONST 0)
+    | seqExp [exp] = exp
+    | seqExp (exp :: exps) =
+        Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
 
 
-fun stringOpExp
+  fun binOpExp (oper, l, r) = 
+    let 
+      val unexL = unEx l
+      val unexR = unEx r
+    in
+      Ex (Tr.BINOP(oper, unexL, unexR))
+    end
 
-fun recordExp
+  fun compExp (oper, l, r) =
+    Cx ( fn(t,f) => Tr.CJUMP(oper, l, r, t, f) )
 
-fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
+  fun intOpExp (A.PlusOp, l, r) = binOpExp(Tr.PLUS, l, r)
+    | intOpExp (A.MinusOp, l, r) = binOpExp(Tr.MINUS, l, r)
+    | intOpExp (A.TimesOp, l, r) = binOpExp(Tr.MUL, l, r)
+    | intOpExp (A.DivideOp, l, r) = binOpExp(Tr.DIV, l, r)
+    | intOpExp (A.LtOp, l, r) = compExp(Tr.LT, l, r)
+    | intOpExp (A.GtOp, l, r) = compExp(Tr.GT, l, r)
+    | intOpExp (A.GeOp, l, r) = compExp(Tr.GE, l, r)
+    | intOpExp (A.LeOp, l, r) = compExp(Tr.LE, l, r)
+    | intOpExp (A.EqOp, l, r) = compExp(Tr.EQ, l, r)
+    | intOpExp (A.NeOp, l, r) = compExp(Tr.NE, l, r)
 
-fun callExp (l:level, label, exps : exp list) = Ex(Tr.CALL(Tr.NAME(label),map(unEx, exps)))
 
-fun letExp ([], body) = body
-      | letExp (decs, body) = Ex (T.ESEQ (seq (map unNx decs), unEx body))
+  fun stringOpExp
+
+  fun recordExp
+
+  fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
+
+  fun callExp (l:level, label, exps : exp list) = Ex(Tr.CALL(Tr.NAME(label),map(unEx, exps)))
+
+  fun letExp ([], body) = body
+        | letExp (decs, body) = Ex (T.ESEQ (seq (map unNx decs), unEx body))
 
 
   (*all kinds of transformations*)
