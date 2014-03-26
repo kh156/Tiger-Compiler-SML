@@ -216,7 +216,17 @@ structure Translate : TRANSLATE =
             Tr.CONST 0)
     end
 
-  fun forExp
+  fun forExp(iAccess, loExp, hiExp, bodyExp, doneLabel, level) = 
+    let
+      val l = Te.newlabel()
+    in
+      Tr.ESEQ(seq[assignExp(simpleVar(iAccess, level), loExp),
+                  Tr.LABEL l,
+                  unNx bodyExp,
+                  compExp(Tr.LE, simpleVar(iAccess, level), hiExp) (l, doneLabel)
+                  Tr.LABEL doneLabel],
+            Tr.CONST 0)
+    end
 
   fun breakExp(doneLabel) = Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]);
 
