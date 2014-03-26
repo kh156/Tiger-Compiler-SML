@@ -68,14 +68,14 @@ structure Translate : TRANSLATE =
 
   datatype exp = Ex of Tr.exp
                | Nx of Tr.stm
-               | Cx of Te.label * Te.label
+               | Cx of Te.label * Te.label -> Tr.stm
 
   fun unEx (Ex e) = e
     | unEx (Nx s) = Tr.ESEQ(s, Tr.CONST 0)
     | unEx (Cx genstm) = 
       let
         val r = Te.newtemp()
-        val t = Te.newlabel() and f = Te.newlable()
+        val t = Te.newlabel() and f = Te.newlabel()
       in
         Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, Tr.CONST 1),
                     genstm(t, f),
@@ -163,24 +163,62 @@ structure Translate : TRANSLATE =
 
   fun intExp(i) = Ex (Tr.CONST i)
 
-  fun stringOpExp
+  fun stringOpExp (*what's this??*)
 
   fun recordExp
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
 
-  fun callExp (l:level, label, exps) = Ex(Tr.CALL(Tr.NAME(label), map unEx exps)) (*this level is the fn's level from FunEntry...*)
+  fun callExp (l:level, label, exps) = Ex(Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to calculate static links!!*)
 
   fun letExp ([], body) = body
         | letExp (decs, body) = Ex (T.ESEQ (seq (map unNx decs), unEx body))
 
-  fun ifExp
+  fun ifThenExp(testExp, thenExp) = 
+    let
+      val r = Te.newtemp()
+      val t = Te.newlabel()
+      val f = Te.newlabel()
+    in
+      Tr.ESEQ(seq[(unCx testExp) (t, f),
+                    Tr.LABEL t,
+                    unNx thenExp,
+                    Tr.LABEL f],
+                Tr.CONST 0)
+    end
 
-  fun whileExp
+  fun ifThenElseExp(testExp, thenExp, elseExp) = 
+    let
+      val r = Te.newtemp()
+      val t = Te.newlabel()
+      val f = Te.newlabel()
+      val join = Te.newlabel()
+    in
+      Tr.ESEQ(seq[(unCx testExp) (t, f),
+                    Tr.LABEL t,
+                    Tr.MOVE(Tr.TEMP r, unEx thenExp),
+                    Tr.JUMP(Tr.NAME(join), [join])
+                    Tr.LABEL f,
+                    Tr.MOVE(Tr.TEMP r, unEx elseExp),
+                    Tr.Label join],
+                Tr.TEMP r)
+    end
+
+  fun whileExp(testExp, bodyExp, doneLabel) =
+    let
+      val l = Te.newlabel()
+    in
+      Tr.ESEQ(seq[(unCx testExp) (l, done),
+                  Tr.LABEL l,
+                  unNx bodyExp,
+                  (unCx testExp) (l, done),
+                  Tr.LABEL doneLabel],
+            Tr.CONST 0)
+    end
 
   fun forExp
 
-  fun breakExp
+  fun breakExp(doneLabel) = Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]);
 
   fun arrayExp
   
