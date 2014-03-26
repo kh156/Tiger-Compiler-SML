@@ -123,17 +123,18 @@ fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 		| _ => (ErrorMsg.error pos "Error processing mutually recursive types!"; tenv))
 
 fun transExp (venv, tenv, A.NilExp, level, initExpList) = {exp=(), ty=T.NIL}
-	  | transExp (venv, tenv, A.IntExp i, level, initExpList) = {exp=(), ty=T.INT}
+	  | transExp (venv, tenv, A.IntExp i, level, initExpList) = {exp=Trans.intExp(i), ty=T.INT}
 	  | transExp (venv, tenv, A.VarExp v, level, initExpList) = transVar(venv, tenv, v)
-	  | transExp (venv, tenv, A.StringExp (s, pos), level, initExpList) = {exp=(), ty=T.STRING}
+	  | transExp (venv, tenv, A.StringExp (s, pos), level, initExpList) = {exp=Trans.strExp(s), ty=T.STRING}
 	  | transExp (venv, tenv, A.SeqExp exps, level, initExpList) =
 		let
-			fun parseExps([]) = {exp = (), ty = T.UNIT}
-			|	parseExps((e, p)::[]) = transExp(venv, tenv, e)
-			|	parseExps((e, p)::l) = (
-					transExp(venv, tenv, e);
-					parseExps(l)
-				)
+			fun parseExps([], translatedExpList) = {exp = Trans.seqExp(translatedExpList), ty = T.UNIT}
+			|	parseExps((e, p)::l, translatedExpList) =
+				let
+					val {exp = translatedExp, ty = ty} = transExp(venv, tenv, e, level, initExpList);
+				in
+					parseExps(l, translatedExp::translatedExpList)
+				end
 		in
 			parseExps(exps)
 		end
@@ -143,23 +144,29 @@ fun transExp (venv, tenv, A.NilExp, level, initExpList) = {exp=(), ty=T.NIL}
   			oper=A.TimesOp orelse oper=A.DivideOp orelse
 			oper=A.LtOp orelse oper=A.LeOp orelse
   			oper=A.GtOp orelse oper=A.GeOp)
-  	    then (checkInt(transExp(venv, tenv, left), pos);
-		 	  checkInt(transExp(venv, tenv, right), pos);
-		 	  {exp=(),ty=T.INT})
+  	    then 
+  	    	let
+  	    		val leftResult = transExp(venv, tenv, left, level, initExpList)
+  	    		val rightResult = transExp(venv, tenv, right, level, initExpList)
+  	    	in
+  	    	  (checkInt(leftResult, pos);
+		 	  checkInt(rightResult, pos);
+		 	  {exp=Trans.intOpExp(oper, (#exp leftResult), (#exp rightResult)), ty=T.INT})
+
 		else if (oper=A.EqOp orelse oper=A.NeqOp)
 		then
 			let
-				val {exp=exp, ty=leftType} = transExp(venv, tenv, left)
-				val {exp=exp, ty=rightType} = transExp(venv, tenv, right)
+				val {exp=expLeft, ty=leftType} = transExp(venv, tenv, left, level, initExpList)
+				val {exp=expRight, ty=rightType} = transExp(venv, tenv, right, level, initExpList)
 			in
 				if (compareType(leftType, rightType, pos, pos) orelse compareType(rightType, leftType, pos, pos))
-			  	   	  then {exp=(), ty=T.INT}
-			  		  else ((ErrorMsg.error pos "Logical comparison on two different types!");
-			  		  		{exp=(),ty=T.ERROR})
+			  	then {exp=Trans.intOpExp(oper, expLeft, expRight), ty=T.INT}
+			  	else ((ErrorMsg.error pos "Logical comparison on two different types!");
+			  		  {exp=Trans.intOpExp(oper, expLeft, expRight), ty=T.ERROR})
 			end
 		else
 			((error pos "Error identifying the operator used!");
-			{exp=(),ty=T.ERROR})
+			{exp=Trans.intExp(0), ty=T.ERROR})
 
 	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}, level, initExpList) = 
 	  	let
@@ -186,26 +193,30 @@ fun transExp (venv, tenv, A.NilExp, level, initExpList) = {exp=(), ty=T.NIL}
 	  	end
 
 	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}, level, initExpList) =
-	  	if (#ty (transVar(venv, tenv, var))) = (#ty (transExp(venv, tenv, exp)))
-	  	then {exp=(),ty=T.UNIT}
+	  	let
+	  		val {exp=leftExp, ty=leftTy} = transVar(venv, tenv, var)
+	  		val {exp=rightExp, ty=rightTy} = transExp(venv, tenv, exp)
+	  	if (leftTy = rightTy)
+	  	then {exp=Trans.assignExp(leftExp, rightExp), ty=T.UNIT}
 	  	else 
 	  		(error pos "Types of variable and assigned expression do not match";
-			{exp=(),ty=T.ERROR})
+			{exp=Trans.assignExp(leftExp, rightExp), ty=T.ERROR})
 
 	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}, level, initExpList) =
 	  	let 
-	  		fun transOneDec(oneDec, {venv=venv, tenv=tenv}) = 
-	  			transDec(venv, tenv, oneDec, initExpList)
-	  		val {venv=venv',tenv=tenv'} = foldr transOneDec {venv=venv, tenv=tenv} decs
-	  	 in transExp(venv',tenv', body, initExpList)
+	  		fun transOneDec(oneDec, {venv=venv, tenv=tenv, trExpList=initExpList}) = 
+	  			transDec(venv, tenv, oneDec, level, initExpList)
+	  		val {venv=venv',tenv=tenv', trExpList=trExpList'} = foldr transOneDec {venv=venv, tenv=tenv, trExpList=[]} decs
+	  	 in 
+	  	 	transExp(venv',tenv', body, level, trExpList')
 	  	end
 
 	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}, level, initExpList) =
 	   (case S.look(venv, func) of
-	  		SOME (E.FunEntry {formals=formals, result=result}) =>
+	  		SOME (E.FunEntry {level=funLevel, label=label, formals=formals, result=result}) =>
 	  		  ( let 
-	  		  		fun transExpHere(oneExp) = transExp(venv, tenv, oneExp)
-	  				val argTypes = map transExpHere args
+	  		  		fun transExpHere(oneExp) = transExp(venv, tenv, oneExp, level, initExpList)
+	  				val argResults = map transExpHere args
 	  				fun compareTypes (ty1::lst1, ty2::lst2, pos) =
 							if compareType(ty1,ty2, pos, pos) 
 								then compareTypes(lst1,lst2, pos)
@@ -215,16 +226,17 @@ fun transExp (venv, tenv, A.NilExp, level, initExpList) = {exp=(), ty=T.NIL}
 	  				|	compareTypes ([], _, pos) = false
 	  			in
 		  			if length(argTypes) <> length(formals) then
-		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args))); {exp=(),ty=actual_ty(result, pos)})
+		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args)));
+		  					{exp=Trans.callExp(level, label, map (#exp) argResults), ty=actual_ty(result, pos)})
 	            	else (
-	            		if compareTypes (formals, map (#ty) argTypes, pos) 
+	            		if compareTypes (formals, map (#ty) argResults, pos) 
 	            			then ()
 	            			else (error pos ("Params do not match with function: "^S.name(func)));
-			            {exp=(),ty=actual_ty(result, pos)}
+			            {exp=Trans.callExp(level, label, map (#exp) argResults), ty=actual_ty(result, pos)}
 			        )
 				end
 			  )
-	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=(),ty=T.ERROR}))
+	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=Trans.intExp(0), ty=T.ERROR}))
 
 	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}, level, initExpList) =
 	  	(case elseExp of

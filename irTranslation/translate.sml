@@ -33,7 +33,7 @@ structure Translate : TRANSLATE =
 
   val outermost = ROOT
 
-  val funFragList = ref []
+  val fragList = ref []
 
   fun newLevel {parent: level, name: Te.label, formals: bool list} = 
     let 
@@ -69,9 +69,6 @@ structure Translate : TRANSLATE =
   datatype exp = Ex of Tr.exp
                | Nx of Tr.stm
                | Cx of Te.label * Te.label
-
-  fun seq stm:[] = stm
-    | seq [stm::rest] = Tr.SEQ(stm, seq(rest))
 
   fun unEx (Ex e) = e
     | unEx (Nx s) = Tr.ESEQ(s, Tr.CONST 0)
@@ -113,32 +110,33 @@ structure Translate : TRANSLATE =
       val moveStm = Tr.MOVE((Tr.TEMP funFrame.RV), body)
       val addedMove = Tr.SEQ(addedSteps, moveStm)
     in
-      funFragList := (F.PROC {body = addedMove, frame = funFrame})::(!funFragList)
+      fragList := (F.PROC {body = addedMove, frame = funFrame})::(!fragList)
     end
 
-  fun getResult() = !funFragList
+  fun getResult() = !fragList
 
   fun nilExp () = Ex (Tr.CONST (0))
   fun intExp (i) = Ex (Tr.CONST (i))
 
+
+  (*all kinds of transformations*)
+
   fun strExp str =
   let
-    val label = Temp.newlabel()
+    val label = Te.newlabel()
   in
-    frags := Frame.STRING (label, str) :: !frags;
-    Ex (Tr.NAME label)
+    (fragList := F.STRING (label, str) :: !fragList;
+    Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
   end
 
 
-fun seq [] = Tr.EXP (T.CONST 0)
-  | seq [s]  = s
-  | seq(h::t) = Tr.SEQ(h,seq(t))
+  fun seq stm:[] = stm
+    | seq [stm::rest] = Tr.SEQ(stm, seq(rest))
 
-fun seqExp [] = Ex (Tr.CONST 0)
+  fun seqExp [] = Ex (Tr.CONST 0)
     | seqExp [exp] = exp
     | seqExp (exp :: exps) =
         Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
-
 
   fun binOpExp (oper, l, r) = 
     let 
@@ -163,20 +161,27 @@ fun seqExp [] = Ex (Tr.CONST 0)
     | intOpExp (A.NeOp, l, r) = compExp(Tr.NE, l, r)
 
 
+  fun intExp(i) = Ex (Tr.CONST i)
+
   fun stringOpExp
 
   fun recordExp
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
 
-  fun callExp (l:level, label, exps : exp list) = Ex(Tr.CALL(Tr.NAME(label),map(unEx, exps)))
+  fun callExp (l:level, label, exps) = Ex(Tr.CALL(Tr.NAME(label), map unEx exps)) (*this level is the fn's level from FunEntry...*)
 
   fun letExp ([], body) = body
         | letExp (decs, body) = Ex (T.ESEQ (seq (map unNx decs), unEx body))
 
+  fun ifExp
 
-  (*all kinds of transformations*)
+  fun whileExp
+
+  fun forExp
+
+  fun breakExp
+
+  fun arrayExp
   
-
-
 end
