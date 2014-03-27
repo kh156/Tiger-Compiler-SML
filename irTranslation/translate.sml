@@ -1,7 +1,7 @@
 signature TRANSLATE = 
 sig
   datatype level = ROOT
-                  | CHILD of {parent: level, frame: MipsFrame.frame}
+                  | CHILD of {parent: level, frame: MipsFrame.frame, unique: unit ref}
 	type access (*not same as Frame.access*)
   type exp
   type frag
@@ -15,7 +15,7 @@ sig
   val getResult : unit -> MipsFrame.frag list
 
   val simpleVar : access * level -> exp
-  val getStaticLink : level -> access
+  val getStaticLink : level * Tree.exp -> Tree.exp
 
 end
 
@@ -33,7 +33,7 @@ struct
   type frag = F.frag
 
   datatype level = ROOT
-                  | CHILD of {parent: level, frame: F.frame}
+                  | CHILD of {parent: level, frame: F.frame, unique: unit ref}
 
   type access = level * F.access
 
@@ -50,42 +50,42 @@ struct
       val formals' = true::formals
       val newframe = F.newFrame({name=name, formals=formals'})
     in
-      CHILD({parent=parent, frame=newframe})
+      CHILD({parent=parent, frame=newframe, unique = ref ()})
     end
 
 
   (*I made formals return the whole list--including the first element which is the static link.*)
-  fun formals(CHILD {parent=parent, frame=frame}) = 
+  fun formals(CHILD {parent=parent, frame=frame, unique=unique}) = 
     let
       val theFormals = F.formals(frame)
     in
-      crossWithLevel(theFormals, CHILD {parent=parent, frame=frame})
+      crossWithLevel(theFormals, CHILD {parent=parent, frame=frame, unique=unique})
     end
-    | formals(ROOT) = (ErrorMsg.impossible "Error: no formals can be found at the ROOT level!"; [])
+    | formals(ROOT) = (ErrorMsg.impossible "Error: no formals can be found at the ROOT level!")
 
 
-  fun allocLocal(CHILD {parent=parent, frame=frame}) = 
+  fun allocLocal(CHILD {parent=parent, frame=frame, unique=unique}) = 
     let 
       fun allocL (escape:bool) = 
         let
           val frameAccess = F.allocLocal frame escape
         in
-          (CHILD {parent=parent, frame=frame}, frameAccess)
+          (CHILD {parent=parent, frame=frame, unique=unique}, frameAccess)
         end
     in
       allocL
     end
-    | allocLocal(ROOT) = (ErrorMsg.impossible "Error: cannot allocal local variable in ROOT level!"; (fn a:bool => (ROOT, F.InFrame 0)))
+    | allocLocal(ROOT) = (ErrorMsg.impossible "Error: cannot allocal local variable in ROOT level!")
 
-  fun getStaticLink(CHILD {parent=parent, frame=frame}) =
+  fun getStaticLink(CHILD {parent=parent, frame=frame, unique=unique}, newFP) =
     let
-      val formalAccesses = formals (CHILD {parent=parent, frame=frame})
+      val formalAccesses = formals (CHILD {parent=parent, frame=frame, unique=unique})
     in
       case formalAccesses of
-        sl::rest => sl
+        (l, fa)::rest => F.exp fa newFP
         | _ => ErrorMsg.impossible "Error: cannot find static link in a level..."
     end
-    | getStaticLink(ROOT) = ErrorMsg.impossible "Error: cannot find static link in ROOT level..."
+    | getStaticLink(ROOT, newFP) = ErrorMsg.impossible "Error: cannot find static link in ROOT level..."
 
   datatype exp = Ex of Tr.exp
                | Nx of Tr.stm
@@ -126,19 +126,30 @@ struct
         Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
 
   (*how is the current level useful here? I guess static links come into play here...*)
-  fun simpleVar((CHILD {parent=parent, frame=f}, fa: F.access), l: level) =
-    (*let
-      val name : type = expression
-    in*)
-      Ex (F.exp fa (Tr.TEMP F.FP)) (*F.FP? a single global FP? only move when in Function calls?*)
-    (*end*)
+  fun simpleVar((CHILD {parent=parent, frame=f, unique=uniqueRef}, fa: F.access), l: level) =
+    let
+      fun fpOfDesLevel(CHILD {parent=curParent, frame=curFrame, unique=curUnique},
+                            CHILD {parent=desParent, frame=desFrame, unique=desUnique}, newFP) = 
+        if (curUnique = desUnique)
+        then newFP
+        else 
+          let
+            val slExpOfCurLevel = getStaticLink(CHILD {parent=curParent, frame=curFrame, unique=curUnique}, newFP)
+          in
+            fpOfDesLevel(curParent, CHILD {parent=desParent, frame=desFrame, unique=desUnique}, slExpOfCurLevel)
+          end
+      | fpOfDesLevel(_, _, _) = ErrorMsg.impossible "Tracing static link reaches the ROOT level..."
+    in
+      Ex (F.exp fa (fpOfDesLevel(CHILD {parent=parent, frame=f, unique=uniqueRef}, l, Tr.TEMP F.FP)))
+      (*F.FP? a single global FP? only move when in Function calls?*)
+    end
     | simpleVar ((ROOT, fa: F.access), l:level) = Ex (Tr.CONST 0)
 
   fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (index*F.wordSize))))
 
   fun subscriptVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.BINOP(Tr.MUL, unEx index, Tr.CONST (F.wordSize)))))
 
-  fun procEntryExit({level=CHILD {frame=frame, parent=parent}, body=body}) = 
+  fun procEntryExit({level=CHILD {frame=frame, parent=parent, unique=unique}, body=body}) = 
     let
       val funFrame = frame
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
@@ -147,7 +158,7 @@ struct
     in
       fragList := (F.PROC {body = addedMove, frame = funFrame})::(!fragList)
     end
-    | procEntryExit({level=ROOT, body=body}) = (ErrorMsg.impossible "Error: no function should be at the ROOT level!";())
+    | procEntryExit({level=ROOT, body=body}) = (ErrorMsg.impossible "Error: no function should be at the ROOT level!")
 
   fun getResult() = !fragList
 
@@ -212,7 +223,7 @@ struct
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
 
-  fun callExp (l:level, label, exps) = Ex (Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to calculate static links!!*)
+  fun callExp (l:level, label, exps) = Ex (Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to update static links and F.FP!*)
 
   fun letExp ([], body) = body
     | letExp (decs, body) = Ex (Tr.ESEQ (seq (map unNx decs), unEx body))

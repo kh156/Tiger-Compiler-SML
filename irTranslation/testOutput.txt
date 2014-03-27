@@ -12,7 +12,7 @@ SEQ(
        BINOP(PLUS,
         TEMP t100,
         CONST ~8)),
-      NAME L10),
+      NAME L2),
      MEM(
       BINOP(PLUS,
        TEMP t100,
@@ -35,7 +35,7 @@ SEQ(
        BINOP(PLUS,
         TEMP t100,
         CONST ~8)),
-      NAME L10),
+      NAME L2),
      MEM(
       BINOP(PLUS,
        TEMP t100,
