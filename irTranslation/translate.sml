@@ -246,10 +246,10 @@ struct
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[unNx assignExp(unEx simpleVar(iAccess, level), loExp),
+      Nx (Tr.ESEQ(seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (compExp(Tr.LE, unEx simpleVar(iAccess, level), hiExp) (l, doneLabel))
+                  (compExp(Tr.LE, unEx(simpleVar(iAccess, level)), Ex(hiExp)) (l, doneLabel))
                   Tr.LABEL doneLabel],
             Tr.CONST 0))
     end
