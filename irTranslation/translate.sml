@@ -10,7 +10,7 @@ sig
 	val allocLocal : level -> bool -> access
 	
   val procEntryExit : {level: level, body: exp} -> unit
-  val getResult : unit -> FRAME.frag list
+  val getResult : unit -> MipsFrame.frag list
 
   val simpleVar : access * level -> exp
 end
@@ -26,7 +26,7 @@ struct
   val err = ErrorMsg.error
   exception ErrMsg
 
-  type frag = FRAME.frag
+  type frag = F.frag
 
   datatype level = ROOT
                   | CHILD of {parent: level, frame: F.frame}
@@ -34,33 +34,31 @@ struct
 
   val outermost = ROOT
 
-  val fragList = ref []
+  val fragList = ref [] : frag list ref
 
   fun newLevel {parent: level, name: Te.label, formals: bool list} = 
     let 
       val formals' = true::formals
-      val newframe = F.newFrame(name, formals')
+      val newframe = F.newFrame({name=name, formals=formals'})
     in
-      CHILD(parent, newframe)
+      CHILD({parent=parent, frame=newframe})
     end
 
-  fun formals(level) = 
+  fun formals({parent=parent, frame=frame}) = 
     let
-      val theFrame = (#frame level)
-      val theFormals = F.formals(theFrame)
+      val theFormals = F.formals(frame)
     in
       case theFormals 
         of a::rest => rest
     end
 
-  fun allocLocal(level) = 
+  fun allocLocal({parent=parent, frame=theFrame}) = 
     let 
-      fun allocL(escape:bool) = 
+      fun allocL (escape:bool) = 
         let
-          val theFrame = level
-          val frameAccess = F.allocLocal(theFrame, escape)
+          val frameAccess = F.allocLocal theFrame escape
         in
-          (level, frameAccess)
+          ({parent=parent, frame=theFrame}, frameAccess)
         end
     in
       allocL
@@ -70,6 +68,9 @@ struct
   datatype exp = Ex of Tr.exp
                | Nx of Tr.stm
                | Cx of Te.label * Te.label -> Tr.stm
+
+  fun seq (stm::[]) = stm
+    | seq (stm::rest) = Tr.SEQ(stm, seq(rest))
 
   fun unEx (Ex e) = e
     | unEx (Nx s) = Tr.ESEQ(s, Tr.CONST 0)
@@ -88,31 +89,36 @@ struct
 
   fun unNx (Ex e) = Tr.EXP(e)
     | unNx (Nx s) = s
-    | unNx (Cx genstm) = Tr.EXP(unEx(genstm)) (*evaluate the exp for side-effects and discard the result*)
+    | unNx (Cx genstm) = Tr.EXP(unEx(Cx genstm)) (*evaluate the exp for side-effects and discard the result*)
 
   fun unCx (Cx genstm) = genstm
     | unCx (Nx _) = (ErrorMsg.impossible "Error: cannot unCx(Nx stm)!"; (fn (t, f) => Tr.JUMP(Tr.NAME(f), [f])))
-    | unCx (Tr.CONST 0) = (fn (t, f) => Tr.JUMP(Tr.NAME(f), [f]))
-    | unCx (Tr.CONST 1) = (fn (t, f) => Tr.JUMP(Tr.NAME(t), [t]))
+    | unCx (Ex (Tr.CONST 0)) = (fn (t, f) => Tr.JUMP(Tr.NAME(f), [f]))
+    | unCx (Ex (Tr.CONST 1)) = (fn (t, f) => Tr.JUMP(Tr.NAME(t), [t]))
     | unCx (Ex e) = (fn (t, f) => Tr.CJUMP(Tr.NE, e, Tr.CONST 0, t, f))
 
+  fun seqExp [] = Ex (Tr.CONST 0)
+    | seqExp [exp] = exp
+    | seqExp (exp :: exps) =
+        Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
+
   (*how is the current level useful here? I guess static links come into play here...*)
-  fun simpleVar((varL: level, fa: F.access), l: level) =
+  fun simpleVar((varL: {parent: level, frame: F.frame}, fa: F.access), l: level) =
     let
       val f = (#frame varL) (*this is the frame the variable was declared*)
     in
-      Ex (f.exp(fa) Tr.TEMP(f.FP))
+      Ex (F.exp fa Tr.TEMP(F.FP)) (*F.FP? a single global FP???*)
     end
 
   fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
 
   fun subscriptVar(varExp, Tr.CONST index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
 
-  fun procEntryExit({level=level, body=body}) = 
+  fun procEntryExit(level: {parent:level, frame: F.frame}, body) = 
     let
       val funFrame = level
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
-      val moveStm = Tr.MOVE((Tr.TEMP funFrame.RV), body)
+      val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx body)
       val addedMove = Tr.SEQ(addedSteps, moveStm)
     in
       fragList := (F.PROC {body = addedMove, frame = funFrame})::(!fragList)
@@ -151,7 +157,7 @@ struct
     end
 
   fun compExp (oper, l, r) =
-    Cx ( fn(t,f) => Tr.CJUMP(oper, l, r, t, f) )
+    Cx ( fn(t,f) => Tr.CJUMP(oper, unEx l, unEx r, t, f) )
 
   fun intOpExp (A.PlusOp, l, r) = binOpExp(Tr.PLUS, l, r)
     | intOpExp (A.MinusOp, l, r) = binOpExp(Tr.MINUS, l, r)
@@ -162,7 +168,7 @@ struct
     | intOpExp (A.GeOp, l, r) = compExp(Tr.GE, l, r)
     | intOpExp (A.LeOp, l, r) = compExp(Tr.LE, l, r)
     | intOpExp (A.EqOp, l, r) = compExp(Tr.EQ, l, r)
-    | intOpExp (A.NeOp, l, r) = compExp(Tr.NE, l, r)
+    | intOpExp (A.NeqOp, l, r) = compExp(Tr.NE, l, r)
 
 
   fun intExp(i) = Ex (Tr.CONST i)
@@ -170,23 +176,22 @@ struct
   fun stringOpExp (A.EqOp, l, r) = Ex (F.externalCall("stringEqual", [unEx l, unEx r]))
     | stringOpExp (A.NeqOp, l, r) = 
       let 
-        val result = unEx stringOpExp(A.EqOp, l, r)
+        val result = unEx (stringOpExp(A.EqOp, l, r))
       in
-        Ex (Tr.XOR(result, Tr.CONST(1)))
+        Ex (Tr.BINOP(Tr.XOR, result, Tr.CONST(1)))
       end
 
   fun recordExp({translated=fieldExps, size=size}) = 
     let
       val r = Te.newtemp()
     in
-      Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, externalCall("malloc", size * F.wordSize)),
-                  initRecordFields(fieldExps, [], 0)],
+      Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, F.externalCall("malloc", [Tr.CONST (size * F.wordSize)])),
+                  seq(initRecordFields(fieldExps, [], 0, r))],
               Tr.TEMP r)
     end
-
-  fun initRecordFields(oneField::rest, result, curIndex) = initRecordFields(rest,
-    Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP r, Tr.CONST (curIndex*F.wordSize))), oneField)::result, curIndex+1)
-    | initRecordFields([], result, curIndex) = result
+  and initRecordFields(oneField::rest, result, curIndex, labelR):Tr.stm list = initRecordFields(rest,
+    (Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP labelR, Tr.CONST (curIndex*F.wordSize))), oneField)::result), curIndex+1, labelR)
+    | initRecordFields([], result, curIndex, labelR) = result
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
 
@@ -241,10 +246,10 @@ struct
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[assignExp(simpleVar(iAccess, level), loExp),
+      Nx (Tr.ESEQ(seq[unNx assignExp(unEx simpleVar(iAccess, level), loExp),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  compExp(Tr.LE, Ex simpleVar(iAccess, level), Ex hiExp) (l, doneLabel)
+                  (compExp(Tr.LE, unEx simpleVar(iAccess, level), hiExp) (l, doneLabel))
                   Tr.LABEL doneLabel],
             Tr.CONST 0))
     end
