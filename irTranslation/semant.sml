@@ -178,18 +178,26 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
 	  			(case (S.name symbol)=(S.name tySymbol) of 
-	  				true => (case (actual_ty (ty,pos))=(#ty (transExp(venv, tenv, exp))) of 
+	  				true => (case (actual_ty (ty,pos))=(#ty (transExp(venv, tenv, exp, doneLabel, level ,initExpList)))	 of 
 	  						true => checkRecord(otherFields, otherTypes)
 	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
-	  							false))
+	  									false))
 	  				| false => (ErrorMsg.error pos "Field name does not match record type during record creation!";
-	  					false))
-	  		| checkRecord([], []) = true
-	  		| checkRecord(_, _) = false
+	  									false))
+	  			| checkRecord([], []) = true
+	  			| checkRecord(_, _) = false
+
+	  		fun translateEachExp((symbol, exp, pos)::otherFields, translated, size) = 
+	  			let
+	  				val fieldResult = transExp(venv, tenv, exp, doneLabel, level ,initExpList)
+	  			in
+	  				translateEachExp(otherFields, (#exp fieldResult)::translated, size+1)
+	  			end
+	  			| translateEachExp([], translated, size) = {translated=translated, size=size}
 	  	in
 	  		if checkRecord(fields, symbolTypeList)
-	  		then {exp=(), ty=T.RECORD (symbolTypeList, unique)}
-	  		else {exp=(), ty=T.ERROR}
+	  		then {exp=Trans.recordExp(translateEachExp(fields, [], 0)), ty=T.RECORD (symbolTypeList, unique)}
+	  		else {exp=Trans.recordExp(translateEachExp(fields, [], 0)), ty=T.ERROR}
 	  	end
 
 	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}, doneLabel, level, initExpList) =
@@ -494,29 +502,29 @@ and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos), level) =
 
 | transVar(venv, tenv, A.FieldVar (var: A.var, s: A.symbol, pos: A.pos), level) = 
 	(let
-		val {exp = _, ty = parentType} = transVar(venv, tenv, var)
-		fun findMatchField((sym, t)::rest, symToLook, unique, pos) =
-			    (if (S.name sym)=(S.name symToLook)
-			    	then {exp = (), ty = actual_ty (t,pos)}
-			    	else findMatchField(rest, symToLook, unique, pos))
-		| findMatchField([], symToLook, unique, pos) = (ErrorMsg.error pos ("Did not find matched field "^(S.name symToLook)^" in record type!");{exp = (), ty = T.ERROR})
+		val {exp = varExp, ty = parentType} = transVar(venv, tenv, var)
+		fun findMatchField((sym, t)::rest, symToLook, unique, pos, index) =
+			    	(if (S.name sym)=(S.name symToLook)
+			    	then {exp = Trans.fieldVar(varExp, index), ty = actual_ty (t,pos)}
+			    	else findMatchField(rest, symToLook, unique, pos, index+1))
+		| findMatchField([], symToLook, unique, pos, index) = (ErrorMsg.error pos ("Did not find matched field "^(S.name symToLook)^" in record type!");{exp = (), ty = T.ERROR})
 	in
-		(case parentType of T.RECORD(fields, unique) => findMatchField(fields, s, unique, pos)
+		(case parentType of T.RECORD(fields, unique) => findMatchField(fields, s, unique, pos, 0)
 							| _ => (ErrorMsg.error pos ("Trying to access field "^(S.name s)^" whose parent is not a record type!");
 									{exp = (), ty = T.ERROR}))
 	end)
 
 | transVar(venv, tenv, A.SubscriptVar (var: A.var, exp: A.exp, pos: A.pos), level) = 
 	(let 
-		val {exp = _, ty = varType} = transVar(venv, tenv, var)
-		val {exp = _, ty = expType} = transExp(venv, tenv, exp)
+		val {exp = varExp, ty = varType} = transVar(venv, tenv, var)
+		val {exp = indexExp, ty = expType} = transExp(venv, tenv, exp)
     in 
 		case expType of T.INT => (
-				case varType of T.ARRAY (eleType, unique) => {exp = (), ty = actual_ty (eleType,pos)}
+				case varType of T.ARRAY (eleType, unique) => {exp = Trans.subscriptVar(varExp, indexExp), ty = actual_ty (eleType,pos)}
 		   	  		 | _ => (ErrorMsg.error pos "Var must be an array type to access an indexed element!";
-		      			     {exp = (), ty = T.ERROR}))
+		      			     {exp = Trans.subscriptVar(varExp, indexExp), ty = T.ERROR}))
 		| _ => (ErrorMsg.error pos "Exp to access an element in an array should be an integer!";
-				{exp = (), ty = T.ERROR})
+				{exp = Trans.subscriptVar(varExp, indexExp), ty = T.ERROR})
     end)
 
 (*main entry point for type-checking a program*)
