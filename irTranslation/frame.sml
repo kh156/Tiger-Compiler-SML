@@ -54,7 +54,7 @@ struct
                                     then (currOffset := !currOffset-wordSize; InFrame(!currOffset)::allocFormals(rest))
                                     else InReg(Te.newTemp()::allocFormals(rest)))
     in
-      {name, allocFormals(formals), currOffset}
+      {name = name, formals = allocFormals(formals), spOffset = currOffset}
     end
 
   fun allocLocal(frame) = 

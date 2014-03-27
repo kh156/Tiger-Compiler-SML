@@ -152,6 +152,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
   	    	  (checkInt(leftResult, pos);
 		 	  checkInt(rightResult, pos);
 		 	  {exp=Trans.intOpExp(oper, (#exp leftResult), (#exp rightResult)), ty=T.INT})
+		 	end
 
 		else if (oper=A.EqOp orelse oper=A.NeqOp)
 		then
@@ -211,11 +212,13 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  	let
 	  		val {exp=leftExp, ty=leftTy} = transVar(venv, tenv, var)
 	  		val {exp=rightExp, ty=rightTy} = transExp(venv, tenv, exp)
-	  	if (leftTy = rightTy)
-	  	then {exp=Trans.assignExp(leftExp, rightExp), ty=T.UNIT}
-	  	else 
-	  		(error pos "Types of variable and assigned expression do not match";
-			{exp=Trans.assignExp(leftExp, rightExp), ty=T.ERROR})
+	  	in
+		  	if (leftTy = rightTy)
+		  	then {exp=Trans.assignExp(leftExp, rightExp), ty=T.UNIT}
+		  	else 
+		  		(error pos "Types of variable and assigned expression do not match";
+				{exp=Trans.assignExp(leftExp, rightExp), ty=T.ERROR})
+		end
 
 	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}, doneLabel, level) =
 	  	let 
