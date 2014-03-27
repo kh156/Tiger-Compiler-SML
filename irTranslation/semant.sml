@@ -159,10 +159,17 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 				val {exp=expLeft, ty=leftType} = transExp(venv, tenv, left, level, initExpList)
 				val {exp=expRight, ty=rightType} = transExp(venv, tenv, right, level, initExpList)
 			in
-				if (compareType(leftType, rightType, pos, pos) orelse compareType(rightType, leftType, pos, pos))
-			  	then {exp=Trans.intOpExp(oper, expLeft, expRight), ty=T.INT}
-			  	else ((ErrorMsg.error pos "Logical comparison on two different types!");
-			  		  {exp=Trans.intOpExp(oper, expLeft, expRight), ty=T.ERROR})
+				case leftType of
+					T.STRING =>
+						if (compareType(leftType, rightType, pos, pos) orelse compareType(rightType, leftType, pos, pos))
+			  			then {exp=Trans.stringOpExp(oper, expLeft, expRight), ty=T.STRING}
+			  			else ((ErrorMsg.error pos "Logical comparison on two different types!");
+			  		  	{exp=Trans.stringOpExp(oper, expLeft, expRight), ty=T.ERROR})
+					| _ => 
+						if (compareType(leftType, rightType, pos, pos) orelse compareType(rightType, leftType, pos, pos))
+			  			then {exp=Trans.intOpExp(oper, expLeft, expRight), ty=T.INT}
+			  			else ((ErrorMsg.error pos "Logical comparison on two different types!");
+			  		  	{exp=Trans.intOpExp(oper, expLeft, expRight), ty=T.ERROR})
 			end
 		else
 			((error pos "Error identifying the operator used!");
@@ -327,11 +334,11 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  		  T.INT => (case S.look(tenv, typ) of
 	  		  	    	 SOME(t) => (case actual_ty (t,pos) of
 	  		  	    	 	   			T.ARRAY(eleType, unique) => if (actual_ty (eleType,pos)) = (#ty (transExp(venv, tenv, init)))
-	  		  	    	    							then {exp=(), ty=actual_ty(t,pos)}
-	  		  	    	    							else (ErrorMsg.error pos "Type mismatch during array creation!"; {exp=(), ty=T.ERROR})
-	  		  	    	    			| _ => (ErrorMsg.error pos "Type ID used to create array is not an array type!"; {exp=(), ty=T.ERROR}))
-	  		  	    	 | NONE => (ErrorMsg.error pos "Undefined type during array creation!"; {exp=(), ty=T.ERROR}))
-	  		  | _ => (ErrorMsg.error pos "Array size must be an integer!"; {exp = (), ty = T.ERROR}))
+	  		  	    	    							then {exp=Trans.arrayExp(init, size), ty=actual_ty(t,pos)}
+	  		  	    	    							else (ErrorMsg.error pos "Type mismatch during array creation!"; {exp=Trans.arrayExp(init, size), ty=T.ERROR})
+	  		  	    	    			| _ => (ErrorMsg.error pos "Type ID used to create array is not an array type!"; {exp=Trans.arrayExp(init, size), ty=T.ERROR}))
+	  		  	    	 | NONE => (ErrorMsg.error pos "Undefined type during array creation!"; {exp=Trans.arrayExp(init, size), ty=T.ERROR}))
+	  		  | _ => (ErrorMsg.error pos "Array size must be an integer!"; {exp = Trans.arrayExp(init, size), ty = T.ERROR}))
 
 
 and transTy(tenv, A.NameTy(s:A.symbol, pos:A.pos)) =

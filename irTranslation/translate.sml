@@ -20,7 +20,7 @@ structure Translate : TRANSLATE =
 
   structure Te = Temp
   structure Tr = Tree
-  structure F = Frame
+  structure F = MipsFrame
   structure A = Absyn
   val err = ErrorMsg.error
   exception ErrMsg
@@ -122,7 +122,6 @@ structure Translate : TRANSLATE =
   fun nilExp () = Ex (Tr.CONST (0))
   fun intExp (i) = Ex (Tr.CONST (i))
 
-
   (*all kinds of transformations*)
 
   fun strExp str =
@@ -132,7 +131,6 @@ structure Translate : TRANSLATE =
     (fragList := F.STRING (label, str) :: !fragList;
     Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
   end
-
 
   fun seq stm:[] = stm
     | seq [stm::rest] = Tr.SEQ(stm, seq(rest))

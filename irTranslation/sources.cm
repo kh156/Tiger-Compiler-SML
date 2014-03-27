@@ -11,6 +11,11 @@ tiger.lex
 tiger.grm
 types.sml
 env.sml
+temp.sig
+temp.sml
+tree.sml
+frame.sml
+translate.sml
 semant.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
