@@ -103,6 +103,10 @@ structure Translate : TRANSLATE =
       Ex (f.exp(fa) Tr.TEMP(f.FP))
     end
 
+  fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
+
+  fun subscriptVar(varExp, Tr.CONST index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
+
   fun procEntryExit(level, body) = 
     let
       val funFrame = (#frame level)
@@ -169,7 +173,18 @@ structure Translate : TRANSLATE =
         Ex (Tr.XOR(result, Tr.CONST(1)))
       end
 
-  fun recordExp
+  fun recordExp({translated=fieldExps, size=size}) = 
+    let
+      val r = Te.newtemp()
+    in
+      Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, externalCall("malloc", size * F.wordSize)),
+                  initRecordFields(fieldExps, [], 0)],
+              Tr.TEMP r)
+    end
+
+  fun initRecordFields(oneField::rest, result, curIndex) = initRecordFields(rest,
+    Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP r, Tr.CONST (curIndex*F.wordSize))), oneField)::result, curIndex+1)
+    | initRecordFields([], result, curIndex) = result
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
 
