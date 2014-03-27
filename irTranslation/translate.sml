@@ -116,7 +116,7 @@ struct
 
   fun procEntryExit(level: {parent:level, frame: F.frame}, body) = 
     let
-      val funFrame = level
+      val funFrame = (#frame level)
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
       val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx body)
       val addedMove = Tr.SEQ(addedSteps, moveStm)
@@ -206,9 +206,9 @@ struct
       val t = Te.newlabel()
       val f = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[(unCx testExp) (t, f),
+      Nx (Tr.ESEQ(seq[(unCx testExp (t, f)),
                     Tr.LABEL t,
-                    unNx thenExp,
+                    (unNx thenExp),
                     Tr.LABEL f],
                 Tr.CONST 0))
     end
@@ -223,7 +223,7 @@ struct
       Ex (Tr.ESEQ(seq[(unCx testExp) (t, f),
                     Tr.LABEL t,
                     Tr.MOVE(Tr.TEMP r, unEx thenExp),
-                    Tr.JUMP(Tr.NAME(join), [join])
+                    Tr.JUMP(Tr.NAME(join), [join]),
                     Tr.LABEL f,
                     Tr.MOVE(Tr.TEMP r, unEx elseExp),
                     Tr.LABEL join],
@@ -234,7 +234,7 @@ struct
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[(unCx testExp) (l, doneLabel),
+      Nx (Tr.ESEQ(seq[(unCx testExp (l, doneLabel)),
                   Tr.LABEL l,
                   unNx bodyExp,
                   (unCx testExp) (l, doneLabel),
@@ -249,7 +249,7 @@ struct
       Nx (Tr.ESEQ(seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (compExp(Tr.LE, unEx(simpleVar(iAccess, level)), Ex(hiExp)) (l, doneLabel))
+                  (compExp(Tr.LE, unEx (simpleVar(iAccess, level)), hiExp) (l, doneLabel))
                   Tr.LABEL doneLabel],
             Tr.CONST 0))
     end
