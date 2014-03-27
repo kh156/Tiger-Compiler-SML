@@ -444,17 +444,28 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 					SOME(t) => t
 				|	NONE => T.UNIT 
 
-				fun enterparam ({name, escape, typ, pos}, venvCurr) = 
+				val SOME(E.FunEntry entryRecord) = S.look(venv, name)
+				val formalAccesses = Trans.formals (#level entryRecord)
+
+				fun enterparam ({name, escape, typ, pos}, (venvCurr, access::rest)) = 
 					let 
 						val ty = case S.look(tenv, typ) of
 					    	SOME t => t
 					    | 	NONE => T.ERROR
-
-					    val SOME(E.FunEntry entryRecord) = S.look(venv, name)
 					in
-						S.enter (venvCurr, name, E.VarEntry {access = Trans.allocLocal (#level entryRecord) (!escape), ty = ty})
+						(S.enter (venvCurr, name, E.VarEntry {access = access, ty = ty}), rest) (*we never get rid of these vars after fn is done?*)
 					end
-				val venv' = foldr enterparam venv params
+					| enterparam ({name, escape, typ, pos}, (venvCurr, [])) = 
+					let 
+						val ty = case S.look(tenv, typ) of
+					    	SOME t => t
+					    | 	NONE => T.ERROR
+					in
+						(ErrorMsg.impossible "No spaces on the stack allocated for the formals of a function...";
+						(S.enter (venvCurr, name, E.VarEntry {access = Trans.allocLocal (# level entryRecord) (!escape), ty = ty}), []))
+					end
+
+				val (venv', _) = foldr enterparam (venv, formalAccesses) params
 				val {exp = _, ty = tybody} = transExp (venv', tenv, body, doneLabel, level)
 			in (
 				case compareType(tybody, tyret, pos, pos) of

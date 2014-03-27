@@ -15,6 +15,7 @@ sig
   val getResult : unit -> MipsFrame.frag list
 
   val simpleVar : access * level -> exp
+  val getStaticLink : level -> access
 
 end
 
@@ -40,6 +41,7 @@ struct
 
   val fragList = ref [] : frag list ref
 
+
   fun crossWithLevel([], level) = []
     | crossWithLevel(formal::rest, level) = (level, formal)::crossWithLevel(rest, level)
 
@@ -51,15 +53,16 @@ struct
       CHILD({parent=parent, frame=newframe})
     end
 
+
+  (*I made formals return the whole list--including the first element which is the static link.*)
   fun formals(CHILD {parent=parent, frame=frame}) = 
     let
       val theFormals = F.formals(frame)
     in
-      case theFormals 
-        of a::rest => crossWithLevel(rest, CHILD {parent=parent, frame=frame})
-         | _ => (ErrorMsg.impossible "Error: function formals are empty lists..."; [])
+      crossWithLevel(theFormals, CHILD {parent=parent, frame=frame})
     end
     | formals(ROOT) = (ErrorMsg.impossible "Error: no formals can be found at the ROOT level!"; [])
+
 
   fun allocLocal(CHILD {parent=parent, frame=frame}) = 
     let 
@@ -74,6 +77,15 @@ struct
     end
     | allocLocal(ROOT) = (ErrorMsg.impossible "Error: cannot allocal local variable in ROOT level!"; (fn a:bool => (ROOT, F.InFrame 0)))
 
+  fun getStaticLink(CHILD {parent=parent, frame=frame}) =
+    let
+      val formalAccesses = formals (CHILD {parent=parent, frame=frame})
+    in
+      case formalAccesses of
+        sl::rest => sl
+        | _ => ErrorMsg.impossible "Error: cannot find static link in a level..."
+    end
+    | getStaticLink(ROOT) = ErrorMsg.impossible "Error: cannot find static link in ROOT level..."
 
   datatype exp = Ex of Tr.exp
                | Nx of Tr.stm

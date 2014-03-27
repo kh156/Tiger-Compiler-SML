@@ -38,7 +38,7 @@ struct
   structure Tr = Tree
   structure S = Symbol
 
-  val FP = Te.newtemp()
+  val FP = Te.newtemp() (*FP should only be changed during Fn calls--> shifts into the level of the Fn*)
   val wordSize = 4
   val RV = Te.newtemp()
 
