@@ -55,10 +55,10 @@ struct
 
   fun allocLocal(level) = 
     let 
-      fun allocL escape:bool = 
+      fun allocL(escape:bool) = 
         let
-          val theFrame = (#frame level)
-          val frameAccess = F.allocLocal theFrame escape
+          val theFrame = level
+          val frameAccess = F.allocLocal(theFrame, escape)
         in
           (level, frameAccess)
         end
@@ -108,9 +108,9 @@ struct
 
   fun subscriptVar(varExp, Tr.CONST index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
 
-  fun procEntryExit(level, body) = 
+  fun procEntryExit({level=level, body=body}) = 
     let
-      val funFrame = (#frame level)
+      val funFrame = level
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
       val moveStm = Tr.MOVE((Tr.TEMP funFrame.RV), body)
       val addedMove = Tr.SEQ(addedSteps, moveStm)
@@ -133,8 +133,9 @@ struct
     Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
   end
 
-  fun seq stm::[] = stm
-    | seq [stm::rest] = Tr.SEQ(stm, seq(rest))
+  fun seq([]) = Tr.EXP (Tr.CONST 0)
+    | seq([stm]) = stm
+    | seq(h::t) = Tr.SEQ(h,seq(t))
 
   fun seqExp [] = Ex (Tr.CONST 0)
     | seqExp [exp] = exp
@@ -187,7 +188,7 @@ struct
     Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP r, Tr.CONST (curIndex*F.wordSize))), oneField)::result, curIndex+1)
     | initRecordFields([], result, curIndex) = result
 
-  fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftexp, unEx rightexp))
+  fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
 
   fun callExp (l:level, label, exps) = Ex(Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to calculate static links!!*)
 
@@ -220,7 +221,7 @@ struct
                     Tr.JUMP(Tr.NAME(join), [join])
                     Tr.LABEL f,
                     Tr.MOVE(Tr.TEMP r, unEx elseExp),
-                    Tr.Label join],
+                    Tr.LABEL join],
                 Tr.TEMP r))
     end
 
@@ -228,10 +229,10 @@ struct
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[(unCx testExp) (l, done),
+      Nx (Tr.ESEQ(seq[(unCx testExp) (l, doneLabel),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (unCx testExp) (l, done),
+                  (unCx testExp) (l, doneLabel),
                   Tr.LABEL doneLabel],
             Tr.CONST 0))
     end
@@ -243,7 +244,7 @@ struct
       Nx (Tr.ESEQ(seq[assignExp(simpleVar(iAccess, level), loExp),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  compExp(Tr.LE, simpleVar(iAccess, level), hiExp) (l, doneLabel)
+                  compExp(Tr.LE, Ex simpleVar(iAccess, level), Ex hiExp) (l, doneLabel)
                   Tr.LABEL doneLabel],
             Tr.CONST 0))
     end
@@ -252,7 +253,7 @@ struct
 
   fun arrayExp (size,init) =
     let
-      val return = TR.TEMP(Te.newtemp())
+      val return = Tr.TEMP(Te.newtemp())
     in
       Ex (Tr.ESEQ(Tr.MOVE(return, F.externalCall("initArray", [unEx size, unEx init])), return))
     end
