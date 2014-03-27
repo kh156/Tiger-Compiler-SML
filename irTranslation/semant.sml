@@ -267,22 +267,27 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 
 	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}, doneLabel, level, initExpList) =
 	  	let 
+	  		val done = Te.newlabel()
+
 	  		val _ = incNestDepth()
-	  		val iAccess =  Trans.allocLocal level (false)
+	  		val iAccess =  Trans.allocLocal level (!escape)
 	  		val venvNew = S.enter (venv, var, E.VarEntry {access=iAccess, ty=Types.INT})
-	  		val bodyType = transExp(venvNew, tenv, body, doneLabel, level, initExpList)
+	  		val bodyResult = transExp(venvNew, tenv, body, done, level, initExpList)
 	  		val _ = decNestDepth()
 	  		val _ = numBreaks := 0
+	  		val loResult = transExp(venvNew, tenv, lo, done, level, initExpList)
+	  		val hiResult = transExp(venvNew, tenv, hi, done, level, initExpList)
 	  	in
-		  	(checkInt(transExp(venvNew, tenv, lo), pos);
-		  	checkInt(transExp(venvNew, tenv, hi), pos);
-		  	checkUnit(bodyType, pos);
-		  	{ exp=(), ty=T.UNIT })
+		  	(checkInt(loResult, pos);
+		  	checkInt(hiResult, pos);
+		  	checkUnit(bodyResult, pos);
+		  	{ exp=Trans.forExp(iAccess, (#exp loResult), (#exp hiResult), (#exp bodyResult), done, level), ty=T.UNIT })
 	    end
 
 	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}, doneLabel, level, initExpList) =
 	    let
 	    	val done = Te.newlabel()
+
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv, test, done, level, initExpList)
 	  		val b = transExp(venv, tenv, body, done, level, initExpList)
@@ -366,14 +371,14 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 			NONE => (case tyinit=T.NIL of 
 				false => {tenv = tenv, venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), trExpList = updatedExpList}
 				| true => (ErrorMsg.error pos "variable is initialized to NIL type!";
-				    	{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = initExpList}))
+				    	{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = updatedExpList}))
 			| SOME(s, p) => (
 				case S.look(tenv, s) of
 					NONE => (ErrorMsg.error pos "declared type for variable does not exist!";
-							{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = initExpList})
+							{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = updatedExpList})
 					| SOME(t) => (case compareType(tyinit, t, pos, p) of
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
-							    	{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = initExpList})
+							    	{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = updatedExpList})
 							| true  => {venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = updatedExpList}))
 	end
 
