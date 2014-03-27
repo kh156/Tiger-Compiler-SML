@@ -30,11 +30,15 @@ struct
 
   datatype level = ROOT
                   | CHILD of {parent: level, frame: F.frame}
+
   type access = level * F.access
 
   val outermost = ROOT
 
   val fragList = ref [] : frag list ref
+
+  fun crossWithLevel([], level) = []
+    | crossWithLevel(formal::rest, level) = (level, formal)::crossWithLevel(rest, level)
 
   fun newLevel {parent: level, name: Te.label, formals: bool list} = 
     let 
@@ -44,21 +48,21 @@ struct
       CHILD({parent=parent, frame=newframe})
     end
 
-  fun formals({parent=parent, frame=frame}) = 
+  fun formals(CHILD {parent=parent, frame=frame}) = 
     let
       val theFormals = F.formals(frame)
     in
       case theFormals 
-        of a::rest => rest
+        of a::rest => crossWithLevel(rest, CHILD {parent=parent, frame=frame})
     end
 
-  fun allocLocal({parent=parent, frame=theFrame}) = 
+  fun allocLocal(CHILD {parent=parent, frame=frame}) = 
     let 
       fun allocL (escape:bool) = 
         let
-          val frameAccess = F.allocLocal theFrame escape
+          val frameAccess = F.allocLocal frame escape
         in
-          ({parent=parent, frame=theFrame}, frameAccess)
+          (CHILD {parent=parent, frame=frame}, frameAccess)
         end
     in
       allocL
@@ -103,12 +107,8 @@ struct
         Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
 
   (*how is the current level useful here? I guess static links come into play here...*)
-  fun simpleVar((varL: {parent: level, frame: F.frame}, fa: F.access), l: level) =
-    let
-      val f = (#frame varL) (*this is the frame the variable was declared*)
-    in
-      Ex (F.exp fa Tr.TEMP(F.FP)) (*F.FP? a single global FP???*)
-    end
+  fun simpleVar((CHILD {parent=parent, frame=f}, fa: F.access), l: level) =
+      Ex (F.exp fa (Tr.TEMP F.FP)) (*F.FP? a single global FP???*)
 
   fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
 
@@ -139,15 +139,6 @@ struct
     (fragList := F.STRING (label, str) :: !fragList;
     Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
   end
-
-  fun seq([]) = Tr.EXP (Tr.CONST 0)
-    | seq([stm]) = stm
-    | seq(h::t) = Tr.SEQ(h,seq(t))
-
-  fun seqExp [] = Ex (Tr.CONST 0)
-    | seqExp [exp] = exp
-    | seqExp (exp :: exps) =
-        Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
 
   fun binOpExp (oper, l, r) = 
     let 
@@ -207,11 +198,10 @@ struct
       val t = Te.newlabel()
       val f = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[(unCx testExp (t, f)),
+      Nx (seq[unCx (testExp) (t, f),
                     Tr.LABEL t,
                     (unNx thenExp),
-                    Tr.LABEL f],
-                Tr.CONST 0))
+                    Tr.LABEL f])
     end
 
   fun ifThenElseExp(testExp, thenExp, elseExp) = 
@@ -221,7 +211,7 @@ struct
       val f = Te.newlabel()
       val join = Te.newlabel()
     in
-      Ex (Tr.ESEQ(seq[(unCx testExp) (t, f),
+      Ex (Tr.ESEQ(seq[unCx (testExp) (t, f),
                     Tr.LABEL t,
                     Tr.MOVE(Tr.TEMP r, unEx thenExp),
                     Tr.JUMP(Tr.NAME(join), [join]),
@@ -235,24 +225,22 @@ struct
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[(unCx testExp (l, doneLabel)),
+      Nx (seq[(unCx testExp (l, doneLabel)),
                   Tr.LABEL l,
                   unNx bodyExp,
                   (unCx testExp) (l, doneLabel),
-                  Tr.LABEL doneLabel],
-            Tr.CONST 0))
+                  Tr.LABEL doneLabel])
     end
 
   fun forExp(iAccess, loExp, hiExp, bodyExp, doneLabel, level) = 
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
+      Nx (seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (xcompExp(Tr.LE, unEx (simpleVar(iAccess, level)), hiExp) (l, doneLabel))
-                  Tr.LABEL doneLabel],
-            Tr.CONST 0))
+                  (unCx (compExp(Tr.LE, (simpleVar(iAccess, level)), hiExp)) (l, doneLabel)),
+                  Tr.LABEL doneLabel])
     end
 
   fun breakExp(doneLabel) = Nx (Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]))
