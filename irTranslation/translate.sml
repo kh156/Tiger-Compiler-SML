@@ -167,7 +167,13 @@ structure Translate : TRANSLATE =
 
   fun intExp(i) = Ex (Tr.CONST i)
 
-  fun stringOpExp (*what's this??*)
+  fun stringOpExp (A.EqOp, l, r) = Ex (F.externalCall("stringEqual", [unEx l, unEx r]))
+    | stringOpExp (A.NeqOp, l, r) = 
+      let 
+        val result = unEx stringOpExp(A.EqOp, l, r)
+      in
+        Ex (Tr.XOR(result, Tr.CONST(1)))
+      end
 
   fun recordExp({translated=fieldExps, size=size}) = 
     let
@@ -245,6 +251,12 @@ structure Translate : TRANSLATE =
 
   fun breakExp(doneLabel) = Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]);
 
-  fun arrayExp
+  fun arrayExp (size,init) =
+    let
+      val return = TR.TEMP(Te.newtemp())
+    in
+      Tr.ESEQ(Tr.MOVE(return, F.externalCall("initArray", [unEx size, unEx init])), return)
+    end
+    
   
 end
