@@ -192,7 +192,7 @@ struct
   fun callExp (l:level, label, exps) = Ex(Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to calculate static links!!*)
 
   fun letExp ([], body) = body
-        | letExp (decs, body) = Ex (T.ESEQ (seq (map unNx decs), unEx body))
+        | letExp (decs, body) = Ex (Tr.ESEQ (seq (map unNx decs), unEx body))
 
   fun ifThenExp(testExp, thenExp) = 
     let

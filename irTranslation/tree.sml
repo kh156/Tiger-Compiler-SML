@@ -54,5 +54,7 @@ datatype stm = SEQ of stm * stm
       and relop = EQ | NE | LT | GT | LE | GE 
 	        | ULT | ULE | UGT | UGE
 
+  fun notRel(a:relop) = a
+  fun commute(b:relop) = b
 end
 

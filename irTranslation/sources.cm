@@ -10,13 +10,13 @@ parse.sml
 tiger.lex
 tiger.grm
 types.sml
+semant.sml
 env.sml
 temp.sig
 temp.sml
 tree.sml
 frame.sml
 translate.sml
-semant.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm
