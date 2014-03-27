@@ -453,7 +453,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 					    	SOME t => t
 					    | 	NONE => T.ERROR
 					in
-						(S.enter (venvCurr, name, E.VarEntry {access = access, ty = ty}), rest) (*we never get rid of these vars after fn is done?*)
+						(S.enter (venvCurr, name, E.VarEntry {access = access, ty = ty}), rest)
 					end
 					| enterparam ({name, escape, typ, pos}, (venvCurr, [])) = 
 					let 

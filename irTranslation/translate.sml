@@ -127,8 +127,12 @@ struct
 
   (*how is the current level useful here? I guess static links come into play here...*)
   fun simpleVar((CHILD {parent=parent, frame=f}, fa: F.access), l: level) =
-      Ex (F.exp fa (Tr.TEMP F.FP)) (*F.FP? a single global FP???*)
-      | simpleVar ((ROOT, fa: F.access), l:level) = Ex (Tr.CONST 0)
+    (*let
+      val name : type = expression
+    in*)
+      Ex (F.exp fa (Tr.TEMP F.FP)) (*F.FP? a single global FP? only move when in Function calls?*)
+    (*end*)
+    | simpleVar ((ROOT, fa: F.access), l:level) = Ex (Tr.CONST 0)
 
   fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (index*F.wordSize))))
 
