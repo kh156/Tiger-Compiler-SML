@@ -30,11 +30,15 @@ struct
 
   datatype level = ROOT
                   | CHILD of {parent: level, frame: F.frame}
+
   type access = level * F.access
 
   val outermost = ROOT
 
   val fragList = ref [] : frag list ref
+
+  fun crossWithLevel([], level) = []
+    | crossWithLevel(formal::rest, level) = (level, formal)::crossWithLevel(rest, level)
 
   fun newLevel {parent: level, name: Te.label, formals: bool list} = 
     let 
@@ -44,21 +48,21 @@ struct
       CHILD({parent=parent, frame=newframe})
     end
 
-  fun formals({parent=parent, frame=frame}) = 
+  fun formals(CHILD {parent=parent, frame=frame}) = 
     let
       val theFormals = F.formals(frame)
     in
       case theFormals 
-        of a::rest => rest
+        of a::rest => crossWithLevel(rest, CHILD {parent=parent, frame=frame})
     end
 
-  fun allocLocal({parent=parent, frame=theFrame}) = 
+  fun allocLocal(CHILD {parent=parent, frame=frame}) = 
     let 
       fun allocL (escape:bool) = 
         let
-          val frameAccess = F.allocLocal theFrame escape
+          val frameAccess = F.allocLocal frame escape
         in
-          ({parent=parent, frame=theFrame}, frameAccess)
+          (CHILD {parent=parent, frame=frame}, frameAccess)
         end
     in
       allocL
@@ -103,12 +107,8 @@ struct
         Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
 
   (*how is the current level useful here? I guess static links come into play here...*)
-  fun simpleVar((varL: {parent: level, frame: F.frame}, fa: F.access), l: level) =
-    let
-      val f = (#frame varL) (*this is the frame the variable was declared*)
-    in
-      Ex (F.exp fa Tr.TEMP(F.FP)) (*F.FP? a single global FP???*)
-    end
+  fun simpleVar((CHILD {parent=parent, frame=f}, fa: F.access), l: level) =
+      Ex (F.exp fa (Tr.TEMP F.FP)) (*F.FP? a single global FP???*)
 
   fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
 
@@ -238,7 +238,7 @@ struct
       Nx (seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (compExp(Tr.LE, unEx (simpleVar(iAccess, level)), hiExp) (l, doneLabel))
+                  (unCx (compExp(Tr.LE, (simpleVar(iAccess, level)), hiExp)) (l, doneLabel)),
                   Tr.LABEL doneLabel])
     end
 
