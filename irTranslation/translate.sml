@@ -16,7 +16,8 @@ sig
 end
 
 
-structure Translate : TRANSLATE = 
+structure Translate :> TRANSLATE = 
+struct
 
   structure Te = Temp
   structure Tr = Tree
@@ -90,15 +91,15 @@ structure Translate : TRANSLATE =
     | unNx (Cx genstm) = Tr.EXP(unEx(genstm)) (*evaluate the exp for side-effects and discard the result*)
 
   fun unCx (Cx genstm) = genstm
-    | unCx (Nx _) = ErrorMsg.impossible "Error: cannot unCx(Nx stm)!"
-    | unCx (Tr.CONST 0) = fn (t, f) => Tr.JUMP(Tr.NAME(f), [f])
-    | unCx (Tr.CONST 1) = fn (t, f) => Tr.JUMP(Tr.NAME(t), [t])
-    | unCx (Ex e) = fn (t, f) => Tr.CJUMP(Tr.NE, e, Tr.CONST 0, t, f)
+    | unCx (Nx _) = (ErrorMsg.impossible "Error: cannot unCx(Nx stm)!"; (fn (t, f) => Tr.JUMP(Tr.NAME(f), [f])))
+    | unCx (Tr.CONST 0) = (fn (t, f) => Tr.JUMP(Tr.NAME(f), [f]))
+    | unCx (Tr.CONST 1) = (fn (t, f) => Tr.JUMP(Tr.NAME(t), [t]))
+    | unCx (Ex e) = (fn (t, f) => Tr.CJUMP(Tr.NE, e, Tr.CONST 0, t, f))
 
   (*how is the current level useful here? I guess static links come into play here...*)
   fun simpleVar((varL: level, fa: F.access), l: level) =
     let
-      f = (#frame varL) (*this is the frame the variable was declared*)
+      val f = (#frame varL) (*this is the frame the variable was declared*)
     in
       Ex (f.exp(fa) Tr.TEMP(f.FP))
     end
@@ -132,7 +133,7 @@ structure Translate : TRANSLATE =
     Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
   end
 
-  fun seq stm:[] = stm
+  fun seq stm::[] = stm
     | seq [stm::rest] = Tr.SEQ(stm, seq(rest))
 
   fun seqExp [] = Ex (Tr.CONST 0)
