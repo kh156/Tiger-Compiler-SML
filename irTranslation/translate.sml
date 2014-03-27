@@ -114,10 +114,10 @@ struct
 
   fun subscriptVar(varExp, Tr.CONST index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
 
-  fun procEntryExit({level=level, body=exp}) = 
+  fun procEntryExit({level=level, body=body}) = 
     let
       val funFrame = (case level of
-                      Level({frame,parent}, _) => frame )
+                      CHILD({frame,parent}) => frame )
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
       val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx body)
       val addedMove = Tr.SEQ(addedSteps, moveStm)
