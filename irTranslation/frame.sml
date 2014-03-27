@@ -17,6 +17,8 @@ sig
   val RV : Temp.temp
   val procEntryExit1 : frame * Tree.stm -> Tree.stm
 
+  val externalCall: string * Tree.exp list -> Tree.exp
+
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
 end
@@ -80,5 +82,8 @@ struct
     in
       body
     end
+
+  fun externalCall(s, args) =
+    Tr.CALL(Tr.NAME(Te.namedlabel s), args)
 
 end
