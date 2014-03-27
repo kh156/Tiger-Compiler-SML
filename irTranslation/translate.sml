@@ -201,11 +201,11 @@ structure Translate : TRANSLATE =
       val t = Te.newlabel()
       val f = Te.newlabel()
     in
-      Tr.ESEQ(seq[(unCx testExp) (t, f),
+      Nx (Tr.ESEQ(seq[(unCx testExp) (t, f),
                     Tr.LABEL t,
                     unNx thenExp,
                     Tr.LABEL f],
-                Tr.CONST 0)
+                Tr.CONST 0))
     end
 
   fun ifThenElseExp(testExp, thenExp, elseExp) = 
@@ -215,48 +215,50 @@ structure Translate : TRANSLATE =
       val f = Te.newlabel()
       val join = Te.newlabel()
     in
-      Tr.ESEQ(seq[(unCx testExp) (t, f),
+      Ex (Tr.ESEQ(seq[(unCx testExp) (t, f),
                     Tr.LABEL t,
                     Tr.MOVE(Tr.TEMP r, unEx thenExp),
                     Tr.JUMP(Tr.NAME(join), [join])
                     Tr.LABEL f,
                     Tr.MOVE(Tr.TEMP r, unEx elseExp),
                     Tr.Label join],
-                Tr.TEMP r)
+                Tr.TEMP r))
     end
 
   fun whileExp(testExp, bodyExp, doneLabel) =
     let
       val l = Te.newlabel()
     in
-      Tr.ESEQ(seq[(unCx testExp) (l, done),
+      Nx (Tr.ESEQ(seq[(unCx testExp) (l, done),
                   Tr.LABEL l,
                   unNx bodyExp,
                   (unCx testExp) (l, done),
                   Tr.LABEL doneLabel],
-            Tr.CONST 0)
+            Tr.CONST 0))
     end
 
   fun forExp(iAccess, loExp, hiExp, bodyExp, doneLabel, level) = 
     let
       val l = Te.newlabel()
     in
-      Tr.ESEQ(seq[assignExp(simpleVar(iAccess, level), loExp),
+      Nx (Tr.ESEQ(seq[assignExp(simpleVar(iAccess, level), loExp),
                   Tr.LABEL l,
                   unNx bodyExp,
                   compExp(Tr.LE, simpleVar(iAccess, level), hiExp) (l, doneLabel)
                   Tr.LABEL doneLabel],
-            Tr.CONST 0)
+            Tr.CONST 0))
     end
 
-  fun breakExp(doneLabel) = Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]);
+  fun breakExp(doneLabel) = Nx (Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]))
 
   fun arrayExp (size,init) =
     let
       val return = TR.TEMP(Te.newtemp())
     in
-      Tr.ESEQ(Tr.MOVE(return, F.externalCall("initArray", [unEx size, unEx init])), return)
+      Ex (Tr.ESEQ(Tr.MOVE(return, F.externalCall("initArray", [unEx size, unEx init])), return))
     end
     
-  
+  fun addExpListBefore(listToAdd, letBody) = 
+    Ex (Tr.ESEQ(seq(map unNx listToAdd), unEx letBody))
+
 end

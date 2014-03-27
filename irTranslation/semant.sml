@@ -14,8 +14,8 @@ sig
 	type ty
 
 	val transVar: venvTable * tenvTable * Absyn.var * Trans.level -> expty
-	val transExp: venvTable * tenvTable * Absyn.exp * Temp.label * Trans.level * Trans.exp list -> expty
-	val transDec: venvTable * tenvTable * Absyn.dec * Temp.label * Trans.level * Trans.exp list -> {venv: venvTable, tenv: tenvTable, trExpList: Trans.exp list}
+	val transExp: venvTable * tenvTable * Absyn.exp * Temp.label * Trans.level -> expty
+	val transDec: venvTable * tenvTable * Absyn.dec * Temp.label * Trans.level * Trans.exp list-> {venv: venvTable, tenv: tenvTable, trExpList: Trans.exp list}
 	val transTy:   	     	  tenvTable * Absyn.ty -> ty
 	val transProg:        			      Absyn.exp -> Trans.frag list
 end
@@ -122,11 +122,11 @@ fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 		SOME(T.NAME(s, tref)) => (let val temp = (tref := SOME(realTy)) in tenv end)
 		| _ => (ErrorMsg.error pos "Error processing mutually recursive types!"; tenv))
 
-fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty=T.NIL}
-	  | transExp (venv, tenv, A.IntExp i, doneLabel, level, initExpList) = {exp=Trans.intExp(i), ty=T.INT}
-	  | transExp (venv, tenv, A.VarExp v, doneLabel, level, initExpList) = transVar(venv, tenv, v)
-	  | transExp (venv, tenv, A.StringExp (s, pos), doneLabel, level, initExpList) = {exp=Trans.strExp(s), ty=T.STRING}
-	  | transExp (venv, tenv, A.SeqExp exps, doneLabel, level, initExpList) =
+fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=T.NIL}
+	  | transExp (venv, tenv, A.IntExp i, doneLabel, level) = {exp=Trans.intExp(i), ty=T.INT}
+	  | transExp (venv, tenv, A.VarExp v, doneLabel, level) = transVar(venv, tenv, v)
+	  | transExp (venv, tenv, A.StringExp (s, pos), doneLabel, level) = {exp=Trans.strExp(s), ty=T.STRING}
+	  | transExp (venv, tenv, A.SeqExp exps, doneLabel, level) =
 		let
 			fun parseExps([], translatedExpList) = {exp = Trans.seqExp(translatedExpList), ty = T.UNIT}
 			|	parseExps((e, p)::l, translatedExpList) =
@@ -139,7 +139,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 			parseExps(exps)
 		end
 
-	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}, doneLabel, level) =
   		if (oper=A.PlusOp orelse oper=A.MinusOp orelse
   			oper=A.TimesOp orelse oper=A.DivideOp orelse
 			oper=A.LtOp orelse oper=A.LeOp orelse
@@ -168,7 +168,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 			((error pos "Error identifying the operator used!");
 			{exp=Trans.intExp(0), ty=T.ERROR})
 
-	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}, doneLabel, level, initExpList) = 
+	  | transExp (venv, tenv, A.RecordExp {fields=fields, typ=typ, pos=pos}, doneLabel, level) = 
 	  	let
 	  		val T.RECORD (symbolTypeList,unique) = case S.look(tenv, typ) of 
 	  							          SOME(v) => actual_ty (v,pos)
@@ -200,7 +200,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 	  		else {exp=Trans.recordExp(translateEachExp(fields, [], 0)), ty=T.ERROR}
 	  	end
 
-	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}, doneLabel, level) =
 	  	let
 	  		val {exp=leftExp, ty=leftTy} = transVar(venv, tenv, var)
 	  		val {exp=rightExp, ty=rightTy} = transExp(venv, tenv, exp)
@@ -210,16 +210,17 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 	  		(error pos "Types of variable and assigned expression do not match";
 			{exp=Trans.assignExp(leftExp, rightExp), ty=T.ERROR})
 
-	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.LetExp {decs=decs,body=body,pos=pos}, doneLabel, level) =
 	  	let 
 	  		fun transOneDec(oneDec, {venv=venv, tenv=tenv, trExpList=initExpList}) = 
 	  			transDec(venv, tenv, oneDec, level, initExpList)
 	  		val {venv=venv',tenv=tenv', trExpList=trExpList'} = foldr transOneDec {venv=venv, tenv=tenv, trExpList=[]} decs
-	  	 in 
-	  	 	transExp(venv',tenv', body, level, trExpList')
+	  		val {exp=expBody, ty=tyBody} = transExp(venv',tenv', body, doneLabel, level)
+	  	 in
+	  	 	{exp=Trans.addExpListBefore(trExpList', expBody), ty=tyBody}
 	  	end
 
-	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.CallExp{func=func, args=args, pos=pos}, doneLabel, level) =
 	   (case S.look(venv, func) of
 	  		SOME (E.FunEntry {level=funLevel, label=label, formals=formals, result=result}) =>
 	  		  ( let 
@@ -246,7 +247,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 			  )
 	  		| _ => (error pos ("This function does not exist: " ^ S.name(func)); {exp=Trans.intExp(0), ty=T.ERROR}))
 
-	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.IfExp {test=test, then'=thenExp, else'=elseExp, pos=pos}, doneLabel, level) =
 	  	(case elseExp of
            NONE => (* if-then *)
          	(let 
@@ -273,7 +274,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
          	end)
          )
 
-	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.ForExp {var=var, escape=escape, lo=lo, hi=hi, body=body, pos=pos}, doneLabel, level) =
 	  	let 
 	  		val done = Te.newlabel()
 
@@ -292,7 +293,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 		  	{ exp=Trans.forExp(iAccess, (#exp loResult), (#exp hiResult), (#exp bodyResult), done, level), ty=T.UNIT })
 	    end
 
-	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.WhileExp {test=test, body=body, pos=pos}, doneLabel, level) =
 	    let
 	    	val done = Te.newlabel()
 
@@ -307,7 +308,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 	  		{ exp=Trans.whileExp(#exp t, #exp b, done), ty=T.UNIT })
 	  	end
 
-	  | transExp (venv, tenv, A.BreakExp pos, doneLabel, level, initExpList) =
+	  | transExp (venv, tenv, A.BreakExp pos, doneLabel, level) =
 	 	let
 	 		val _ = incNumBreaks()
 	 	in
@@ -321,7 +322,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level, initExpList) = {exp=(), ty
 		  		{ exp=Trans.breakExp(doneLabel), ty=T.UNIT }
 		end
 
-	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}, doneLabel, level, initExpList) = 
+	  | transExp (venv, tenv, A.ArrayExp {typ=typ, size=size, init=init, pos=pos}, doneLabel, level) = 
 	  	(case (#ty (transExp(venv, tenv, size))) of 
 	  		  T.INT => (case S.look(tenv, typ) of
 	  		  	    	 SOME(t) => (case actual_ty (t,pos) of
