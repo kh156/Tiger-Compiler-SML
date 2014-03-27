@@ -114,9 +114,10 @@ struct
 
   fun subscriptVar(varExp, Tr.CONST index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
 
-  fun procEntryExit(level: {parent:level, frame: F.frame}, body) = 
+  fun procEntryExit({level=level, body=exp}) = 
     let
-      val funFrame = (#frame level)
+      val funFrame = (case level of
+                      Level({frame,parent}, _) => frame )
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
       val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx body)
       val addedMove = Tr.SEQ(addedSteps, moveStm)
@@ -249,7 +250,7 @@ struct
       Nx (Tr.ESEQ(seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (compExp(Tr.LE, unEx (simpleVar(iAccess, level)), hiExp) (l, doneLabel))
+                  (xcompExp(Tr.LE, unEx (simpleVar(iAccess, level)), hiExp) (l, doneLabel))
                   Tr.LABEL doneLabel],
             Tr.CONST 0))
     end
