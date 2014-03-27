@@ -2,7 +2,9 @@ signature FRAME =
 sig 
 	val wordSize: int
 	type frame
-	type access
+  datatype access = InFrame of int
+                  | InReg of Temp.temp
+
 	val newFrame : {name: Temp.label,
 					formals: bool list} -> frame
 	val name : frame -> Temp.label
@@ -22,7 +24,7 @@ sig
 end
 
 
-structure MipsFrame: FRAME = 
+structure MipsFrame :> FRAME = 
 struct
 
   datatype access = InFrame of int

@@ -1,0 +1,14 @@
+let
+	type recordType = {field1: int, field2: string}
+
+	type a = int
+
+	var temp := 
+		let
+			var a : string := "abc"
+		in
+			a
+		end
+in
+	temp
+end

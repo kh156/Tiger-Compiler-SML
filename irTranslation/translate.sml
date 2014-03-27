@@ -1,8 +1,10 @@
 signature TRANSLATE = 
 sig
-	type level 
+  datatype level = ROOT
+                  | CHILD of {parent: level, frame: MipsFrame.frame}
 	type access (*not same as Frame.access*)
   type exp
+  type frag
 
 	val outermost : level
 	val newLevel : {parent: level, name: Temp.label, formals: bool list} -> level
@@ -13,10 +15,11 @@ sig
   val getResult : unit -> MipsFrame.frag list
 
   val simpleVar : access * level -> exp
+
 end
 
 
-structure Translate :> TRANSLATE = 
+structure Translate = 
 struct
 
   structure Te = Temp
@@ -54,7 +57,9 @@ struct
     in
       case theFormals 
         of a::rest => crossWithLevel(rest, CHILD {parent=parent, frame=frame})
+         | _ => (ErrorMsg.impossible "Error: function formals are empty lists..."; [])
     end
+    | formals(ROOT) = (ErrorMsg.impossible "Error: no formals can be found at the ROOT level!"; [])
 
   fun allocLocal(CHILD {parent=parent, frame=frame}) = 
     let 
@@ -67,6 +72,7 @@ struct
     in
       allocL
     end
+    | allocLocal(ROOT) = (ErrorMsg.impossible "Error: cannot allocal local variable in ROOT level!"; (fn a:bool => (ROOT, F.InFrame 0)))
 
 
   datatype exp = Ex of Tr.exp
@@ -75,6 +81,7 @@ struct
 
   fun seq (stm::[]) = stm
     | seq (stm::rest) = Tr.SEQ(stm, seq(rest))
+    | seq ([]) = Tr.EXP (Tr.CONST 0)
 
   fun unEx (Ex e) = e
     | unEx (Nx s) = Tr.ESEQ(s, Tr.CONST 0)
@@ -109,21 +116,22 @@ struct
   (*how is the current level useful here? I guess static links come into play here...*)
   fun simpleVar((CHILD {parent=parent, frame=f}, fa: F.access), l: level) =
       Ex (F.exp fa (Tr.TEMP F.FP)) (*F.FP? a single global FP???*)
+      | simpleVar ((ROOT, fa: F.access), l:level) = Ex (Tr.CONST 0)
 
-  fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
+  fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (index*F.wordSize))))
 
-  fun subscriptVar(varExp, Tr.CONST index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, varExp, Tr.CONST (index*F.wordSize))))
+  fun subscriptVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.BINOP(Tr.MUL, unEx index, Tr.CONST (F.wordSize)))))
 
-  fun procEntryExit({level=level, body=body}) = 
+  fun procEntryExit({level=CHILD {frame=frame, parent=parent}, body=body}) = 
     let
-      val funFrame = (case level of
-                      CHILD({frame,parent}) => frame )
+      val funFrame = frame
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
       val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx body)
       val addedMove = Tr.SEQ(addedSteps, moveStm)
     in
       fragList := (F.PROC {body = addedMove, frame = funFrame})::(!fragList)
     end
+    | procEntryExit({level=ROOT, body=body}) = (ErrorMsg.impossible "Error: no function should be at the ROOT level!";())
 
   fun getResult() = !fragList
 
@@ -172,25 +180,26 @@ struct
       in
         Ex (Tr.BINOP(Tr.XOR, result, Tr.CONST(1)))
       end
+    | stringOpExp (_, l, r) = Ex (Tr.CONST 0)
 
   fun recordExp({translated=fieldExps, size=size}) = 
     let
       val r = Te.newtemp()
     in
-      Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, F.externalCall("malloc", [Tr.CONST (size * F.wordSize)])),
+      Ex (Tr.ESEQ(seq[Tr.MOVE(Tr.TEMP r, F.externalCall("malloc", [Tr.CONST (size * F.wordSize)])),
                   seq(initRecordFields(fieldExps, [], 0, r))],
-              Tr.TEMP r)
+              Tr.TEMP r))
     end
   and initRecordFields(oneField::rest, result, curIndex, labelR):Tr.stm list = initRecordFields(rest,
-    (Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP labelR, Tr.CONST (curIndex*F.wordSize))), oneField)::result), curIndex+1, labelR)
+    (Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP labelR, Tr.CONST (curIndex*F.wordSize))), unEx oneField)::result), curIndex+1, labelR)
     | initRecordFields([], result, curIndex, labelR) = result
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
 
-  fun callExp (l:level, label, exps) = Ex(Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to calculate static links!!*)
+  fun callExp (l:level, label, exps) = Ex (Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to calculate static links!!*)
 
   fun letExp ([], body) = body
-        | letExp (decs, body) = Ex (Tr.ESEQ (seq (map unNx decs), unEx body))
+    | letExp (decs, body) = Ex (Tr.ESEQ (seq (map unNx decs), unEx body))
 
   fun ifThenExp(testExp, thenExp) = 
     let

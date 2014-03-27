@@ -17,6 +17,8 @@ temp.sml
 tree.sml
 frame.sml
 translate.sml
+printtree.sml
+main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm
