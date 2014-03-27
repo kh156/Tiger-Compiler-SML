@@ -1,46 +1,12 @@
-SEQ(
- EXP(
-  ESEQ(
-   MOVE(
-    MEM(
-     BINOP(PLUS,
-      TEMP t100,
-      CONST ~12)),
-    ESEQ(
-     MOVE(
-      MEM(
-       BINOP(PLUS,
-        TEMP t100,
-        CONST ~8)),
-      NAME L2),
-     MEM(
-      BINOP(PLUS,
-       TEMP t100,
-       CONST ~8)))),
+MOVE(
+ TEMP t101,
+ ESEQ(
+  MOVE(
    MEM(
     BINOP(PLUS,
      TEMP t100,
-     CONST ~12)))),
- MOVE(
-  TEMP t101,
-  ESEQ(
-   MOVE(
-    MEM(
-     BINOP(PLUS,
-      TEMP t100,
-      CONST ~12)),
-    ESEQ(
-     MOVE(
-      MEM(
-       BINOP(PLUS,
-        TEMP t100,
-        CONST ~8)),
-      NAME L2),
-     MEM(
-      BINOP(PLUS,
-       TEMP t100,
-       CONST ~8)))),
-   MEM(
-    BINOP(PLUS,
-     TEMP t100,
-     CONST ~12)))))
+     CONST ~8)),
+   CONST 5),
+  BINOP(PLUS,
+   CONST 1,
+   CONST 2)))

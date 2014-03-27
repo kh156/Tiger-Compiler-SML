@@ -497,16 +497,18 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				S.enter(venvCurr, name, E.FunEntry {level = newLevel, label = newLabel, formals = params', result = tyret})
 			end
 
+		val venv' = foldr firstPass venv funcs;
+
 		fun addFunFrags ({name=name, params=params, body=body, pos=pos, result=result}, venvCurr) =
 			let
-				val SOME(E.FunEntry entryRecord) = S.look(venv, name)
+				val entryRecord = case S.look(venvCurr, name) of 
+									SOME(E.FunEntry entry) => entry
+									| _ => ErrorMsg.impossible "Function processing errors...not found..."
 				val {exp = bodyExp, ty = ty} = transExp(venvCurr, tenv, body, doneLabel, (#level entryRecord))
 				val unitResult = Trans.procEntryExit({level = (#level entryRecord), body = bodyExp})
 			in
 				venvCurr
 			end
-
-		val venv' = foldr firstPass venv funcs;
 	in (
 		secondPass(venv', funcs);
 		foldr addFunFrags venv' funcs;
@@ -556,10 +558,12 @@ and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos), doneLabel, level
 (*main entry point for type-checking a program*)
 fun transProg(programCode : A.exp) = 
     let 
+    	val unitResult = Trans.resetFragList()
+    	val unitResult2 = Temp.resetTempCount()
     	val venv = E.base_venv
     	val tenv = E.base_tenv
 		val startOfProgLabel = Temp.newlabel()
-		val firstLevel = Trans.newLevel {parent = Trans.ROOT, name = startOfProgLabel, formals = []}
+		val firstLevel = Trans.newLevel {parent = E.stdlibLevel, name = startOfProgLabel, formals = []}
     	val endOfProgLabel = Temp.newlabel()
     	val progResult = transExp(venv, tenv, programCode, endOfProgLabel, firstLevel)
     in 

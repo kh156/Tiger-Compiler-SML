@@ -17,6 +17,8 @@ sig
   val simpleVar : access * level -> exp
   val getStaticLink : level * Tree.exp -> Tree.exp
 
+  val resetFragList : unit -> unit
+
 end
 
 
@@ -41,6 +43,7 @@ struct
 
   val fragList = ref [] : frag list ref
 
+  fun resetFragList() = (fragList := []; ())
 
   fun crossWithLevel([], level) = []
     | crossWithLevel(formal::rest, level) = (level, formal)::crossWithLevel(rest, level)
@@ -96,7 +99,9 @@ struct
     | seq ([]) = Tr.EXP (Tr.CONST 0)
 
   fun unEx (Ex e) = e
-    | unEx (Nx s) = Tr.ESEQ(s, Tr.CONST 0)
+    | unEx (Nx s) = (case s of 
+                    Tr.EXP e => e 
+                    | _ => Tr.ESEQ(s, Tr.CONST 0))
     | unEx (Cx genstm) = 
       let
         val r = Te.newtemp()
@@ -130,7 +135,7 @@ struct
     let
       fun fpOfDesLevel(CHILD {parent=curParent, frame=curFrame, unique=curUnique},
                             CHILD {parent=desParent, frame=desFrame, unique=desUnique}, newFP) = 
-        if (curUnique = desUnique)
+        if (!curUnique = !desUnique)
         then newFP
         else 
           let
@@ -153,10 +158,9 @@ struct
     let
       val funFrame = frame
       val addedSteps = F.procEntryExit1(funFrame, unNx(body))
-      val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx body)
-      val addedMove = Tr.SEQ(addedSteps, moveStm)
+      val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx (Nx addedSteps))
     in
-      fragList := (F.PROC {body = addedMove, frame = funFrame})::(!fragList)
+      fragList := (F.PROC {body = moveStm, frame = funFrame})::(!fragList)
     end
     | procEntryExit({level=ROOT, body=body}) = (ErrorMsg.impossible "Error: no function should be at the ROOT level!")
 
