@@ -118,7 +118,6 @@ structure Translate : TRANSLATE =
   fun nilExp () = Ex (Tr.CONST (0))
   fun intExp (i) = Ex (Tr.CONST (i))
 
-
   (*all kinds of transformations*)
 
   fun strExp str =
@@ -128,7 +127,6 @@ structure Translate : TRANSLATE =
     (fragList := F.STRING (label, str) :: !fragList;
     Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
   end
-
 
   fun seq stm:[] = stm
     | seq [stm::rest] = Tr.SEQ(stm, seq(rest))
@@ -242,6 +240,5 @@ structure Translate : TRANSLATE =
     in
       Tr.ESEQ(Tr.MOVE(return, F.externalCall("initArray", [unEx size, unEx init])), return)
     end
-    
   
 end
