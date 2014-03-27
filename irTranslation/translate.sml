@@ -139,15 +139,6 @@ struct
     Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
   end
 
-  fun seq([]) = Tr.EXP (Tr.CONST 0)
-    | seq([stm]) = stm
-    | seq(h::t) = Tr.SEQ(h,seq(t))
-
-  fun seqExp [] = Ex (Tr.CONST 0)
-    | seqExp [exp] = exp
-    | seqExp (exp :: exps) =
-        Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
-
   fun binOpExp (oper, l, r) = 
     let 
       val unexL = unEx l
@@ -206,11 +197,10 @@ struct
       val t = Te.newlabel()
       val f = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[(unCx testExp (t, f)),
+      Nx (seq[unCx (testExp) (t, f),
                     Tr.LABEL t,
                     (unNx thenExp),
-                    Tr.LABEL f],
-                Tr.CONST 0))
+                    Tr.LABEL f])
     end
 
   fun ifThenElseExp(testExp, thenExp, elseExp) = 
@@ -220,7 +210,7 @@ struct
       val f = Te.newlabel()
       val join = Te.newlabel()
     in
-      Ex (Tr.ESEQ(seq[(unCx testExp) (t, f),
+      Ex (Tr.ESEQ(seq[unCx (testExp) (t, f),
                     Tr.LABEL t,
                     Tr.MOVE(Tr.TEMP r, unEx thenExp),
                     Tr.JUMP(Tr.NAME(join), [join]),
@@ -234,24 +224,22 @@ struct
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[(unCx testExp (l, doneLabel)),
+      Nx (seq[(unCx testExp (l, doneLabel)),
                   Tr.LABEL l,
                   unNx bodyExp,
                   (unCx testExp) (l, doneLabel),
-                  Tr.LABEL doneLabel],
-            Tr.CONST 0))
+                  Tr.LABEL doneLabel])
     end
 
   fun forExp(iAccess, loExp, hiExp, bodyExp, doneLabel, level) = 
     let
       val l = Te.newlabel()
     in
-      Nx (Tr.ESEQ(seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
+      Nx (seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
                   Tr.LABEL l,
                   unNx bodyExp,
                   (compExp(Tr.LE, unEx (simpleVar(iAccess, level)), hiExp) (l, doneLabel))
-                  Tr.LABEL doneLabel],
-            Tr.CONST 0))
+                  Tr.LABEL doneLabel])
     end
 
   fun breakExp(doneLabel) = Nx (Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]))
