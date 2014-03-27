@@ -1,7 +1,6 @@
 signature FRAME = 
 sig 
 	val wordSize: int
-
 	type frame
 	type access
 	val newFrame : {name: Temp.label,
@@ -11,7 +10,6 @@ sig
 	val allocLocal : frame -> bool -> access
 
   val FP : Temp.temp
-  val wordSize : int
   val exp : access -> Tree.exp -> Tree.exp
 
   val RV : Temp.temp
@@ -29,11 +27,10 @@ struct
 
   datatype access = InFrame of int
                   | InReg of Temp.temp
-
+  type frame = {name: Temp.label, formals: access list, spOffset: int ref}
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
   (*sp is the offset for the stack pointer of the current frame from the fp*)
-  type frame = {name: Temp.label, formals: access list, spOffset: int ref}
 
   structure Te = Temp
   structure Tr = Tree
@@ -43,33 +40,33 @@ struct
   val wordSize = 4
   val RV = Te.newtemp()
 
-  fun name(frame) = (#name frame)
-  fun formals(frame) = (#formals frame)
+  fun name({name = name, formals = _ , spOffset = _}) = name
+  fun formals({name = _, formals = formals , spOffset = _}) = formals
 
   (*03/24/2014, currently assuming all formals are true--i.e. all parameters escape*)
-  fun newFrame(name, formals) = 
+  fun newFrame({name = name, formals = formals}) = 
     let val currOffset = ref 0
         fun allocFormals([]) = []
           | allocFormals(escape::rest) = (if escape
                                     then (currOffset := !currOffset-wordSize; InFrame(!currOffset)::allocFormals(rest))
-                                    else InReg(Te.newTemp()::allocFormals(rest)))
+                                    else InReg(Te.newtemp())::allocFormals(rest))
     in
       {name = name, formals = allocFormals(formals), spOffset = currOffset}
     end
 
-  fun allocLocal(frame) = 
+  fun allocLocal({name = _, formals = _ , spOffset = spOffset}) = 
     let 
-      val currOffset = (#spOffset frame)
+      val currOffset = spOffset
       fun allocL(escape) = (if escape
                             then (currOffset := !currOffset-wordSize; InFrame(!currOffset))
-                            else InReg(Te.newTemp()))
+                            else InReg(Te.newtemp()))
     in
       allocL
     end
 
   fun exp(InFrame offset) = 
     let 
-      fun addFP(fp: Tr.exp) = Tr.MEM(Tr.BINOP(PLUS, fp, Tr.CONST(offset)))
+      fun addFP(fp: Tr.exp) = Tr.MEM(Tr.BINOP(Tr.PLUS, fp, Tr.CONST(offset)))
     in
       addFP
     end

@@ -1,5 +1,6 @@
 Group is 
 
+semant.sml
 absyn.sml
 prabsyn.sml
 errormsg.sml
@@ -10,7 +11,6 @@ parse.sml
 tiger.lex
 tiger.grm
 types.sml
-semant.sml
 env.sml
 temp.sig
 temp.sml
