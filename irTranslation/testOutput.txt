@@ -1,12 +1,5 @@
 MOVE(
  TEMP t101,
- ESEQ(
-  MOVE(
-   MEM(
-    BINOP(PLUS,
-     TEMP t100,
-     CONST ~8)),
-   CONST 5),
-  BINOP(PLUS,
-   CONST 1,
-   CONST 2)))
+ BINOP(MUL,
+  CONST 5,
+  CONST 0))

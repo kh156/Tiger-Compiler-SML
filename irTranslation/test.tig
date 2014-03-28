@@ -1,5 +1,6 @@
 let
 	var x := 5
+	function f(a : int, b : int) = 5+a+b
 in
-	1+2
+	f(7, 8)
 end
