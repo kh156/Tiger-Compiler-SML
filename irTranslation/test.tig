@@ -1,6 +1,5 @@
 let
-	var x := 5
+	function f(a: string, b: string) = a
 in
-	for i := 1 to 5 do
-		x := i
+	f("xx", "yy")
 end
