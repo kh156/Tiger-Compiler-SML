@@ -1,7 +1,6 @@
 let
-	type intArray = array of int
-
-    var row := intArray [ 10 ] of 0
+	var x := 5
 in
-	row[2]
+	for i := 1 to 5 do
+		x := i
 end

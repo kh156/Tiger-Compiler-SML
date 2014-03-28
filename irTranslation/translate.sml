@@ -133,22 +133,22 @@ struct
   (*how is the current level useful here? I guess static links come into play here...*)
   fun simpleVar((CHILD {parent=parent, frame=f, unique=uniqueRef}, fa: F.access), l: level) =
     let
-      fun fpOfDesLevel(CHILD {parent=curParent, frame=curFrame, unique=curUnique},
-                            CHILD {parent=desParent, frame=desFrame, unique=desUnique}, newFP) = 
-        if (!curUnique = !desUnique)
+      fun fpOfDesLevel(CHILD {parent=desParent, frame=desFrame, unique=desUnique},
+                            CHILD {parent=curParent, frame=curFrame, unique=curUnique}, newFP) = 
+        if (curUnique = desUnique)
         then newFP
         else 
           let
             val slExpOfCurLevel = getStaticLink(CHILD {parent=curParent, frame=curFrame, unique=curUnique}, newFP)
           in
-            fpOfDesLevel(curParent, CHILD {parent=desParent, frame=desFrame, unique=desUnique}, slExpOfCurLevel)
+            fpOfDesLevel(CHILD {parent=desParent, frame=desFrame, unique=desUnique}, curParent, slExpOfCurLevel)
           end
       | fpOfDesLevel(_, _, _) = ErrorMsg.impossible "Tracing static link reaches the ROOT level..."
     in
       Ex (F.exp fa (fpOfDesLevel(CHILD {parent=parent, frame=f, unique=uniqueRef}, l, Tr.TEMP F.FP)))
       (*F.FP? a single global FP? only move when in Function calls?*)
     end
-    | simpleVar ((ROOT, fa: F.access), l:level) = Ex (Tr.CONST 0)
+    | simpleVar ((ROOT, fa: F.access), l:level) = ErrorMsg.impossible "Reached ROOT level while tracing static links..."
 
   fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (index*F.wordSize))))
 
@@ -232,7 +232,7 @@ struct
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
 
-  fun callExp (l:level, label, exps) = Ex (Tr.CALL(Tr.NAME(label), map unEx exps)) (*need to update static links and F.FP!*)
+  fun callExp (l:level, label, exps) = Ex (Tr.CALL(Tr.NAME(label), map unEx exps))
 
   fun letExp ([], body) = body
     | letExp (decs, body) = Ex (Tr.ESEQ (seq (map unNx decs), unEx body))
@@ -280,11 +280,14 @@ struct
   fun forExp(iAccess, loExp, hiExp, bodyExp, doneLabel, level) = 
     let
       val l = Te.newlabel()
+      val l2 = Te.newlabel()
     in
       Nx (seq[unNx (assignExp(simpleVar(iAccess, level), loExp)),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (unCx (compExp(Tr.LE, (simpleVar(iAccess, level)), hiExp)) (l, doneLabel)),
+                  (unCx (compExp(Tr.EQ, (simpleVar(iAccess, level)), hiExp)) (doneLabel, l2)),
+                  Tr.LABEL l2,
+                  Tr.EXP (Tr.BINOP(Tr.PLUS, unEx (simpleVar(iAccess, level)), Tr.CONST 1)),
                   Tr.LABEL doneLabel])
     end
 

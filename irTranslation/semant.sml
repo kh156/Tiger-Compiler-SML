@@ -464,11 +464,17 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 					    | 	NONE => T.ERROR
 					in
 						(ErrorMsg.impossible "No spaces on the stack allocated for the formals of a function...";
-						(S.enter (venvCurr, name, E.VarEntry {access = Trans.allocLocal (# level entryRecord) (!escape), ty = ty}), []))
+						(S.enter (venvCurr, name, E.VarEntry {access = Trans.allocLocal (#level entryRecord) (!escape), ty = ty}), []))
 					end
 
 				val (venv', _) = foldr enterparam (venv, formalAccesses) params
-				val {exp = _, ty = tybody} = transExp (venv', tenv, body, doneLabel, level)
+				val {exp = bodyExp, ty = tybody} = transExp (venv', tenv, body, doneLabel, (#level entryRecord))
+
+				val entryRecord = case S.look(venv, name) of 
+									SOME(E.FunEntry entry) => entry
+									| _ => ErrorMsg.impossible "Function processing errors...not found..."
+				val unitResult = Trans.procEntryExit({level = (#level entryRecord), body = bodyExp})
+
 			in (
 				case compareType(tybody, tyret, pos, pos) of
 					true => ()
@@ -501,19 +507,8 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 
 		val venv' = foldr firstPass venv funcs;
 
-		fun addFunFrags ({name=name, params=params, body=body, pos=pos, result=result}, venvCurr) =
-			let
-				val entryRecord = case S.look(venvCurr, name) of 
-									SOME(E.FunEntry entry) => entry
-									| _ => ErrorMsg.impossible "Function processing errors...not found..."
-				val {exp = bodyExp, ty = ty} = transExp(venvCurr, tenv, body, doneLabel, (#level entryRecord))
-				val unitResult = Trans.procEntryExit({level = (#level entryRecord), body = bodyExp})
-			in
-				venvCurr
-			end
 	in (
 		secondPass(venv', funcs);
-		foldr addFunFrags venv' funcs;
 		noRepeatNameFunction(funcs);
 		{venv = venv', tenv = tenv, trExpList = initExpList}
 	)
