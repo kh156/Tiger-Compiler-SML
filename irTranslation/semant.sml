@@ -199,7 +199,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  			let
 	  				val fieldResult = transExp(venv, tenv, exp, doneLabel, level)
 	  			in
-	  				translateEachExp(otherFields, (#exp fieldResult)::translated, size+1)
+	  				translateEachExp(otherFields, translated @ [(#exp fieldResult)], size+1)
 	  			end
 	  			| translateEachExp([], translated, size) = {translated=translated, size=size}
 	  	in
@@ -445,9 +445,11 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				|	NONE => T.UNIT 
 
 				val SOME(E.FunEntry entryRecord) = S.look(venv, name)
-				val formalAccesses = Trans.formals (#level entryRecord)
+				val formalAccesses = (case Trans.formals (#level entryRecord) of
+								 sl::rest => rest
+								| _ => ErrorMsg.impossible "Formals of a function is an empty list!")
 
-				fun enterparam ({name, escape, typ, pos}, (venvCurr, access::rest)) = 
+				fun enterparam ({name=name, escape=escape, typ=typ, pos=pos}, (venvCurr, access::rest)) = 
 					let 
 						val ty = case S.look(tenv, typ) of
 					    	SOME t => t
@@ -455,7 +457,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 					in
 						(S.enter (venvCurr, name, E.VarEntry {access = access, ty = ty}), rest)
 					end
-					| enterparam ({name, escape, typ, pos}, (venvCurr, [])) = 
+					| enterparam ({name=name, escape=escape, typ=typ, pos=pos}, (venvCurr, [])) = 
 					let 
 						val ty = case S.look(tenv, typ) of
 					    	SOME t => t
@@ -559,7 +561,6 @@ and transVar(venv, tenv, A.SimpleVar (s: A.symbol, pos: A.pos), doneLabel, level
 fun transProg(programCode : A.exp) = 
     let 
     	val unitResult = Trans.resetFragList()
-    	val unitResult2 = Temp.resetTempCount()
     	val venv = E.base_venv
     	val tenv = E.base_tenv
 		val startOfProgLabel = Temp.newlabel()
@@ -567,7 +568,8 @@ fun transProg(programCode : A.exp) =
     	val endOfProgLabel = Temp.newlabel()
     	val progResult = transExp(venv, tenv, programCode, endOfProgLabel, firstLevel)
     in 
-    	(Trans.procEntryExit({level = firstLevel, body = #exp progResult}); Trans.getResult())
+    	(Trans.procEntryExit({level = firstLevel, body = #exp progResult}); 
+    	 Temp.resetTempCount(); Trans.getResult())
     end
 
 end

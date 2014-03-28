@@ -1,6 +1,6 @@
 let
-	var x := 5
-	function f(a : int, b : int) = 5+a+b
+	type r = {a : int, b : int}
+	var y := r {a = 6, b = 5}
 in
-	f(7, 8)
+	y.a
 end

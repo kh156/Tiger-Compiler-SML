@@ -150,7 +150,7 @@ struct
     end
     | simpleVar ((ROOT, fa: F.access), l:level) = Ex (Tr.CONST 0)
 
-  fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (index*F.wordSize))))
+  fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (~index*F.wordSize))))
 
   fun subscriptVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.BINOP(Tr.MUL, unEx index, Tr.CONST (F.wordSize)))))
 
@@ -222,7 +222,7 @@ struct
               Tr.TEMP r))
     end
   and initRecordFields(oneField::rest, result, curIndex, labelR):Tr.stm list = initRecordFields(rest,
-    (Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP labelR, Tr.CONST (curIndex*F.wordSize))), unEx oneField)::result), curIndex+1, labelR)
+    result @ [(Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP labelR, Tr.CONST (~curIndex*F.wordSize))), unEx oneField))], curIndex+1, labelR)
     | initRecordFields([], result, curIndex, labelR) = result
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))

@@ -1,6 +1,5 @@
 Group is 
 
-semant.sml
 absyn.sml
 prabsyn.sml
 errormsg.sml
@@ -17,6 +16,7 @@ temp.sml
 tree.sml
 frame.sml
 translate.sml
+semant.sml
 printtree.sml
 main.sml
 $/smlnj-lib.cm
