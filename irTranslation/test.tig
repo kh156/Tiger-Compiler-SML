@@ -1,6 +1,7 @@
 let
-	type r = {a : int, b : int}
-	var y := r {a = 6, b = 5}
+	type intArray = array of int
+
+    var row := intArray [ 10 ] of 0
 in
-	y.a
+	row[2]
 end

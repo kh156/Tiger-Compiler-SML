@@ -150,9 +150,14 @@ struct
     end
     | simpleVar ((ROOT, fa: F.access), l:level) = Ex (Tr.CONST 0)
 
-  fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (~index*F.wordSize))))
+  fun fieldVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.CONST (index*F.wordSize))))
 
-  fun subscriptVar(varExp, index) = Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.BINOP(Tr.MUL, unEx index, Tr.CONST (F.wordSize)))))
+  fun subscriptVar(varExp, index) =
+    let
+      val zeroBasedIndex = Tr.BINOP(Tr.MINUS, unEx index, Tr.CONST 1)
+    in
+      Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.BINOP(Tr.MUL, zeroBasedIndex, Tr.CONST (F.wordSize)))))
+    end
 
   fun procEntryExit({level=CHILD {frame=frame, parent=parent, unique=unique}, body=body}) = 
     let
@@ -222,7 +227,7 @@ struct
               Tr.TEMP r))
     end
   and initRecordFields(oneField::rest, result, curIndex, labelR):Tr.stm list = initRecordFields(rest,
-    result @ [(Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP labelR, Tr.CONST (~curIndex*F.wordSize))), unEx oneField))], curIndex+1, labelR)
+    result @ [(Tr.MOVE(Tr.MEM(Tr.BINOP(Tr.PLUS, Tr.TEMP labelR, Tr.CONST (curIndex*F.wordSize))), unEx oneField))], curIndex+1, labelR)
     | initRecordFields([], result, curIndex, labelR) = result
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
@@ -285,11 +290,13 @@ struct
 
   fun breakExp(doneLabel) = Nx (Tr.JUMP(Tr.NAME(doneLabel), [doneLabel]))
 
-  fun arrayExp (size,init) =
+  fun arrayExp (init,size) =
     let
       val return = Tr.TEMP(Te.newtemp())
     in
-      Ex (Tr.ESEQ(Tr.MOVE(return, F.externalCall("initArray", [unEx size, unEx init])), return))
+      Ex (Tr.ESEQ(seq[Tr.MOVE(return, F.externalCall("malloc", [Tr.BINOP(Tr.MUL, (unEx size), Tr.CONST F.wordSize)])),
+                      Tr.EXP (F.externalCall("initArray", [unEx size, unEx init]))
+                      ], return))
     end
     
   fun addExpListBefore(listToAdd, letBody) = 
