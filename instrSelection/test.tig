@@ -1,0 +1,5 @@
+let
+	function f(a: string, b: string) = a
+in
+	f("xx", "yy")
+end
