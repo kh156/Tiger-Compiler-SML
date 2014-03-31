@@ -12,6 +12,13 @@ struct
 	structure A = Assem
 	structure S = Symbol
 
+    fun getBinopString T.PLUS = "add"
+	| 	getBinopString T.MINUS = "sub"
+	| 	getBinopString T.MUL = "mult"
+	| 	getBinopString T.DIV = "div"
+	| 	getBinopString T.AND = "and"
+	| 	getBinopString T.OR = "or"
+	
 
 fun codegen (frame) (stm: Tree.stm) : A.instrlist = 
 	let 
@@ -62,6 +69,12 @@ fun codegen (frame) (stm: Tree.stm) : A.instrlist =
             								src=[munchExp e1], 
             								dst=[r], 
             								jump=NONE}))
+        	(* rest of binops *)
+      	| 	munchExp(T.BINOP(binop, e1, e2)) =
+        		result(fn r => emit(A.OPER {assem = getBinopString(binop) ^ " 'd0, 's0, 's1\n",
+        									src = [munchExp e1, munchExp e2], 
+        									dst=[r], 
+        									jump=NONE}))
 
 
 	in 
