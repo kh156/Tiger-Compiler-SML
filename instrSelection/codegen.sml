@@ -18,7 +18,7 @@ struct
 	| 	getBinopString T.DIV = "div"
 	| 	getBinopString T.AND = "and"
 	| 	getBinopString T.OR = "or"
-	
+
 
 fun codegen (frame) (stm: Tree.stm) : A.instrlist = 
 	let 
@@ -75,6 +75,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instrlist =
         									src = [munchExp e1, munchExp e2], 
         									dst=[r], 
         									jump=NONE}))
+        	
 
 
 	in 
