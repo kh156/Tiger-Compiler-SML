@@ -20,10 +20,10 @@ struct
 	| 	getBinopString T.OR = "or"
 
 fun codegen (frame) (stm: Tree.stm) : A.instr list = 
-  let 
-	val ilist = ref [] : A.instr list
-	fun emit x = ilist := x :: !ilist
-	fun result(gen) = let val t = Temp.newtemp() in gen t; t end
+	let 
+		val ilist = ref [] : A.instr list
+		fun emit x = ilist := x :: !ilist
+		fun result(gen) = let val t = Temp.newtemp() in gen t; t end
 
     fun emitMoveInstr(srcTemp, dstTemp) =  emit(A.MOVE {assem = "move 'd0, 's0\n",
                       src = srcTemp,
@@ -61,7 +61,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | T.UGT => "bleu"
         | T.UGE => "bltu")
 
-	fun munchStm(T.SEQ(stm1, stm2)) = 
+		fun munchStm(T.SEQ(stm1, stm2)) = 
         (muchstm(stm1); munchstm(stm2))
 
         | munchStm(T.LABEL(label)) =
@@ -79,6 +79,15 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.CJUMP(relop, exp1, exp2, tlabel, flabel)) = 
             emitBranchInstr(relop, munchExp(exp1), munchExp(exp2), tlabel, flabel);
 
+            | T.NE => emit(A.OPER {assem = "beq 's0, 's1, 'j0\bne 's0, 's1, 'j1\n",
+                                src = [munchExp(exp1), munchExp(exp2)],
+                                dst = [],
+                                jump = SOME([flabel, tlabel])})
+            | T.LT => emit(A.OPER {assem = "beq 's0, 's1, 'j0\bne 's0, 's1, 'j1\n",
+                                src = [munchExp(exp1), munchExp(exp2)],
+                                dst = [],
+                                jump = SOME([tlabel, flabel])})
+
         (*dst and src are both registers*)
         | munchStm(T.MOVE(T.TEMP r1, T.TEMP r2)) = emitMoveInstr(r2, r1)
 
@@ -90,9 +99,10 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 
         | munchStm(T.EXP exp) = munchExp(exp)
 
+		and 
 
-    (* lw *)
-	and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
+			(* lw *)
+		munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
 		 		result(fn r => emit(A.OPER {assem = "lw 'd0, " ^ Int.toString i ^ "('s0)\n",
 		 		 							src = [munchExp e1], 
 		 		 							dst = [r], 
@@ -105,55 +115,55 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 
 			(* addi *)
 		|	munchExp(T.BINOP(T.PLUS, e1, T.CONST i)) =
-            result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString i ^ "\n",
-                								src = [munchExp e1], 
-                								dst = [r], 
-                								jump = NONE}))
-        | 	munchExp(T.BINOP(T.PLUS, T.CONST i, e1)) =
-           	result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString i ^ "\n",
-               									src = [munchExp e1],
-               									dst = [r],
-               									jump = NONE}))
-        (* subi *)
-        | 	munchExp(T.BINOP(T.MINUS, e1, T.CONST i)) =
-    			  result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString (~i) ^ "\n",
-                								src = [munchExp e1], 
-                								dst = [r], 
-                								jump = NONE}))
-    		(* andi *)
-        | 	munchExp(T.BINOP(T.AND, e1, T.CONST i)) =
-            result(fn r => emit(A.OPER {assem="andi 'd0, 's0, " ^ Int.toString i ^ "\n",
-            									src=[munchExp e1], 
-            									dst=[r], 
-            									jump=NONE}))
-        | 	munchExp(T.BINOP(T.AND, T.CONST i, e1)) =
-        		result(fn r => emit(A.OPER {assem="andi 'd0, 's0, " ^ Int.toString i ^ "\n",
-                								src=[munchExp e1], 
-                								dst=[r], 
-                								jump=NONE}))
-        (* ori *)
-        | 	munchExp(T.BINOP(T.OR, e1, T.CONST i)) =
-         		result(fn r => emit(A.OPER {assem="ori 'd0, 's0, " ^ Int.toString i ^ "\n",
-                								src=[munchExp e1], 
-                								dst=[r], 
-                								jump=NONE}))
-        | 	munchExp(T.BINOP(T.OR, T.CONST i, e1)) =
-            result(fn r => emit(A.OPER {assem="ori 'd0, 's0, " ^ Int.toString i ^ "\n",
-                								src=[munchExp e1], 
-                								dst=[r], 
-                								jump=NONE}))
-        (* rest of binops *)
-        | 	munchExp(T.BINOP(binop, e1, e2)) =
-            result(fn r => emit(A.OPER {assem = getBinopString(binop) ^ " 'd0, 's0, 's1\n",
-            									src = [munchExp e1, munchExp e2], 
-            									dst=[r], 
-            									jump=NONE}))
-        (* T.MEM *)
-    		| 	munchExp (T.MEM e1) = 
-    		   	result(fn r => emit(A.OPER {assem = "lw 'd0, 0('s0)\n",
-    		   									src=[munchExp e1], 
-    		   									dst=[r], 
-    		   									jump = NONE}))
+      result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString i ^ "\n",
+            								src = [munchExp e1], 
+            								dst = [r], 
+            								jump = NONE}))
+    | 	munchExp(T.BINOP(T.PLUS, T.CONST i, e1)) =
+       	result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString i ^ "\n",
+           									src = [munchExp e1],
+           									dst = [r],
+           									jump = NONE}))
+    (* subi *)
+    | 	munchExp(T.BINOP(T.MINUS, e1, T.CONST i)) =
+			  result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString (~i) ^ "\n",
+            								src = [munchExp e1], 
+            								dst = [r], 
+            								jump = NONE}))
+		(* andi *)
+    | 	munchExp(T.BINOP(T.AND, e1, T.CONST i)) =
+        result(fn r => emit(A.OPER {assem="andi 'd0, 's0, " ^ Int.toString i ^ "\n",
+        									src=[munchExp e1], 
+        									dst=[r], 
+        									jump=NONE}))
+    | 	munchExp(T.BINOP(T.AND, T.CONST i, e1)) =
+    		result(fn r => emit(A.OPER {assem="andi 'd0, 's0, " ^ Int.toString i ^ "\n",
+            								src=[munchExp e1], 
+            								dst=[r], 
+            								jump=NONE}))
+    (* ori *)
+    | 	munchExp(T.BINOP(T.OR, e1, T.CONST i)) =
+     		result(fn r => emit(A.OPER {assem="ori 'd0, 's0, " ^ Int.toString i ^ "\n",
+            								src=[munchExp e1], 
+            								dst=[r], 
+            								jump=NONE}))
+    | 	munchExp(T.BINOP(T.OR, T.CONST i, e1)) =
+        result(fn r => emit(A.OPER {assem="ori 'd0, 's0, " ^ Int.toString i ^ "\n",
+            								src=[munchExp e1], 
+            								dst=[r], 
+            								jump=NONE}))
+    (* rest of binops *)
+    | 	munchExp(T.BINOP(binop, e1, e2)) =
+        result(fn r => emit(A.OPER {assem = getBinopString(binop) ^ " 'd0, 's0, 's1\n",
+        									src = [munchExp e1, munchExp e2], 
+        									dst=[r], 
+        									jump=NONE}))
+    (* T.MEM *)
+		| 	munchExp (T.MEM e1) = 
+		   	result(fn r => emit(A.OPER {assem = "lw 'd0, 0('s0)\n",
+		   									src=[munchExp e1], 
+		   									dst=[r], 
+		   									jump = NONE}))
 		(* T.TEMP *)
 		| 	munchExp (T.TEMP t) = t
 		(* T.NAME *)
