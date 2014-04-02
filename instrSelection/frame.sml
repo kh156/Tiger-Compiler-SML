@@ -82,6 +82,18 @@ struct
       body
     end
 
+  fun procEntryExit2 (frame,body) =
+      body @ 
+      [A.OPER{assem="",
+              src=specialregs @ calleesaves,
+              dst=[],jump=SOME[]}]
+    
+  fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, 
+                      body : Assem.instr list) =
+      {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n",
+       body = body,
+       epilog = "END " ^ Symbol.name name ^ "\n"}
+
   fun externalCall(s, args) =
     Tr.CALL(Tr.NAME(Te.namedlabel s), args)
 
