@@ -39,17 +39,46 @@ struct
   structure S = Symbol
   structure A = Assem
 
+  val wordSize = 4
+
   val FP = Te.newtemp() (*FP should only be changed during Fn calls--> shifts into the level of the Fn*)
   val RV = Te.newtemp()
   val RA = Te.newtemp()
   val SP = Te.newtemp()
   val ZERO = Te.newtemp()
-  val wordSize = 4
 
-  specialregs =  [FP, RV, RA, SP, ZERO] 
-  argregs = List.tabulate (4, (fn i => Temp.newtemp ())) (* $a0-$a3 *)
-  calleesaves = List.tabulate (8, (fn i => Temp.newtemp ())) (* $s0-$s7 *)
-  callersaves = List.tabulate (10, (fn i => Temp.newtemp ())) (* $t0-$t9 *)
+  val v0 = Temp.newtemp()   (* Return Vals*)
+  val v1 = Temp.newtemp()   
+ 
+  val a0 = Temp.newtemp()   (* Arguments *)
+  val a1 = Temp.newtemp()   
+  val a2 = Temp.newtemp()   
+  val a3 = Temp.newtemp()   
+
+  val t0 = Temp.newtemp()   (* Temps*)
+  val t1 = Temp.newtemp()   
+  val t2 = Temp.newtemp()   
+  val t3 = Temp.newtemp()   
+  val t4 = Temp.newtemp()   
+  val t5 = Temp.newtemp()   
+  val t6 = Temp.newtemp()   
+  val t7 = Temp.newtemp()   
+  val t8 = Temp.newtemp()   
+  val t9 = Temp.newtemp()   
+                            
+  val s0 = Temp.newtemp()   (* Saved Temps *)
+  val s1 = Temp.newtemp()   
+  val s2 = Temp.newtemp()   
+  val s3 = Temp.newtemp()   
+  val s4 = Temp.newtemp()   
+  val s5 = Temp.newtemp()   
+  val s6 = Temp.newtemp()   
+  val s7 = Temp.newtemp()   
+
+  specialregs =  [FP, RV, RA, SP, ZERO, v0, v1] 
+  argregs = [a0,a1,a2,a3] (* $a0-$a3 *)
+  calleesaves = [s0,s2,s2,s3,s4,s5,s6,s7] (* $s0-$s7 *)
+  callersaves = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]  (* $t0-$t9 *)
 
   fun name({name = name, formals = _ , spOffset = _}) = name
   fun formals({name = _, formals = formals , spOffset = _}) = formals
@@ -92,14 +121,17 @@ struct
   fun moveArg (arg, access) =
       Tr.MOVE (exp access (Tr.TEMP(FP)), Tr.TEMP(arg))
 
-  fun procEntryExit1(frame, body) = 
+  fun procEntryExit1 (frame, stm) =
     let
-      (*steps 4, 5, 8 on page 168*)
-      val savedRegs = RA :: calleesaves
-
-    in
-      body
-    end
+      val saved = RA :: calleesaves
+      val tempRegs = map (fn temp => Temp.newtemp ()) saved
+      val moveRegs = ListPair.mapEq move
+      val saveRegs = seq ( moveRegs (tempRegs, saved))
+      val restoreRegs = seq ( moveRegs (saved, tempRegs))
+      (*This is all I know how to do*)
+  in
+      (*no idea what to do here*)
+  end
 
   fun procEntryExit2 (frame,body) =
       body @ 
