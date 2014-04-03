@@ -37,10 +37,19 @@ struct
   structure Te = Temp
   structure Tr = Tree
   structure S = Symbol
+  structure A = Assem
 
   val FP = Te.newtemp() (*FP should only be changed during Fn calls--> shifts into the level of the Fn*)
-  val wordSize = 4
   val RV = Te.newtemp()
+  val RA = Te.newtemp()
+  val SP = Te.newtemp()
+  val ZERO = Te.newtemp()
+  val wordSize = 4
+
+  specialregs =  [FP, RV, RA, SP, ZERO] 
+  argregs = List.tabulate (4, (fn i => Temp.newtemp ())) (* $a0-$a3 *)
+  calleesaves = List.tabulate (8, (fn i => Temp.newtemp ())) (* $s0-$s7 *)
+  callersaves = List.tabulate (10, (fn i => Temp.newtemp ())) (* $t0-$t9 *)
 
   fun name({name = name, formals = _ , spOffset = _}) = name
   fun formals({name = _, formals = formals , spOffset = _}) = formals
@@ -87,7 +96,7 @@ struct
       [A.OPER{assem="",
               src=specialregs @ calleesaves,
               dst=[],jump=SOME[]}]
-    
+
   fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, 
                       body : Assem.instr list) =
       {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n",
