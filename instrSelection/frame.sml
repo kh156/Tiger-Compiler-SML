@@ -83,10 +83,20 @@ struct
     end
   | exp(InReg t) = fn _ => Tr.TEMP(t)
 
+  fun move(reg, var) = Tr.MOVE(Tr.TEMP(reg), Tr.TEMP(var))
+
+  fun seq (stm::[]) = stm
+    | seq (stm::rest) = Tr.SEQ(stm, seq(rest))
+    | seq ([]) = Tr.EXP (Tr.CONST 0)
+
+  fun moveArg (arg, access) =
+      Tr.MOVE (exp access (Tr.TEMP(FP)), Tr.TEMP(arg))
 
   fun procEntryExit1(frame, body) = 
     let
       (*steps 4, 5, 8 on page 168*)
+      val savedRegs = RA :: calleesaves
+
     in
       body
     end
