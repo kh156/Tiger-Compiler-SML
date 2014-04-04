@@ -1,5 +1,5 @@
 let
-	function f(a: string, b: string) = a
+	var x := 5
 in
-	f("xx", "yy")
+	x
 end

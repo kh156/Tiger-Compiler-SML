@@ -21,7 +21,7 @@ printtree.sml
 assem.sml
 canon.sml
 codegen.sml
-findescape.sml
+(*findescape.sml*)
 mainGiven.sml
 main.sml
 $/smlnj-lib.cm
