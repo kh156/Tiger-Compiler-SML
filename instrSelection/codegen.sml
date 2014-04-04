@@ -61,7 +61,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | T.UGT => "bleu"
         | T.UGE => "bltu")
 
-		fun munchStm(T.SEQ(stm1, stm2)) = 
+	fun munchStm(T.SEQ(stm1, stm2)) = 
         (muchstm(stm1); munchstm(stm2))
 
         | munchStm(T.LABEL(label)) =
@@ -85,15 +85,17 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         (*dst is a register*)
         | munchStm(T.MOVE(T.TEMP r , exp)) = emitMoveInstr(munchExp(exp), r)
 
+        | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS, e1, T.CONST i)), T.TEMP r)) =
+            emit(A.OPER {assem = "sw 's0, " ^ Int.toString i ^ "('d0')\n",
+                        src = [r],
+                        dst = [munchExp e1],
+                        jump = NONE})
         (*neither of src and dst is register*)
         | munchStm(T.MOVE(exp1, exp2)) = emitMoveInstr(munchExp(exp2), munchExp(exp1))
 
         | munchStm(T.EXP exp) = munchExp(exp)
 
-		and 
-
-			(* lw *)
-		munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
+	and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
 		 		result(fn r => emit(A.OPER {assem = "lw 'd0, " ^ Int.toString i ^ "('s0)\n",
 		 		 							src = [munchExp e1], 
 		 		 							dst = [r], 
@@ -173,19 +175,19 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 		| 	munchExp (T.CALL (e, args)) = 
 				result(fn r => emit(A.OPER {
 					assem = "jal " ^ S.name(label) ^ "\n",
-					src = munchArgs(0, args),	(************* IS IT CORRECT???? *************)
-					dst = [F.RV],	(************* IS IT CORRECT???? *************)
+					src = munchArgs(0, args),	(*should be all the $a registers*)
+					dst = [F.RV],	(*RV, and all the $t registers because they could get altered*)
 					jump = NONE
 				}))
 
-		fun munchArgs (i, []) = []
-	  	| 	munchArgs(i, a::l) = 
-		  	let
-		  		val argReg = T.TEMP(Temp.newtemp());
-		  	in
-		  		(munchStm(T.MOVE(argReg, a));
-			  	argReg::munchArgs(i+1,l))
-		  	end
+	fun munchArgs (i, []) = []
+	  | munchArgs(i, a::l) = 
+		  let
+		  	val argReg = T.TEMP(Temp.newtemp());
+		  in
+		  	(munchStm(T.MOVE(argReg, a));
+		  	argReg::munchArgs(i+1,l))
+		  end
 
 
 	in 

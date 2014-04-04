@@ -513,7 +513,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 		{venv = venv', tenv = tenv, trExpList = initExpList}
 	)
 	end
-
+(*I think the question is about the protocol that "IP packets have a flag set to indicate that the sender wants an ACK that contains the signed path travelled by the packet"--the overhead of this protocol..*)
 | transDec(venv, tenv, A.StartOfDecList (), doneLabel, level, initExpList) = {venv=venv, tenv=tenv, trExpList = initExpList}
 	
 (*val level in transVar is the level of the function in which variables are used!!*)
