@@ -1,6 +1,5 @@
 let
-	type a = array of int
-	var row := a [10] of 0
+	var x := 10
 in
-	row[2]
+	while (x>0) do 1+1
 end
