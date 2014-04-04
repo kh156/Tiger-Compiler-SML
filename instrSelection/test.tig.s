@@ -1,11 +1,7 @@
-L10:
-li t105, 6
-sw t105, ~12(t100)
-li t106, 5
-sw t106, ~8(t100)
-lw t108, ~8(t100)
-lw t109, ~12(t100)
-add t107, t108, 's1
-move t101, t107
-j L9
-L9:
+L34:
+la t105, L32
+move t106, t105
+move t107, t106
+j L33
+L33:
+L32: abc

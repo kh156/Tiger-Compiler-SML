@@ -18,7 +18,7 @@ structure MainGiven = struct
       in  
          app (fn i => TextIO.output(out,format0 i)) instrs
      end
-    | emitproc out (F.STRING(lab,s)) = TextIO.output(out, s)
+    | emitproc out (F.STRING(lab,s)) = TextIO.output(out, (Symbol.name lab)^": "^s)
 
    fun withOpenFile fname f = 
        let 

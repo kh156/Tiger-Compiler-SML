@@ -1,6 +1,6 @@
 let
-	var x:= 5
-	var y:= 6
+	type a = int
+	var x := "abc"
 in
-	x+y
+	x
 end
