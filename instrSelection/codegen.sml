@@ -77,16 +77,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.JUMP(_, _)) = ErrorMsg.impossible "Tree.JUMP doesn't jump to a single label...(only case I know of)..."
 
         | munchStm(T.CJUMP(relop, exp1, exp2, tlabel, flabel)) = 
-            emitBranchInstr(relop, munchExp(exp1), munchExp(exp2), tlabel, flabel);
-
-            | T.NE => emit(A.OPER {assem = "beq 's0, 's1, 'j0\bne 's0, 's1, 'j1\n",
-                                src = [munchExp(exp1), munchExp(exp2)],
-                                dst = [],
-                                jump = SOME([flabel, tlabel])})
-            | T.LT => emit(A.OPER {assem = "beq 's0, 's1, 'j0\bne 's0, 's1, 'j1\n",
-                                src = [munchExp(exp1), munchExp(exp2)],
-                                dst = [],
-                                jump = SOME([tlabel, flabel])})
+            emitBranchInstr(relop, munchExp(exp1), munchExp(exp2), tlabel, flabel)
 
         (*dst and src are both registers*)
         | munchStm(T.MOVE(T.TEMP r1, T.TEMP r2)) = emitMoveInstr(r2, r1)
@@ -200,3 +191,4 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 	in 
 		munchStm stm; rev(!ilist)
 	end
+end
