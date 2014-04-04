@@ -1,26 +1,24 @@
-L241:
-li t919, 5
-move t918, t919
-jal L236
+L261:
+li t972, 5
+jal L256
 move t101, t101
-j L240
-L240:
-L243:
-li t921, 0
-bgt t898, t921, L237
-ble t898, t921, L238
-L238:
-li t922, 99
-move t899, t922
-L239:
-move t101, t899
-j L242
-L237:
-addi t924, t898, ~1
-move t923, t924
-jal L236
-move t920, t101
-addi t925, t920, 1
-move t899, t925
-j L239
-L242:
+j L260
+L260:
+L263:
+li t974, 0
+bgt t952, t974, L257
+ble t952, t974, L258
+L258:
+li t953, 99
+L259:
+move t101, t953
+j L262
+L257:
+addi t976, t952, ~1
+move t975, t976
+jal L256
+move t973, t101
+addi t977, t973, 1
+move t953, t977
+j L259
+L262:

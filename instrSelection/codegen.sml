@@ -18,6 +18,10 @@ struct
 	| 	getBinopString T.DIV = "div"
 	| 	getBinopString T.AND = "and"
 	| 	getBinopString T.OR = "or"
+    |   getBinopString T.LSHIFT = "lshift"
+    |   getBinopString T.RSHIFT = "rshift"
+    |   getBinopString T.ARSHIFT = "arshift"
+    |   getBinopString T.XOR = "xor"
 
 fun codegen (frame) (stm: Tree.stm) : A.instr list = 
 	let 
@@ -82,6 +86,11 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         (*dst and src are both registers*)
         | munchStm(T.MOVE(T.TEMP r1, T.TEMP r2)) = emitMoveInstr(r2, r1)
 
+        (*li instructions*)
+        | munchStm(T.MOVE(T.TEMP r, T.CONST i)) = emit(A.OPER {assem = "li `d0, " ^ Int.toString i ^ "\n",
+                                                        src = [],
+                                                        dst = [r],
+                                                        jump = NONE})
         (*dst is a register*)
         | munchStm(T.MOVE(T.TEMP r , exp)) = emitMoveInstr(munchExp(exp), r)
 
@@ -173,14 +182,22 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 											dst = [r],
 											jump = NONE}))
 		(* T.CALL *)
-		| 	munchExp (T.CALL (T.NAME label, args)) = 
-				(emit(A.OPER {
-					assem = "jal " ^ S.name(label) ^ "\n",
-					src = munchArgs(0, args),	(*should be all the $a registers*)
-					dst = [F.RV],	(*RV, and all the $t registers because they could get altered*)
-					jump = NONE
-				});
-                F.RV)
+		| 	munchExp (T.CALL (lexp, args)) = 
+                let
+                    val label= (case lexp of
+                                T.NAME l => l
+                                | _ => ErrorMsg.impossible "Call expression with non-label...(not function call??)...")
+                in
+    				(emit(A.OPER {
+    					assem = "jal " ^ S.name(label) ^ "\n",
+    					src = munchArgs(0, args),	(*should be all the $a registers*)
+    					dst = [F.RV],	(*RV, and all the $t registers because they could get altered*)
+    					jump = NONE
+    				});
+                    F.RV)
+                end
+        |   munchExp (T.ESEQ(_, _)) = ErrorMsg.impossible "Tree.ESEQ shouldn't appear in instruction selection phase..."
+
 
 	and munchArgs (i, []) = []
 	  | munchArgs(i, a::l) = 
