@@ -19,6 +19,9 @@ sig
 
   val externalCall: string * Tree.exp list -> Tree.exp
 
+  val tempMap: register Temp.Table.table
+  val getTempName: temp -> string
+
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
 end
@@ -47,24 +50,24 @@ struct
   val SP = Te.newtemp() 
   val ZERO = Te.newtemp()
 
-  val v0 = Temp.newtemp()   (* Return Vals*)
-  val v1 = Temp.newtemp()   
+  val v0 = Te.newtemp()   (* Return Vals*)
+  val v1 = Te.newtemp()   
  
-  val a0 = Temp.newtemp()   (* Arguments *)
-  val a1 = Temp.newtemp()   
-  val a2 = Temp.newtemp()   
-  val a3 = Temp.newtemp()   
+  val a0 = Te.newtemp()   (* Arguments *)
+  val a1 = Te.newtemp()   
+  val a2 = Te.newtemp()   
+  val a3 = Te.newtemp()   
 
-  val t0 = Temp.newtemp()   (* Temps*)
-  val t1 = Temp.newtemp()   
-  val t2 = Temp.newtemp()   
-  val t3 = Temp.newtemp()   
-  val t4 = Temp.newtemp()   
-  val t5 = Temp.newtemp()   
-  val t6 = Temp.newtemp()   
-  val t7 = Temp.newtemp()   
-  val t8 = Temp.newtemp()   
-  val t9 = Temp.newtemp()   
+  val t0 = Te.newtemp()   (* Temps*)
+  val t1 = Te.newtemp()   
+  val t2 = Te.newtemp()   
+  val t3 = Te.newtemp()   
+  val t4 = Te.newtemp()   
+  val t5 = Te.newtemp()   
+  val t6 = Te.newtemp()   
+  val t7 = Te.newtemp()   
+  val t8 = Te.newtemp()   
+  val t9 = Te.newtemp()   
                             
   val s0 = Temp.newtemp()   (* Saved Temps *)
   val s1 = Temp.newtemp()   
@@ -148,4 +151,11 @@ struct
   fun externalCall(s, args) =
     Tr.CALL(Tr.NAME(Te.namedlabel s), args)
 
+  fun tempToString(temp) =
+    let 
+      val name = Te.Table.look(tempMap, temp)
+    in
+      case name of NONE => Te.makestring(temp)
+                 | SOME(reg) => reg
+    end
 end
