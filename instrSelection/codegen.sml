@@ -148,7 +148,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
                 								jump=NONE}))
         (* rest of binops *)
         | 	munchExp(T.BINOP(binop, e1, e2)) =
-            result(fn r => emit(A.OPER {assem = getBinopString(binop) ^ " `d0, `s0, 's1\n",
+            result(fn r => emit(A.OPER {assem = getBinopString(binop) ^ " `d0, `s0, `s1\n",
             									src = [munchExp e1, munchExp e2], 
             									dst=[r], 
             									jump=NONE}))
