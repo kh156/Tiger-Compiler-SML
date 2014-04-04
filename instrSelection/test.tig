@@ -1,5 +1,6 @@
 let
 	var x:= 5
+	function f(c:int) = c+1
 in
-	()
+	f(x)
 end
