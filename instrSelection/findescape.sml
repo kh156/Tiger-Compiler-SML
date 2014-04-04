@@ -4,91 +4,95 @@ sig
 	val findEscape: Absyn.exp -> unit 
 end
 
-struct
-  structure A = Assem
+=struct
+  structure A = Absyn
   structure S = Symbol
 
   type depth = int
   type escEnv = (depth * bool ref) S.table
 
-  fun traverserVar(env:escEnv, d:depth, s:A.var): unit =
+  fun traverseVar(env:escEnv, d:depth, s:A.var): unit =
     case s of
       A.SimpleVar(symbol, pos) =>
-        case S.look(env, symbol) of
+        (case S.look(env, symbol) of
           SOME(depth, esc) => 
             if depth < d then esc:=true else ()
-          | _ => ()
+          | _ => ())
       | A.FieldVar(var,sym,pos) => traverseVar(env, d, var)    (********** Need escape record field????? **********)
       | A.SubscriptVar(var, exp, pos) => (traverseVar(env, d, var); traverseExp(env, d, exp))
 
-
   and traverseExp(env:escEnv, d:depth, s:A.exp): unit =
     let
-      val traverseExpShort(s:A.exp) = traverseExp(env, d, s)
+      fun traverseExpShort(s:A.exp) = traverseExp(env, d, s)
     in
-      case A.exp of
-        A.VarExp var => traverseExpShort var
-        | A.NilExp e => ()
+      case s of
+        A.VarExp var => traverseVar(env, d, var)
+        | A.NilExp => ()
         | A.IntExp e => ()
         | A.StringExp e => ()
-        | A.CallExp {func: symbol, args: exp list, pos: pos} =>
+        | A.CallExp {func, args: A.exp list, pos} =>
             app traverseExpShort args
-        | A.OpExp {left: exp, oper: oper, right: exp, pos: pos} =>
+        | A.OpExp {left, oper, right, pos} =>
             (traverseExpShort left; traverseExpShort right)
-        | A.RecordExp {fields: (symbol * exp * pos) list, typ: symbol, pos: pos} =>
+        | A.RecordExp {fields: (A.symbol * A.exp * A.pos) list, typ, pos} =>
             app traverseExpShort (map #2 fields)
         | A.SeqExp seqs =>
             app traverseExpShort (map #1 seqs)
-        | A.AssignExp {var: var, exp: exp, pos: pos} =>
-            (traverserVar(env, d, var); traverseExpShort exp)
-        | A.IfExp {test: exp, then': exp, else': exp option, pos: pos} =>
+        | A.AssignExp {var, exp, pos} =>
+            (traverseVar(env, d, var); traverseExpShort exp)
+        | A.IfExp {test, then', else', pos} =>
             (traverseExpShort test; traverseExpShort then';
               case else' of
                 SOME exp => traverseExpShort exp
                 | _ => ())
-        | A.WhileExp {test: exp, body: exp, pos: pos} =>
+        | A.WhileExp {test, body, pos} =>
             (traverseExpShort test; traverseExpShort body)
-        | A.ForExp {var: symbol, escape: bool ref, lo: exp, hi: exp, body: exp, pos: pos} =>
+        | A.ForExp {var, escape: bool ref, lo, hi, body, pos} =>
             let
-              () = escape := false; (** otherwise always true **)
-              val env' = S.enter (env, var, (d, escape))
+              val env' = (escape := false; (** otherwise always true **) S.enter (env, var, (d, escape)))
             in
               (traverseExp(env', d, lo);
                 traverseExp(env', d, hi);
                 traverseExp(env', d, body))
             end
         | A.BreakExp e => ()
-        | A.LetExp {decs: dec list, body: exp, pos: pos} =>
+        | A.LetExp {decs, body, pos} =>
             let
               val env' = traverseDecs(env, d, decs)
             in
               traverseExp(env', d, body)
             end
-        | A.ArrayExp {typ: symbol, size: exp, init: exp, pos: pos} =>
+        | A.ArrayExp {typ, size, init, pos} =>
             (traverseExpShort size; traverseExpShort init)
     end
 
 
   and traverseDecs(env, d, s:A.dec list): escEnv =
-      case s of
-        A.FunctionDec fundecList =>
+    let
+      fun 
+        traverseDecWrap (A.FunctionDec fundecList, env) =
           let
             fun addParam ({name, escape, typ, pos}, env) =
               (escape := false;   (** otherwise always true **)
-                S.enter(env, name, (escape, d+1)))
-            fun traverseDec({name, params, result, body, pos}, env) = 
+                S.enter(env, name, (d+1, escape)))
+            fun traverseDec({name, params, result, body:A.exp, pos}) = 
               let
-                val env' = foldr addParam evn params
+                val env' = foldl addParam env params
               in
                 traverseExp(env', d+1, body)
               end
           in
-            (app traverseDec FunctionDec; env)
+            (app traverseDec fundecList; env)
           end
-      | A.VarDec {name, escape, typ, init, pos} =>
-        (escape := false; (** otherwise always true **)
-          S.enter(env, name, (escape, d)))
-      | A.TypeDec typeDecList => env      (********** Need traverse record type????? **********)
+        | traverseDecWrap (A.VarDec {name, escape, typ, init, pos}, env) =
+          (escape := false; (** otherwise always true **)
+            S.enter(env, name, (d, escape
+              )))
+        | traverseDecWrap (A.TypeDec typeDecList, env) = env      (********** Need traverse record type????? **********)
+        | traverseDecWrap (_, env) = env
+    in
+      foldl traverseDecWrap env s
+    end
 
 
   fun findEscape(prog: A.exp): unit =
