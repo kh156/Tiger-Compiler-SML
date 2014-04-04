@@ -1,8 +1,9 @@
-structure FindEscape: 
-
+signature FINDESCAPE =
 sig 
-	val findEscape: Absyn.exp -> unit 
+  val findEscape: Absyn.exp -> unit
 end
+
+structure FindEscape:FINDESCAPE =
 
 struct
   structure A = Assem
@@ -50,7 +51,7 @@ struct
             (traverseExpShort test; traverseExpShort body)
         | A.ForExp {var: symbol, escape: bool ref, lo: exp, hi: exp, body: exp, pos: pos} =>
             let
-              () = escape := false; (** otherwise always true **)
+              () = escape := false (** otherwise always true **)
               val env' = S.enter (env, var, (d, escape))
             in
               (traverseExp(env', d, lo);
