@@ -564,7 +564,7 @@ fun transProg(programCode : A.exp) =
     	val progResult = transExp(venv, tenv, programCode, endOfProgLabel, firstLevel)
     in 
     	(Trans.procEntryExit({level = firstLevel, body = #exp progResult}); 
-    	 Temp.resetTempCount(); Trans.getResult())
+    	 Trans.getResult())
     end
 
 end

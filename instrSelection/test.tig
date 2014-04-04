@@ -1,6 +1,7 @@
 let
 	type a = int
 	var x := "abc"
+	var y := "xyz"
 in
-	x
+	x=y
 end

@@ -128,7 +128,7 @@ struct
   fun seqExp [] = Ex (Tr.CONST 0)
     | seqExp [exp] = exp
     | seqExp (exp :: exps) =
-        Ex (Tr.ESEQ (unNx exp, unEx (seqExp exps)))
+        Ex (Tr.ESEQ (unNx (seqExp exps), unEx exp))
 
   (*how is the current level useful here? I guess static links come into play here...*)
   fun simpleVar((CHILD {parent=parent, frame=f, unique=uniqueRef}, fa: F.access), l: level) =
