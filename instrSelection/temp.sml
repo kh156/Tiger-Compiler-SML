@@ -6,7 +6,7 @@ struct
   val temps = ref 100
   fun newtemp() = let val t = !temps in temps := t+1; t end
 
-  fun resetTempCount() = (temps := 105) (*Special registers already assigned*)
+  fun resetTempCount() = (temps := 100) (*Special registers already assigned*)
 
   structure Table = IntMapTable(type key = int
 			  fun getInt n = n)
