@@ -8,4 +8,9 @@ sig
   val newlabel : unit -> label
   val namedlabel : string -> label
   val resetTempCount : unit -> unit
+
+  type 'a table
+  val empty : 'a table
+  val enter : 'a table * temp * 'a -> 'a table
+  val look  : 'a table * temp -> 'a option
 end

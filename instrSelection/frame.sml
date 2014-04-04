@@ -2,6 +2,7 @@ signature FRAME =
 sig 
 	val wordSize: int
 	type frame
+  datatype register = Reg of string
   datatype access = InFrame of int
                   | InReg of Temp.temp
 
@@ -19,8 +20,9 @@ sig
 
   val externalCall: string * Tree.exp list -> Tree.exp
 
-  (*val tempMap: register Temp.Table.table*)
-  (*val getTempName: temp -> string*)
+  val tempMap: register Temp.table
+
+  val getTempName: Temp.temp -> string
 
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
@@ -33,6 +35,9 @@ struct
   datatype access = InFrame of int
                   | InReg of Temp.temp
   type frame = {name: Temp.label, formals: access list, spOffset: int ref}
+
+  datatype register = Reg of string
+  
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
   (*sp is the offset for the stack pointer of the current frame from the fp*)
@@ -49,6 +54,14 @@ struct
   val RA = Te.newtemp()
   val SP = Te.newtemp() 
   val ZERO = Te.newtemp()
+
+  val tempMap = foldr (fn ((temp, regEntry), table) => Te.enter(table, temp, regEntry))
+            Te.empty
+            [(FP, Reg "$fp"),
+             (RV, Reg "$v0"),
+             (RA, Reg "$ra"),
+             (SP, Reg "$sp"),
+             (ZERO, Reg "$0")]
 
   val v0 = Te.newtemp()   (* Return Vals*)
   val v1 = Te.newtemp()   
@@ -151,11 +164,11 @@ struct
   fun externalCall(s, args) =
     Tr.CALL(Tr.NAME(Te.namedlabel s), args)
 
-  (*fun tempToString(temp) =
+  fun getTempName(temp) =
     let 
       val name = Te.Table.look(tempMap, temp)
     in
       case name of NONE => Te.makestring(temp)
-                 | SOME(reg) => reg
-    end*)
+                 | SOME(Reg regstr) => regstr
+    end
 end

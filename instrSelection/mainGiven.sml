@@ -6,6 +6,7 @@ structure MainGiven = struct
    (*structure R = RegAlloc*)
 
    fun getsome (SOME x) = x
+    | getsome (_) = ErrorMsg.impossible "Error during getSome in MainGiven..."
 
    fun emitproc out (F.PROC{body,frame}) =
      let val _ = print ("emit " ^ Symbol.name (F.name frame) ^ "\n")
@@ -14,7 +15,7 @@ structure MainGiven = struct
 (*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
          val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
 	       val instrs =   List.concat(map (Mips.codegen frame) stms') 
-         val format0 = Assem.format(Temp.makestring)
+         val format0 = Assem.format(F.getTempName)
       in  
          app (fn i => TextIO.output(out,format0 i)) instrs
      end

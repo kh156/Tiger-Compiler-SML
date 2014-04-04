@@ -8,10 +8,15 @@ struct
 
   fun resetTempCount() = (temps := 100) (*Special registers already assigned*)
 
-  structure Table = IntMapTable(type key = int
+  structure Table = IntMapTable(type key = temp
 			  fun getInt n = n)
 
-  fun makestring t = "t" ^ Int.toString t
+  type 'a table= 'a Table.table
+  val empty = Table.empty
+  val enter = Table.enter
+  val look = Table.look
+
+  fun makestring t = "$t" ^ Int.toString t
 
   type label = Symbol.symbol
 
