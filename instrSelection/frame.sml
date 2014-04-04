@@ -19,8 +19,8 @@ sig
 
   val externalCall: string * Tree.exp list -> Tree.exp
 
-  val tempMap: register Temp.Table.table
-  val getTempName: temp -> string
+  (*val tempMap: register Temp.Table.table*)
+  (*val getTempName: temp -> string*)
 
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
@@ -151,11 +151,11 @@ struct
   fun externalCall(s, args) =
     Tr.CALL(Tr.NAME(Te.namedlabel s), args)
 
-  fun tempToString(temp) =
+  (*fun tempToString(temp) =
     let 
       val name = Te.Table.look(tempMap, temp)
     in
       case name of NONE => Te.makestring(temp)
                  | SOME(reg) => reg
-    end
+    end*)
 end
