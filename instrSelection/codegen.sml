@@ -25,7 +25,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 		fun emit x = ilist := x :: !ilist
 		fun result(gen) = let val t = Temp.newtemp() in gen t; t end
 
-    fun emitMoveInstr(srcTemp, dstTemp) =  emit(A.MOVE {assem = "move 'd0, 's0\n",
+    fun emitMoveInstr(srcTemp, dstTemp) =  emit(A.MOVE {assem = "move `d0, `s0\n",
                       src = srcTemp,
                       dst = dstTemp})
 
@@ -56,7 +56,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | T.UGE => "bltu")
 
     fun emitBranchInstr(relop, result0, result1, tlabel, flabel)
-                 = emit(A.OPER {assem = firstBr(relop) ^ " 's0, 's1, 'j0\n" ^ secondBr(relop) ^ " 's0, 's1, 'j1\n",
+                 = emit(A.OPER {assem = firstBr(relop) ^ " `s0, `s1, `j0\n" ^ secondBr(relop) ^ " `s0, `s1, `j1\n",
                                 src = [result0, result1],
                                 dst = [],
                                 jump = SOME([tlabel, flabel])})
@@ -69,7 +69,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
                       lab = label})
 
         | munchStm(T.JUMP(T.NAME labelName, l::rest)) = 
-          emit(A.OPER {assem = "j 'j0\n", 
+          emit(A.OPER {assem = "j `j0\n", 
                       src = [],
                       dst = [],
                       jump = SOME([l])})
@@ -86,7 +86,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.MOVE(T.TEMP r , exp)) = emitMoveInstr(munchExp(exp), r)
 
         | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS, e1, T.CONST i)), exp)) =
-            emit(A.OPER {assem = "sw 's0, " ^ Int.toString i ^ "('d0)\n",
+            emit(A.OPER {assem = "sw `s0, " ^ Int.toString i ^ "(`d0)\n",
                         src = [munchExp exp],
                         dst = [munchExp e1],
                         jump = NONE})
@@ -97,64 +97,64 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.EXP exp) = (munchExp(exp);())
 
 	and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
-		 		result(fn r => emit(A.OPER {assem = "lw 'd0, " ^ Int.toString i ^ "('s0)\n",
+		 		result(fn r => emit(A.OPER {assem = "lw `d0, " ^ Int.toString i ^ "(`s0)\n",
 		 		 							src = [munchExp e1], 
 		 		 							dst = [r], 
 		 		 							jump = NONE}))
 		| 	munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e1))) = 
-		 		result(fn r => emit(A.OPER {assem = "lw 'd0, " ^ Int.toString i ^ "('s0)\n",
+		 		result(fn r => emit(A.OPER {assem = "lw `d0, " ^ Int.toString i ^ "(`s0)\n",
 		 									src = [munchExp e1], 
 		 									dst = [r], 
 		 									jump = NONE}))
 
 			(* addi *)
 		|	munchExp(T.BINOP(T.PLUS, e1, T.CONST i)) =
-            result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString i ^ "\n",
+            result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ Int.toString i ^ "\n",
             								src = [munchExp e1], 
             								dst = [r], 
             								jump = NONE}))
         | 	munchExp(T.BINOP(T.PLUS, T.CONST i, e1)) =
-           	result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString i ^ "\n",
+           	result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ Int.toString i ^ "\n",
                									src = [munchExp e1],
                									dst = [r],
                									jump = NONE}))
         (* subi *)
         | 	munchExp(T.BINOP(T.MINUS, e1, T.CONST i)) =
-    			  result(fn r => emit(A.OPER {assem = "addi 'd0, 's0, " ^ Int.toString (~i) ^ "\n",
+    			  result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ Int.toString (~i) ^ "\n",
                 								src = [munchExp e1], 
                 								dst = [r], 
                 								jump = NONE}))
     		(* andi *)
         | 	munchExp(T.BINOP(T.AND, e1, T.CONST i)) =
-            result(fn r => emit(A.OPER {assem="andi 'd0, 's0, " ^ Int.toString i ^ "\n",
+            result(fn r => emit(A.OPER {assem="andi `d0, `s0, " ^ Int.toString i ^ "\n",
             									src=[munchExp e1], 
             									dst=[r], 
             									jump=NONE}))
         | 	munchExp(T.BINOP(T.AND, T.CONST i, e1)) =
-        		result(fn r => emit(A.OPER {assem="andi 'd0, 's0, " ^ Int.toString i ^ "\n",
+        		result(fn r => emit(A.OPER {assem="andi `d0, `s0, " ^ Int.toString i ^ "\n",
                 								src=[munchExp e1], 
                 								dst=[r], 
                 								jump=NONE}))
         (* ori *)
         | 	munchExp(T.BINOP(T.OR, e1, T.CONST i)) =
-         		result(fn r => emit(A.OPER {assem="ori 'd0, 's0, " ^ Int.toString i ^ "\n",
+         		result(fn r => emit(A.OPER {assem="ori `d0, `s0, " ^ Int.toString i ^ "\n",
                 								src=[munchExp e1], 
                 								dst=[r], 
                 								jump=NONE}))
         | 	munchExp(T.BINOP(T.OR, T.CONST i, e1)) =
-            result(fn r => emit(A.OPER {assem="ori 'd0, 's0, " ^ Int.toString i ^ "\n",
+            result(fn r => emit(A.OPER {assem="ori `d0, `s0, " ^ Int.toString i ^ "\n",
                 								src=[munchExp e1], 
                 								dst=[r], 
                 								jump=NONE}))
         (* rest of binops *)
         | 	munchExp(T.BINOP(binop, e1, e2)) =
-            result(fn r => emit(A.OPER {assem = getBinopString(binop) ^ " 'd0, 's0, 's1\n",
+            result(fn r => emit(A.OPER {assem = getBinopString(binop) ^ " `d0, `s0, 's1\n",
             									src = [munchExp e1, munchExp e2], 
             									dst=[r], 
             									jump=NONE}))
     (* T.MEM *)
 		| 	munchExp (T.MEM e1) = 
-		   	result(fn r => emit(A.OPER {assem = "lw 'd0, 0('s0)\n",
+		   	result(fn r => emit(A.OPER {assem = "lw `d0, 0(`s0)\n",
 		   									src=[munchExp e1], 
 		   									dst=[r], 
 		   									jump = NONE}))
@@ -162,15 +162,15 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 		| 	munchExp (T.TEMP t) = t
 		(* T.NAME *)
 		|	munchExp (T.NAME l) =
-        		result(fn r => emit(A.OPER {assem=("la 'd0, " ^ S.name(l) ^ "\n"),
+        		result(fn r => emit(A.OPER {assem=("la `d0, " ^ S.name(l) ^ "\n"),
             								src=[], 
             								dst=[r], 
             								jump=NONE}))
 		(* T.CONST *)
 		|	munchExp (T.CONST c) = 
-				result(fn r => emit(A.OPER {assem = "li 'd0, " ^ Int.toString c ^ "\n",
+				result(fn r => emit(A.OPER {assem = "li `d0, " ^ Int.toString c ^ "\n",
 											src = [],
-											dst = [],
+											dst = [r],
 											jump = NONE}))
 		(* T.CALL *)
 		| 	munchExp (T.CALL (T.NAME label, args)) = 
