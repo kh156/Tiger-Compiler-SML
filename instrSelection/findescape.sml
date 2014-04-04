@@ -4,7 +4,7 @@ sig
 	val findEscape: Absyn.exp -> unit 
 end
 
-= struct
+struct
   structure A = Assem
   structure S = Symbol
 
