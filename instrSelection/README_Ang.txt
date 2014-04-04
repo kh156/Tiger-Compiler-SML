@@ -5,7 +5,7 @@ Date: 04/03/2014
 
 How to run (in SML console):
 
-CM.make "sources.cm";
+CM.make "sources.cm"; (There're match non-exhaustive warnings in the given file canon.sml)
 Main.test "test.tig"; (to see the IR Translation Tree printed to console)
 MainGiven.compile "test.tig" (result will be in the folder with "test.tig.s")
 

@@ -47,13 +47,13 @@ fun lookupType (tenv, typSymbol, pos) =
 
 
 structure MySet = ListSetFn (struct
-  type ord_key = A.symbol
-  val compare = (fn (_,_) => General.LESS)
+  type ord_key = string
+  val compare = String.compare
 end)
 
 fun noRepeatName(decList) = 
 	let
-		fun enterOneDec({name=name, ty=typ, pos=pos}, setSoFar)= MySet.add(setSoFar, name)
+		fun enterOneDec({name=name, ty=typ, pos=pos}, setSoFar)= MySet.add(setSoFar, Symbol.name name)
 	in
 		if MySet.numItems(foldr enterOneDec MySet.empty decList) = List.length(decList)
 		then true
@@ -62,7 +62,7 @@ fun noRepeatName(decList) =
 
 fun noRepeatNameFunction(decList) = 
 	let
-		fun enterOneDec({name=name, params=params, result=result, body=body, pos=pos}, setSoFar) = MySet.add(setSoFar, name)
+		fun enterOneDec({name=name, params=params, result=result, body=body, pos=pos}, setSoFar) = MySet.add(setSoFar, Symbol.name name)
 	in
 		if MySet.numItems(foldr enterOneDec MySet.empty decList) = List.length(decList)
 		then true
@@ -96,7 +96,7 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 				then true
 				else if trueType1 = T.NIL
 					then (case trueType2 of
-						T.NIL => (error pos1 "Error compairing two nils!"; false)
+						T.NIL => (error pos1 "Error comparing two nils!"; false)
 						| T.RECORD(l,u) => true
 						| _ => trueType1=trueType2)
 					else trueType1=trueType2
@@ -105,17 +105,17 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 fun checkInt ({exp=exp,ty=ty},pos) = 
 	if compareType(ty, T.INT, pos, pos)
 		then ()
-  		else error pos "integer required"
+  		else error pos "type int required at this position"
 
 fun checkUnit ({exp=exp, ty=ty}, pos) =
 	if compareType(ty, T.UNIT, pos, pos)
 		then ()
-  		else error pos "unit required"
+  		else error pos "type unit required at this position"
 
 fun checkString ({exp=exp, ty=ty}, pos) =
 	if compareType(ty, T.STRING, pos, pos)
 		then ()
-  		else error pos "string required"
+  		else error pos "type string required at this position"
 
 fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 	(case S.look(tenv, name) of 
@@ -128,15 +128,15 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  | transExp (venv, tenv, A.StringExp (s, pos), doneLabel, level) = {exp=Trans.strExp(s), ty=T.STRING}
 	  | transExp (venv, tenv, A.SeqExp exps, doneLabel, level) =
 		let
-			fun parseExps([], translatedExpList) = {exp = Trans.seqExp(translatedExpList), ty = T.UNIT}
-			|	parseExps((e, p)::l, translatedExpList) =
+			fun parseExps([], translatedExpList, currentTy) = {exp = Trans.seqExp(translatedExpList), ty = currentTy}
+			|	parseExps((e, p)::l, translatedExpList, currentTy) =
 				let
 					val {exp = translatedExp, ty = ty} = transExp(venv, tenv, e, doneLabel, level);
 				in
-					parseExps(l, translatedExp::translatedExpList)
+					parseExps(l, translatedExp::translatedExpList, ty)
 				end
 		in
-			parseExps(exps, [])
+			parseExps(exps, [], T.UNIT)
 		end
 
 	  | transExp (venv, tenv, A.OpExp{left=left,oper=oper,right=right,pos=pos}, doneLabel, level) =
@@ -163,7 +163,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 				case leftType of
 					T.STRING =>
 						if (compareType(leftType, rightType, pos, pos) orelse compareType(rightType, leftType, pos, pos))
-			  			then {exp=Trans.stringOpExp(oper, expLeft, expRight), ty=T.STRING}
+			  			then {exp=Trans.stringOpExp(oper, expLeft, expRight), ty=T.INT}
 			  			else ((ErrorMsg.error pos "Logical comparison on two different types!");
 			  		  	{exp=Trans.stringOpExp(oper, expLeft, expRight), ty=T.ERROR})
 					| _ => 
@@ -186,7 +186,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
 	  			(case (S.name symbol)=(S.name tySymbol) of 
-	  				true => (case (actual_ty (ty,pos))=(#ty (transExp(venv, tenv, exp, doneLabel, level)))	 of 
+	  				true => (case compareType( #ty (transExp(venv, tenv, exp, doneLabel, level)), actual_ty (ty,pos), pos, pos)	 of 
 	  						true => checkRecord(otherFields, otherTypes)
 	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
 	  									false))
@@ -213,7 +213,7 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  		val {exp=leftExp, ty=leftTy} = transVar(venv, tenv, var, doneLabel, level)
 	  		val {exp=rightExp, ty=rightTy} = transExp(venv, tenv, exp, doneLabel, level)
 	  	in
-		  	if (leftTy = rightTy)
+		  	if (compareType(rightTy, leftTy, pos, pos))
 		  	then {exp=Trans.assignExp(leftExp, rightExp), ty=T.UNIT}
 		  	else 
 		  		(error pos "Types of variable and assigned expression do not match";
@@ -262,10 +262,12 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
            NONE => (* if-then *)
          	(let 
          		val t = transExp(venv, tenv, test, doneLabel, level)
-         		val thenResult = transExp(venv, tenv, test, doneLabel, level)
+         		val thenResult = transExp(venv, tenv, thenExp, doneLabel, level)
          	in
          		(checkInt(t, pos);
-         		checkUnit(transExp(venv, tenv, thenExp, doneLabel, level), pos);
+         		(case #ty thenResult of
+         			T.UNIT => ()
+         			| _ => ErrorMsg.error pos "Then expression of If-Then clause is not of unit type!");
          		{ exp=Trans.ifThenExp(#exp t, #exp thenResult), ty=T.UNIT })
          	end)
          | SOME elseExp => (* if-then-else *)
@@ -275,11 +277,13 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
          		val elseResult = transExp(venv, tenv, elseExp, doneLabel, level)
          	in
          		(checkInt(t, pos);
-         		if (#ty thenResult) = (#ty elseResult) then
-         			{ exp=Trans.ifThenElseExp(#exp t, #exp thenResult, #exp elseResult), ty= (#ty thenResult) }
-         		else
-         			(error pos "Types of Then and Else statements do not match!";
-         			 { exp=Trans.ifThenElseExp(#exp t, #exp thenResult, #exp elseResult), ty=T.ERROR})
+         		if compareType((#ty thenResult), (#ty elseResult), pos, pos) then
+         			{ exp=Trans.ifThenElseExp(#exp t, #exp thenResult, #exp elseResult), ty= (#ty elseResult)}
+         		else if compareType((#ty elseResult), (#ty thenResult), pos, pos) then
+					{ exp=Trans.ifThenElseExp(#exp t, #exp thenResult, #exp elseResult), ty= (#ty thenResult)}
+	         		else
+	         			(error pos "Types of Then and Else statements do not match!";
+	         			 { exp=Trans.ifThenElseExp(#exp t, #exp thenResult, #exp elseResult), ty=T.ERROR})
          		)
          	end)
          )
@@ -314,7 +318,9 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  		val _ = numBreaks := 0
 	  	in
 	  		(checkInt(t, pos);
-	  		checkUnit(b, pos);
+	  		(case (#ty b) of
+	  			T.UNIT => ()
+	  			| _ => ErrorMsg.error pos "Body of while loop is not of unit type!");
 	  		{ exp=Trans.whileExp(#exp t, #exp b, done), ty=T.UNIT })
 	  	end
 
@@ -401,8 +407,8 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 							{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = updatedExpList})
 					| SOME(t) => (case compareType(tyinit, t, pos, p) of
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
-							    	{venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = updatedExpList})
-							| true  => {venv = S.enter(venv, name, E.VarEntry {access = access, ty = tyinit}), tenv = tenv, trExpList = updatedExpList}))
+							    	{venv = S.enter(venv, name, E.VarEntry {access = access, ty = t}), tenv = tenv, trExpList = updatedExpList})
+							| true  => {venv = S.enter(venv, name, E.VarEntry {access = access, ty = t}), tenv = tenv, trExpList = updatedExpList}))
 	end
 
 | transDec(venv, tenv, A.TypeDec typeDecList, doneLabel, level, initExpList) = 
@@ -477,7 +483,9 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 
 			in (
 				case compareType(tybody, tyret, pos, pos) of
-					true => ()
+					true => (if tyret=T.UNIT then
+								(if tybody=T.UNIT then () else (ErrorMsg.error pos "Procedure body should have unit type!"))
+								else ())
 			    | 	false => ErrorMsg.error pos "Function body type and return type do not mactch!";
 				secondPass (venv, func)
 			)

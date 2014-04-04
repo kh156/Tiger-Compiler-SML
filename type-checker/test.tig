@@ -2,11 +2,7 @@ let
 	type recordType = {field1: int, field2: string}
 
 	type a = int
-
-	var temp := let
-		var a :a := "abc"
-	in
-	end
+	type recordType = a
 in
-	a
+	5
 end

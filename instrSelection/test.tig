@@ -1,5 +1,7 @@
 let
 	var x := 10
+	type a = int
+	type a = string
 in
-	while (x>0) do 1+1
+	if (x>1) then 30 else 40	
 end

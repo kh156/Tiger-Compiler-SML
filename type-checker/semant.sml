@@ -96,26 +96,31 @@ fun compareType (type1: T.ty, type2: T.ty, pos1: A.pos, pos2: A.pos) = (* Return
 				then true
 				else if trueType1 = T.NIL
 					then (case trueType2 of
-						T.NIL => (error pos1 "Error compairing two nils!"; false)
+						T.NIL => (error pos1 "Error comparing two nils!"; false)
 						| T.RECORD(l,u) => true
 						| _ => trueType1=trueType2)
-					else trueType1=trueType2
+					else if trueType2 = T.NIL
+						then (case trueType1 of
+							T.NIL => (error pos2 "Error comparing two nils!"; false)
+							| T.RECORD (l, u) => true
+							| _ => trueType1=trueType2)
+						else trueType1=trueType2
 	end
 
 fun checkInt ({exp=exp,ty=ty},pos) = 
 	if compareType(ty, T.INT, pos, pos)
 		then ()
-  		else error pos "integer required"
+  		else error pos "type int required at this position"
 
 fun checkUnit ({exp=exp, ty=ty}, pos) =
 	if compareType(ty, T.UNIT, pos, pos)
 		then ()
-  		else error pos "unit required"
+  		else error pos "type unit required at this position"
 
 fun checkString ({exp=exp, ty=ty}, pos) =
 	if compareType(ty, T.STRING, pos, pos)
 		then ()
-  		else error pos "string required"
+  		else error pos "type string required at this position"
 
 fun changeRefToRealType(tenv, name: A.symbol, realTy: T.ty, pos: A.pos) =
 	(case S.look(tenv, name) of 
@@ -171,7 +176,7 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
 	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
 	  			(case (S.name symbol)=(S.name tySymbol) of 
-	  				true => (case (actual_ty (ty,pos))=(#ty (transExp(venv, tenv, exp))) of 
+	  				true => (case compareType( #ty (transExp(venv, tenv, exp)), actual_ty (ty,pos), pos, pos) of 
 	  						true => checkRecord(otherFields, otherTypes)
 	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
 	  							false))
@@ -231,9 +236,12 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
            NONE => (* if-then *)
          	(let 
          		val t = transExp(venv, tenv, test)
+         		val {exp=_, ty=thenTy} = transExp(venv, tenv, thenExp)
          	in
          		(checkInt(t, pos);
-         		checkUnit(transExp(venv, tenv, thenExp), pos);
+         		(case thenTy of
+         			T.UNIT => ()
+         			| _ => ErrorMsg.error pos "Then expression of If-Then clause is not of unit type!");
          		{ exp=(), ty=T.UNIT })
          	end)
          | SOME elseExp => (* if-then-else *)
@@ -243,8 +251,8 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
          		val elseType = transExp(venv, tenv, elseExp)
          	in
          		(checkInt(t, pos);
-         		if (#ty thenType) = (#ty elseType) then
-         			{ exp=(), ty= (#ty thenType) }
+         		if compareType((#ty thenType), (#ty elseType), pos, pos) then
+         			{ exp=(), ty= (#ty elseType)}
          		else
          			(error pos "Types of Then and Else statements do not match!";
          			 { exp=(), ty=T.ERROR})
@@ -270,12 +278,14 @@ fun transExp (venv, tenv, A.NilExp) = {exp=(), ty=T.NIL}
 	    let
 	    	val _ = incNestDepth()
 	  		val t = transExp(venv, tenv, test)
-	  		val b = transExp(venv, tenv, body)
+	  		val {exp=_, ty=bodyTy} = transExp(venv, tenv, body)
 	  		val _ = decNestDepth()
 	  		val _ = numBreaks := 0
 	  	in
 	  		(checkInt(t, pos);
-	  		checkUnit(b, pos);
+	  		(case bodyTy of
+	  			T.UNIT => ()
+	  			| _ => ErrorMsg.error pos "Body of while loop is not of unit type!");
 	  		{ exp=(), ty=T.UNIT })
 	  	end
 
@@ -356,8 +366,8 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 							{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv})
 					| SOME(t) => (case compareType(tyinit, t, pos, p) of
 							false => (ErrorMsg.error pos "declared type for variable doesn't match the type of initial expression!";
-							    	{venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv})
-							| true  => {venv = S.enter(venv, name, E.VarEntry {ty = tyinit}), tenv = tenv}))
+							    	{venv = S.enter(venv, name, E.VarEntry {ty = t}), tenv = tenv})
+							| true  => {venv = S.enter(venv, name, E.VarEntry {ty = t}), tenv = tenv}))
 	end
 
 | transDec(venv, tenv, A.TypeDec typeDecList) = 
@@ -411,7 +421,9 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 				val {exp = _, ty = tybody} = transExp (venv', tenv, body)
 			in (
 				case compareType(tybody, tyret, pos, pos) of
-					true => ()
+					true => (if tyret=T.UNIT then
+								(if tybody=T.UNIT then () else (ErrorMsg.error pos "Procedure body should have unit type!"))
+								else ())
 			    | 	false => ErrorMsg.error pos "Function body type and return type do not mactch!";
 				secondPass (venv, func)
 			)
