@@ -1,7 +1,1 @@
-let
-	type a = int
-	var x := "abc"
-	var y := "xyz"
-in
-	x=y
-end
+for i:=0 to 1 do ()
