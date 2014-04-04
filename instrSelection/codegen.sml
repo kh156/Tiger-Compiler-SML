@@ -174,12 +174,13 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 											jump = NONE}))
 		(* T.CALL *)
 		| 	munchExp (T.CALL (T.NAME label, args)) = 
-				result(fn r => emit(A.OPER {
+				(emit(A.OPER {
 					assem = "jal " ^ S.name(label) ^ "\n",
 					src = munchArgs(0, args),	(*should be all the $a registers*)
 					dst = [F.RV],	(*RV, and all the $t registers because they could get altered*)
 					jump = NONE
-				}))
+				});
+                F.RV)
 
 	and munchArgs (i, []) = []
 	  | munchArgs(i, a::l) = 
