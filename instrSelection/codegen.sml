@@ -61,7 +61,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | T.UGT => "bleu"
         | T.UGE => "bltu")
 
-		fun munchStm(T.SEQ(stm1, stm2)) = 
+	fun munchStm(T.SEQ(stm1, stm2)) = 
         (muchstm(stm1); munchstm(stm2))
 
         | munchStm(T.LABEL(label)) =
@@ -79,15 +79,6 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.CJUMP(relop, exp1, exp2, tlabel, flabel)) = 
             emitBranchInstr(relop, munchExp(exp1), munchExp(exp2), tlabel, flabel);
 
-            | T.NE => emit(A.OPER {assem = "beq 's0, 's1, 'j0\bne 's0, 's1, 'j1\n",
-                                src = [munchExp(exp1), munchExp(exp2)],
-                                dst = [],
-                                jump = SOME([flabel, tlabel])})
-            | T.LT => emit(A.OPER {assem = "beq 's0, 's1, 'j0\bne 's0, 's1, 'j1\n",
-                                src = [munchExp(exp1), munchExp(exp2)],
-                                dst = [],
-                                jump = SOME([tlabel, flabel])})
-
         (*dst and src are both registers*)
         | munchStm(T.MOVE(T.TEMP r1, T.TEMP r2)) = emitMoveInstr(r2, r1)
 
@@ -99,10 +90,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 
         | munchStm(T.EXP exp) = munchExp(exp)
 
-		and 
-
-			(* lw *)
-		munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
+	and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
 		 		result(fn r => emit(A.OPER {assem = "lw 'd0, " ^ Int.toString i ^ "('s0)\n",
 		 		 							src = [munchExp e1], 
 		 		 							dst = [r], 
@@ -182,19 +170,19 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 		| 	munchExp (T.CALL (e, args)) = 
 				result(fn r => emit(A.OPER {
 					assem = "jal " ^ S.name(label) ^ "\n",
-					src = munchArgs(0, args),	(************* IS IT CORRECT???? *************)
-					dst = [F.RV],	(************* IS IT CORRECT???? *************)
+					src = munchArgs(0, args),	(*should be all the $a registers*)
+					dst = [F.RV],	(*RV, and all the $t registers because they could get altered*)
 					jump = NONE
 				}))
 
-		fun munchArgs (i, []) = []
-	  	| 	munchArgs(i, a::l) = 
-		  	let
-		  		val argReg = T.TEMP(Temp.newtemp());
-		  	in
-		  		(munchStm(T.MOVE(argReg, a));
-			  	argReg::munchArgs(i+1,l))
-		  	end
+	fun munchArgs (i, []) = []
+	  | munchArgs(i, a::l) = 
+		  let
+		  	val argReg = T.TEMP(Temp.newtemp());
+		  in
+		  	(munchStm(T.MOVE(argReg, a));
+		  	argReg::munchArgs(i+1,l))
+		  end
 
 
 	in 

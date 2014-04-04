@@ -19,6 +19,9 @@ translate.sml
 semant.sml
 printtree.sml
 main.sml
+assem.sml
+canon.sml
+codegen.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm

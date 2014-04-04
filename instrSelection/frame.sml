@@ -44,7 +44,7 @@ struct
   val FP = Te.newtemp() (*FP should only be changed during Fn calls--> shifts into the level of the Fn*)
   val RV = Te.newtemp()
   val RA = Te.newtemp()
-  val SP = Te.newtemp()
+  val SP = Te.newtemp() 
   val ZERO = Te.newtemp()
 
   val v0 = Temp.newtemp()   (* Return Vals*)
@@ -75,10 +75,10 @@ struct
   val s6 = Temp.newtemp()   
   val s7 = Temp.newtemp()   
 
-  specialregs =  [FP, RV, RA, SP, ZERO, v0, v1] 
-  argregs = [a0,a1,a2,a3] (* $a0-$a3 *)
-  calleesaves = [s0,s2,s2,s3,s4,s5,s6,s7] (* $s0-$s7 *)
-  callersaves = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]  (* $t0-$t9 *)
+  val specialregs =  [FP, RV, RA, SP, ZERO, v0, v1] 
+  val argregs = [a0,a1,a2,a3] (* $a0-$a3 *)
+  val calleesaves = [s0,s2,s2,s3,s4,s5,s6,s7] (* $s0-$s7 *)
+  val callersaves = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]  (* $t0-$t9 *)
 
   fun name({name = name, formals = _ , spOffset = _}) = name
   fun formals({name = _, formals = formals , spOffset = _}) = formals
@@ -130,7 +130,7 @@ struct
       val restoreRegs = seq ( moveRegs (saved, tempRegs))
       (*This is all I know how to do*)
   in
-      (*no idea what to do here*)
+      stm (*no idea what to do here*)
   end
 
   fun procEntryExit2 (frame,body) =
@@ -139,7 +139,7 @@ struct
               src=specialregs @ calleesaves,
               dst=[],jump=SOME[]}]
 
-  fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, 
+  fun procEntryExit3 ({name=name, formals=formals, spOffset=locals}:frame, (*locals access list is not added yet...*)
                       body : Assem.instr list) =
       {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n",
        body = body,
