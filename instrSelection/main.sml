@@ -4,6 +4,7 @@ struct
 	fun test(progName) =
 		let
 			val parsedAbsyn = Parse.parse(progName)
+			val _ = FindEscape.findEscape parsedAbsyn
 			val fragList = Semant.transProg(parsedAbsyn)
 			fun printFrag([]) = ()
 				| printFrag((MipsFrame.PROC {body=bodyStm, frame=frame})::rest) = 

@@ -18,3 +18,15 @@ All main features including let expressions, function declarations, variable dec
 Important Note:
 
 We got 85 for type-checker but haven't updated it yet. So please do not test on programs that our type-checkers throw errors.
+
+Added:
+
+Type-checker is now fixed. I checked queens.tig, merge.tig and all 49 test cases available. It reports specific errors when there are errors, and goes through when it is valid Tiger program.
+
+Things to do:
+
+-display labels for frags correctly, in addition to useless labels
+-move arguments into variable accesses (inFrame or inReg) at start of function
+-jr $ra at the end of function
+-display special registers correctly in string
+-

@@ -1,7 +1,6 @@
 let
-	var x := 10
-	type a = int
-	type a = string
+	function f(c:int) : int = 
+		 if c>0 then f(c-1)+1 else 99
 in
-	if (x>1) then 30 else 40	
+	f(5)
 end
