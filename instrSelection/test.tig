@@ -1,7 +1,6 @@
 let
-	type a = int
-	var x := "abc"
-	var y := "xyz"
+	type a = array of int
+	var row := a [10] of 0
 in
-	x=y
+	row[2]
 end
