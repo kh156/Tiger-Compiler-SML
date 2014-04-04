@@ -1,10 +1,11 @@
-structure FindEscape: 
-
+signature FINDESCAPE =
 sig 
-	val findEscape: Absyn.exp -> unit 
+  val findEscape: Absyn.exp -> unit
 end
 
-=struct
+structure FindEscape:FINDESCAPE =
+
+struct
   structure A = Absyn
   structure S = Symbol
 
