@@ -1,11 +1,7 @@
 let
-	function f(c:int) : int = 
-		 let
-		 	function g(d:int) : int =
-		 		d+c
-		 in
-		 	g(6)
-		 end
+	var x := 5
+	var y := x
+	var z := x
 in
-	f(5)
+	x+y
 end

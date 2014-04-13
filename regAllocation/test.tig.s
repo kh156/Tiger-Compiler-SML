@@ -1,19 +1,8 @@
-L20:
-li $t211, 5
-jal L17
-move $v0, $v0
-j L19
-L19:
-L22:
-li $t212, 6
-jal L18
-move $v0, $v0
-j L21
-L21:
-L24:
-lw $t215, ~4($fp)
-lw $t214, ~8($t215)
-add $t213, $t183, $t214
-move $v0, $t213
-j L23
-L23:
+L34:
+li $t185, 5
+move $t186, $t185
+move $t187, $t185
+add $t197, $t185, $t186
+move $v0, $t197
+j L33
+L33:

@@ -394,7 +394,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 	let
 		val {exp=exp, ty=tyinit} = transExp(venv, tenv, init, doneLabel, level)
 		val access = Trans.allocLocal level (!escape)
-		val updatedExpList = Trans.assignExp(Trans.simpleVar(access, level), exp)::initExpList
+		val updatedExpList = initExpList @ [Trans.assignExp(Trans.simpleVar(access, level), exp)]
 	in
 		case typ of
 			NONE => (case tyinit=T.NIL of 

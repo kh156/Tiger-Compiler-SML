@@ -4,7 +4,7 @@ struct
     structure Graph = FuncGraph(Symbol.OrdKey)
 
     (*using Drew's funcgraph, all the information is stored in the a' node of the a' graph*)
-    type flowNodeInfo = Temp.temp list * Temp.temp list * bool (*def list * use list * ismove*)
+    type flowNodeInfo = string * Temp.temp list * Temp.temp list * bool (*assemStr * def list * use list * ismove*)
     type flowgraph = flowNodeInfo Graph.graph
 
 end
@@ -21,8 +21,6 @@ struct
   structure A = Assem
   structure Te = Temp
 
-  val orderedLabels = ref [] : Te.label list ref
-
   fun getFirstEle(a::rest) = a
     | getFirstEle([]) = ErrorMsg.impossible "List of orderedLabels is shorter than the list of instructions... Go debug that..."
 
@@ -34,27 +32,30 @@ struct
 
   fun instrs2graph(instrList) = 
     let
+
+      val orderedLabels = ref [] : Te.label list ref
+
       fun dealWithOneInstr(A.OPER {assem=assem, dst=dst, src=src, jump=jump}, g) = 
         let
-          val nodeInfo = (dst, src, false)
+          val nodeInfo = (assem, dst, src, false)
           val l = Te.newlabel()
         in
-          orderedLabels := !orderedLabels @ [l]; G.addNode(g, l, nodeInfo)
+          orderedLabels := !orderedLabels @ [l]; print(Symbol.name l); G.addNode(g, l, nodeInfo)
         end
 
       | dealWithOneInstr(A.LABEL {assem=assem, lab=lab}, g) = 
         let
-          val nodeInfo = ([], [], false)
+          val nodeInfo = (assem, [], [], false)
         in
-          orderedLabels := !orderedLabels @ [lab]; G.addNode(g, lab, nodeInfo)
+          orderedLabels := !orderedLabels @ [lab]; print(Symbol.name lab); G.addNode(g, lab, nodeInfo)
         end
 
       | dealWithOneInstr(A.MOVE {assem=assem, dst=dst, src=src}, g) = 
         let
-          val nodeInfo = ([dst], [src], true)
+          val nodeInfo = (assem, [dst], [src], true)
           val l = Te.newlabel()
         in
-          orderedLabels := !orderedLabels @ [l]; G.addNode(g, l, nodeInfo)
+          orderedLabels := !orderedLabels @ [l]; print(Symbol.name l); G.addNode(g, l, nodeInfo)
         end
 
       fun addEdges(A.OPER {assem=_, dst=_, src=_, jump=jump}, (g, labelList)) =
@@ -70,7 +71,8 @@ struct
                         | NONE => g
         in
           case edgeOption of 
-            SOME(edge) => (G.addEdge(gWithJumps, edge), getRest(labelList))
+            SOME(edge) => (print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));
+                          (G.addEdge(gWithJumps, edge), getRest(labelList)))
             | NONE => (gWithJumps, getRest(labelList))
         end
 
@@ -81,7 +83,8 @@ struct
                       | NONE => NONE
         in
           case edgeOption of 
-            SOME(edge) => (G.addEdge(g, edge), getRest(labelList))
+            SOME(edge) => (print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));
+                          (G.addEdge(g, edge), getRest(labelList)))
             | NONE => (g, getRest(labelList))
         end
 
@@ -92,12 +95,13 @@ struct
                       | NONE => NONE
         in
           case edgeOption of 
-            SOME(edge) => (G.addEdge(g, edge), getRest(labelList))
+            SOME(edge) => (print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));
+                          (G.addEdge(g, edge), getRest(labelList)))
             | NONE => (g, getRest(labelList))
         end
 
-      val gNoEdge = foldr dealWithOneInstr G.empty instrList
-      val (g, l) = foldr addEdges (gNoEdge, !orderedLabels) instrList
+      val gNoEdge = foldl dealWithOneInstr G.empty instrList
+      val (g, l) = foldl addEdges (gNoEdge, !orderedLabels) instrList
       val nodes = G.nodes(g)
     in
       (g, nodes)
