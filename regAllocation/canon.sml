@@ -148,6 +148,7 @@ struct
 
   fun splitlast([x]) = (nil,x)
     | splitlast(h::t) = let val (t',last) = splitlast t in (h::t', last) end
+    | splitlast(_) = ErrorMsg.impossible "Pattern match error in Canon.sml..."
 
   fun trace(table,b as (T.LABEL lab :: _),rest) = 
    let val table = Symbol.enter(table, lab, nil)
@@ -168,13 +169,16 @@ struct
 			     @ getnext(table,rest)
                         end)
       | (most, T.JUMP _) => b @ getnext(table,rest)
+      | (_, _) => ErrorMsg.impossible "Pattern match error in Canon.sml..."
      end
+  | trace(_, _, _) = ErrorMsg.impossible "Pattern match error in Canon.sml..."
 
   and getnext(table,(b as (T.LABEL lab::_))::rest) = 
            (case Symbol.look(table, lab)
              of SOME(_::_) => trace(table,b,rest)
               | _ => getnext(table,rest))
     | getnext(table,nil) = nil
+    | getnext(_, _) = ErrorMsg.impossible "Pattern match error in Canon.sml..."
 
   fun traceSchedule(blocks,done) = 
        getnext(foldr enterblock Symbol.empty blocks, blocks)

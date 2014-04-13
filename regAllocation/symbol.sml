@@ -7,6 +7,11 @@ sig
   val empty : 'a table
   val enter : 'a table * symbol * 'a -> 'a table
   val look  : 'a table * symbol -> 'a option
+
+  val compare: symbol * symbol -> order
+  structure OrdKey : ORD_KEY sharing type OrdKey.ord_key = symbol
+  structure Set : ORD_SET sharing type Set.Key.ord_key = symbol
+  structure Map : ORD_MAP sharing type Map.Key.ord_key = symbol
 end
 
 structure Symbol :> SYMBOL =
@@ -40,4 +45,15 @@ struct
   val empty = Table.empty
   val enter = Table.enter
   val look = Table.look
+
+  fun compare((_,n1),(_,n2)) = Int.compare(n1,n2)
+
+  structure OrdKey =
+  struct 
+    type ord_key = symbol
+    val compare = compare
+  end
+  
+  structure Set = SplaySetFn(OrdKey)
+  structure Map = SplayMapFn(OrdKey)
 end

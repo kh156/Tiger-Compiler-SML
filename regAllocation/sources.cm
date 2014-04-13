@@ -18,10 +18,13 @@ frame.sml
 translate.sml
 semant.sml
 printtree.sml
+funcgraph.sig
+funcgraph.sml
 assem.sml
 canon.sml
 codegen.sml
 findescape.sml
+flowgraph.sml
 mainGiven.sml
 main.sml
 $/smlnj-lib.cm

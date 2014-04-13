@@ -9,6 +9,10 @@ sig
   val namedlabel : string -> label
   val resetTempCount : unit -> unit
 
+  val compare : temp * temp -> order
+  structure Set : ORD_SET sharing type Set.Key.ord_key = temp
+  structure Map : ORD_MAP sharing type Map.Key.ord_key = temp
+
   type 'a table
   val empty : 'a table
   val enter : 'a table * temp * 'a -> 'a table

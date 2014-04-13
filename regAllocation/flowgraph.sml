@@ -1,23 +1,105 @@
 structure Flow =
 struct
-    datatype flowgraph = FGRAPH of {control: Graph.graph,
-				    def: Temp.temp list Graph.Table.table,
-				    use: Temp.temp list Graph.Table.table,
-				    ismove: bool Graph.Table.table}
 
-  (* Note:  any "use" within the block is assumed to be BEFORE a "def" 
-        of the same variable.  If there is a def(x) followed by use(x)
-       in the same block, do not mention the use in this data structure,
-       mention only the def.
+    structure Graph = FuncGraph(Symbol.OrdKey)
 
-     More generally:
-       If there are any nonzero number of defs, mention def(x).
-       If there are any nonzero number of uses BEFORE THE FIRST DEF,
-           mention use(x).
+    (*using Drew's funcgraph, all the information is stored in the a' node of the a' graph*)
+    type flowNodeInfo = Temp.temp list * Temp.temp list * bool (*def list * use list * ismove*)
+    type flowgraph = flowNodeInfo Graph.graph
 
-     For any node in the graph,  
-           Graph.Table.look(def,node) = SOME(def-list)
-           Graph.Table.look(use,node) = SOME(use-list)
-   *)
+end
 
+structure MakeGraph:
+sig
+  val instrs2graph: Assem.instr list -> Flow.flowgraph * Flow.flowNodeInfo Flow.Graph.node list
+end
+=
+struct
+
+  structure Fl = Flow
+  structure G = Flow.Graph
+  structure A = Assem
+  structure Te = Temp
+
+  val orderedLabels = ref [] : Te.label list ref
+
+  fun getFirstEle(a::rest) = a
+    | getFirstEle([]) = ErrorMsg.impossible "List of orderedLabels is shorter than the list of instructions... Go debug that..."
+
+  fun getRest(a::rest) = rest
+    | getRest([]) = ErrorMsg.impossible "List of orderedLabels is shorter than the list of instructions... Go debug that..."
+
+  fun getNextEle(a::b::rest) = SOME(b)
+    | getNextEle(_) = NONE
+
+  fun instrs2graph(instrList) = 
+    let
+      fun dealWithOneInstr(A.OPER {assem=assem, dst=dst, src=src, jump=jump}, g) = 
+        let
+          val nodeInfo = (dst, src, false)
+          val l = Te.newlabel()
+        in
+          orderedLabels := !orderedLabels @ [l]; G.addNode(g, l, nodeInfo)
+        end
+
+      | dealWithOneInstr(A.LABEL {assem=assem, lab=lab}, g) = 
+        let
+          val nodeInfo = ([], [], false)
+        in
+          orderedLabels := !orderedLabels @ [lab]; G.addNode(g, lab, nodeInfo)
+        end
+
+      | dealWithOneInstr(A.MOVE {assem=assem, dst=dst, src=src}, g) = 
+        let
+          val nodeInfo = ([dst], [src], true)
+          val l = Te.newlabel()
+        in
+          orderedLabels := !orderedLabels @ [l]; G.addNode(g, l, nodeInfo)
+        end
+
+      fun addEdges(A.OPER {assem=_, dst=_, src=_, jump=jump}, (g, labelList)) =
+        let
+          fun addOneEdge(label, g) = G.addEdge(g, {from = getFirstEle(labelList), to = label})
+
+          val edgeOption = case getNextEle(labelList) of
+                         SOME(e) => SOME({from = getFirstEle(labelList), to = e})
+                        | NONE => NONE
+
+          val gWithJumps = case jump of 
+                         SOME(jumpList) => foldr addOneEdge g jumpList
+                        | NONE => g
+        in
+          case edgeOption of 
+            SOME(edge) => (G.addEdge(gWithJumps, edge), getRest(labelList))
+            | NONE => (gWithJumps, getRest(labelList))
+        end
+
+      | addEdges(A.LABEL _, (g, labelList)) = 
+        let
+          val edgeOption = case getNextEle(labelList) of
+                       SOME(e) => SOME({from = getFirstEle(labelList), to = e})
+                      | NONE => NONE
+        in
+          case edgeOption of 
+            SOME(edge) => (G.addEdge(g, edge), getRest(labelList))
+            | NONE => (g, getRest(labelList))
+        end
+
+      | addEdges(A.MOVE _, (g, labelList)) =
+        let
+          val edgeOption = case getNextEle(labelList) of
+                       SOME(e) => SOME({from = getFirstEle(labelList), to = e})
+                      | NONE => NONE
+        in
+          case edgeOption of 
+            SOME(edge) => (G.addEdge(g, edge), getRest(labelList))
+            | NONE => (g, getRest(labelList))
+        end
+
+      val gNoEdge = foldr dealWithOneInstr G.empty instrList
+      val (g, l) = foldr addEdges (gNoEdge, !orderedLabels) instrList
+      val nodes = G.nodes(g)
+    in
+      (g, nodes)
+    end
 end
