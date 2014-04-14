@@ -91,6 +91,8 @@ struct
          val (flowGraph, nodeList) = MakeGraph.instrs2graph(instrs)
          val iGraph = Liveness.interferenceGraph (flowGraph, nodeList)
       in  
+
+         (*(print("\n hahahah--->" ^ Int.toString(List.length nodeList));*)
          Liveness.show(TextIO.stdOut, iGraph)
      end
     | emitprocIGraph (F.STRING(lab,s)) = ()

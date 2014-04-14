@@ -55,16 +55,16 @@ struct
   		(FG.addNode(liveInTable, currNodeID, newInSet), FG.addNode(liveOutTable, currNodeID, newOutSet)))
   	end
 
-  fun livenessAnalyze(orderedNodeList) =
-	foldr dealWithOneNode (emptySetTable(orderedNodeList), emptySetTable(orderedNodeList)) orderedNodeList
+  fun livenessAnalyze(orderedNodeList, oldIn, oldOut) =
+	foldr dealWithOneNode (oldIn, oldOut) orderedNodeList
 
-  fun doUntilNoChange(orderedNodeList) = 
+  fun doUntilNoChange(orderedNodeList, oldIn, oldOut) = 
   	let
-  		val tables = livenessAnalyze(orderedNodeList)
+  		val (inT, outT) = livenessAnalyze(orderedNodeList, oldIn, oldOut)
   	in
 	  	if !changed = true
-	  	then (changed := false; doUntilNoChange(orderedNodeList))
-	  	else tables
+	  	then (changed := false; doUntilNoChange(orderedNodeList, inT, outT))
+	  	else (inT, outT)
 	end
 
   fun extractAllTemps(orderedNodeList) = 
@@ -102,7 +102,8 @@ struct
   (* backwards union analysis method: Liveness analysis *)
   fun interferenceGraph(flowGraph: Flow.flowgraph, orderedNodeList: Flow.flowNodeInfo Flow.Graph.node list) = 
 	let
-		val (liveInTable, liveOutTable) = doUntilNoChange(orderedNodeList)
+		val (liveInTable, liveOutTable) = 
+			doUntilNoChange(orderedNodeList, emptySetTable(orderedNodeList), emptySetTable(orderedNodeList))
 		val allTemps = TS.listItems (extractAllTemps(orderedNodeList))
 		val defaultNodeColor = 0
 		val iiGraph = foldr (fn (oneTemp, g) => IG.addNode(g, oneTemp, defaultNodeColor)) IG.empty allTemps
@@ -116,7 +117,7 @@ struct
   		fun say s =  TextIO.output(outStream,s)
 
 		fun printNode(nodeID, color) = 
-         	"NodeID: " ^ (Int.toString nodeID) ^ " Color: " ^ (Int.toString color) ^ "\n"
+         	" NodeID: " ^ (Int.toString nodeID) ^ " Color: " ^ (Int.toString color)
 
 	in
 		IG.printGraph printNode igraph
