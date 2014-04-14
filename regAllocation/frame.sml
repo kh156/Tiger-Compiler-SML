@@ -12,6 +12,8 @@ sig
 	val formals : frame -> access list
 	val allocLocal : frame -> bool -> access
 
+  val colorable : Temp.temp list
+
   val FP : Temp.temp
   val exp : access -> Tree.exp -> Tree.exp
 
@@ -82,19 +84,21 @@ struct
   val t8 = Te.newtemp()   
   val t9 = Te.newtemp()   
                             
-  val s0 = Temp.newtemp()   (* Saved Temps *)
-  val s1 = Temp.newtemp()   
-  val s2 = Temp.newtemp()   
-  val s3 = Temp.newtemp()   
-  val s4 = Temp.newtemp()   
-  val s5 = Temp.newtemp()   
-  val s6 = Temp.newtemp()   
-  val s7 = Temp.newtemp()   
+  val s0 = Te.newtemp()   (* Saved Temps *)
+  val s1 = Te.newtemp()   
+  val s2 = Te.newtemp()   
+  val s3 = Te.newtemp()   
+  val s4 = Te.newtemp()   
+  val s5 = Te.newtemp()   
+  val s6 = Te.newtemp()   
+  val s7 = Te.newtemp()   
 
   val specialregs =  [FP, RV, RA, SP, ZERO, v0, v1] 
   val argregs = [a0,a1,a2,a3] (* $a0-$a3 *)
   val calleesaves = [s0,s2,s2,s3,s4,s5,s6,s7] (* $s0-$s7 *)
   val callersaves = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]  (* $t0-$t9 *)
+
+  val colorable = calleesaves @ callersaves (* We can use s and t regs to load vars*)
 
   fun name({name = name, formals = _ , spOffset = _}) = name
   fun formals({name = _, formals = formals , spOffset = _}) = formals
