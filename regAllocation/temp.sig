@@ -10,6 +10,7 @@ sig
   val resetTempCount : unit -> unit
 
   val compare : temp * temp -> order
+  structure TempOrd : ORD_KEY sharing type TempOrd.ord_key = temp
   structure Set : ORD_SET sharing type Set.Key.ord_key = temp
   structure Map : ORD_MAP sharing type Map.Key.ord_key = temp
 
