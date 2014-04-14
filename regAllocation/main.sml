@@ -78,4 +78,27 @@ struct
 	        map emitprocDataFlow frags
         end
 
+
+  fun emitprocIGraph (F.PROC{body,frame}) =
+     let 
+          (*val _ = print ("emit " ^ Symbol.name (F.name frame) ^ "\n")*)
+(*         val _ = Printtree.printtree(out,body); *)
+       val stms = Canon.linearize body
+(*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
+         val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
+         val instrs =  List.concat(map (Mips.codegen frame) stms')
+
+         val (flowGraph, nodeList) = MakeGraph.instrs2graph(instrs)
+         val iGraph = Liveness.interferenceGraph (flowGraph, nodeList)
+      in  
+         Liveness.show(TextIO.stdOut, iGraph)
+     end
+    | emitprocIGraph (F.STRING(lab,s)) = ()
+
+   fun printIGraph filename = 
+    let val absyn = Parse.parse filename
+            val frags = (FindEscape.findEscape absyn; Semant.transProg absyn)
+        in 
+          map emitprocIGraph frags
+        end
 end
