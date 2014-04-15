@@ -33,11 +33,13 @@ struct
   fun emptySetTable(orderedNodeList) = 
   	foldr (fn (node, table) => FG.addNode(table, FG.getNodeID(node), TS.empty)) FG.empty orderedNodeList
 
-  fun dealWithOneNode(flowGraphNode, (liveInTable, liveOutTable)) = 
+  fun dealWithOneNode(flowGraphNode, (flowGraph, liveInTable, liveOutTable)) = 
   	let
   		val currNodeID = FG.getNodeID(flowGraphNode)
-  		val succsIDs = FG.succs(flowGraphNode)
-  		val predsIDs = FG.preds(flowGraphNode)
+  		val succsIDs = map FG.getNodeID (FG.succs' flowGraph flowGraphNode)
+      (*val _ = print(Symbol.name currNodeID ^ "succs ID list has " ^ Int.toString(List.length succsIDs) ^ " elements\n")*)
+  		val predsIDs = map FG.getNodeID (FG.preds' flowGraph flowGraphNode)
+      (*val _ = print("preds ID list has " ^ Int.toString(List.length predsIDs) ^ " elements\n")*)
 
   		val succsInSets = foldr (fn (succID, currList) => currList @ [FG.nodeInfo (FG.getNode(liveInTable, succID))]) [] succsIDs
   		val newOutSet = foldr (fn (oneSet, currSet) => TS.union(oneSet, currSet)) TS.empty succsInSets
@@ -52,18 +54,18 @@ struct
   		((if (TS.numItems(oldIn) = TS.numItems(newInSet) andalso TS.numItems(oldOut) = TS.numItems(newOutSet))
   		then ()
   		else changed := true);
-  		(FG.addNode(liveInTable, currNodeID, newInSet), FG.addNode(liveOutTable, currNodeID, newOutSet)))
+  		(flowGraph, FG.addNode(liveInTable, currNodeID, newInSet), FG.addNode(liveOutTable, currNodeID, newOutSet)))
   	end
 
-  fun livenessAnalyze(orderedNodeList, oldIn, oldOut) =
-	foldr dealWithOneNode (oldIn, oldOut) orderedNodeList
+  fun livenessAnalyze(flowGraph, orderedNodeList, oldIn, oldOut) =
+	foldr dealWithOneNode (flowGraph, oldIn, oldOut) orderedNodeList
 
-  fun doUntilNoChange(orderedNodeList, oldIn, oldOut) = 
+  fun doUntilNoChange(flowGraph, orderedNodeList, oldIn, oldOut) = 
   	let
-  		val (inT, outT) = livenessAnalyze(orderedNodeList, oldIn, oldOut)
+  		val (g, inT, outT) = livenessAnalyze(flowGraph, orderedNodeList, oldIn, oldOut)
   	in
 	  	if !changed = true
-	  	then (changed := false; doUntilNoChange(orderedNodeList, inT, outT))
+	  	then (changed := false; doUntilNoChange(flowGraph, orderedNodeList, inT, outT))
 	  	else (inT, outT)
 	end
 
@@ -102,10 +104,19 @@ struct
   (* backwards union analysis method: Liveness analysis *)
   fun interferenceGraph(flowGraph: Flow.flowgraph, orderedNodeList: Flow.flowNodeInfo Flow.Graph.node list) = 
 	let
+    (*val _ = print("node list has " ^ Int.toString(List.length orderedNodeList) ^ " elements\n")*)
 		val (liveInTable, liveOutTable) = 
-			doUntilNoChange(orderedNodeList, emptySetTable(orderedNodeList), emptySetTable(orderedNodeList))
+			doUntilNoChange(flowGraph, orderedNodeList, emptySetTable(orderedNodeList), emptySetTable(orderedNodeList))
 		val allTemps = TS.listItems (extractAllTemps(orderedNodeList))
 		val defaultNodeColor = 0
+
+    (*debugging*)
+    (*fun lookSet temp = FG.nodeInfo (FG.getNode (liveOutTable, temp))
+    val sets = map lookSet (map FG.getNodeID orderedNodeList)
+    fun printSet set = print("a set has " ^ Int.toString(TS.numItems set) ^ " elements\n")
+    val _ = map printSet sets*)
+    (*debugging*)
+
 		val iiGraph = foldr (fn (oneTemp, g) => IG.addNode(g, oneTemp, defaultNodeColor)) IG.empty allTemps
 		val resultG = addIntefereEdges(iiGraph, orderedNodeList, liveOutTable)
 	in

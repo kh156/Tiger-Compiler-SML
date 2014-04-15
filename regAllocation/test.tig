@@ -3,5 +3,5 @@ let
 	var y := x
 	var z := x
 in
-	x+y
+	x+y+z
 end

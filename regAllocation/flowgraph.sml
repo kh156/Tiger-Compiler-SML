@@ -34,7 +34,6 @@ struct
     let
 
       val orderedLabels = ref [] : Te.label list ref
-      val orderedNodes = ref[] : Fl.flowNodeInfo Flow.Graph.node list ref
 
       fun dealWithOneInstr(A.OPER {assem=assem, dst=dst, src=src, jump=jump}, g) = 
         let
@@ -42,8 +41,7 @@ struct
           val l = Te.newlabel()
           val (newG, newNode) = G.addNode'(g, l, nodeInfo)
         in
-          orderedLabels := !orderedLabels @ [l]; 
-          orderedNodes := !orderedNodes @ [newNode];
+          orderedLabels := !orderedLabels @ [l];
           newG
         end
 
@@ -53,7 +51,6 @@ struct
           val (newG, newNode) = G.addNode'(g, lab, nodeInfo)
         in
           orderedLabels := !orderedLabels @ [lab]; 
-          orderedNodes := !orderedNodes @ [newNode];
           newG
         end
 
@@ -63,8 +60,7 @@ struct
           val l = Te.newlabel()
           val (newG, newNode) = G.addNode'(g, l, nodeInfo)
         in
-          orderedLabels := !orderedLabels @ [l]; 
-          orderedNodes := !orderedNodes @ [newNode];
+          orderedLabels := !orderedLabels @ [l];
           newG
         end
 
@@ -112,7 +108,7 @@ struct
 
       val gNoEdge = foldl dealWithOneInstr G.empty instrList
       val (g, l) = foldl addEdges (gNoEdge, !orderedLabels) instrList
-      val nodes = !orderedNodes
+      val nodes = map (fn (l) => G.getNode(g, l)) (!orderedLabels)
     in
       (g, nodes)
     end
