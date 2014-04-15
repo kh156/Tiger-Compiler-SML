@@ -25,6 +25,7 @@ canon.sml
 codegen.sml
 findescape.sml
 flowgraph.sml
+liveness.sml
 main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
