@@ -1,3 +1,5 @@
+structure IGraph = FuncGraph(Temp.TempOrd)
+
 signature COLOR = 
 sig
 	structure Frame : Frame
@@ -14,8 +16,7 @@ end
 
 structure Color :> COLOR =
 struct
-	structure G = Liveness.G
-	structure FG = FUNCGRAPH
+	structure IG = IGraph
 	structure F = FRAME
 	structure T = Temp
 	structure Table = T.Table
@@ -35,19 +36,15 @@ struct
                               val compare  = Int.compare
                               end)
 
-	fun color {interference, initial, spillCost, registers} =
-		let	
-			val Liveness.IGRAPH {graph, tnode, gtemp, moves} = interference
-(*		    val nodeSet = Set.addList(Set.empty, (map gtemp (nodes)))
-			val spillSet = Set.addList(Set.empty, (map gtemp (nodes)))*)
-		    val palette = Set.addList(Set.empty, F.colorable)
+	fun color ({interference, initial, spillCost, registers}) =
+		let
 		    val coloredNodes = ref Set.empty (* The nodes we have colored so far*)
 		  	val regColorMap = ref initial : allocation ref
 		    val validColors = ref palette
-		    val nodeList = FG.nodes()
+		    val nodeList = IG.nodes(interference)
 		    val numRegs = 27
 
-		    fun getDegree node = FG.degree node
+		    fun getDegree node = IG.degree(node)
 
 		    fun remove (x, []) = [] (* Removes an item from a list *)
 			  | remove (x, (y::ys)) = 
@@ -63,7 +60,7 @@ struct
 		    			in
 		    				case preColored of 
 		    					SOME(color) => (simplifyWorkList, spillWorkList) (*Do not color if node has been precolored*)
-		    				  | NONE => if FG.degree(currentNode) > numRegs then (simplifyWorkList, currentNode::spillWorkList)
+		    				  | NONE => if IG.degree(currentNode) > numRegs then (simplifyWorkList, currentNode::spillWorkList)
 		    						   else (currentNode::simplifyWorkList, spillWorkList)
 		    			end
 		    	in
@@ -74,29 +71,44 @@ struct
 		    val simplifyWorkList = #1 lists 
 		    val spillWorkList = #2 lists 
 
-		    fun simplify(node, selectStack, simplifyWorkList, spillWorkList) = 
+		    fun simplify(node, selectStack, simplifyWorkList, spillWorkList, interference) = 
 		    	let 
-		    		val adjacent = FG.adj(node)
+		    		val adjacent = IG.adj(node)
 		    		val selectStack' = Stack.push(node, selectStack)
 		    		val simplifyWorkList' = remove(node, simplifyWorkList)
+		    		val interference' = IG.remove(interference, node) (* Remove the node from the graph*)
 		    		val updateNeighbors = foldl DecrementDegree (simplifyWorkList', spillWorkList) adjacent
 		    	in
-		    		(selectStack, #1 updateNeighbors, #2 updateNeighbors)
+		    		(selectStack, #1 updateNeighbors, #2 updateNeighbors, interference')
 		    	end
 
 
 		    fun decrementDegree(node, (simplifyWorkList, spillWorkList)) =
 		    	let
-		    		val d = FG.degree(node)
-		    		(* Somehow update the degree of the node to degree-1. *)
+		    		val d = IG.degree(node)
+		    		(* No need to decrement node degree *)
 		    	in
 		    		if d = numRegs 
 		    		then (node::simplifyWorkList, remove(node, spillWorkList)) (*Move node from spill list to simplify list*)
 		    	end
 
+		    fun selectBestNode(node, alt) = if (spillCost(node)>spillCost(alt)) (* Heuristic for selecting best node to spill *)
+		    								then n 
+		    								else alt
+
+		    fun selectSpill(simplifyWorkList, spillWorkList) =
+		    	let 
+		    		val head = hd spillWorkList
+		    		val spillNode = foldl selectBestNode head spillWorkList 
+		    		val spillWorkList' = remove(spillNode, spillWorkList)
+		    		val simplifyWorkList' = spillNode::simplifyWorkList 
+		    	in 
+		    		(simplifyWorkList', spillWorkList')
+		    	end						
+
 		 	fun assignColors node = 
 		 		let 
-		 			val adjacent = FG.adj node
+		 			val adjacent = IG.adj node
 
 		 		in
 
