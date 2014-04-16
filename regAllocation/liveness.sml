@@ -22,7 +22,7 @@ struct
   structure FG = Flow.Graph
   structure TS = Temp.Set
 
-  (* FG.getNodeID is gtemp. I guess we use int to designate the color assigned to this variable/node ??*)
+  (* IG.getNodeID is gtemp. I guess we use int to designate the color assigned to this variable/node ??*)
   type igraphNode = int 
 
   datatype igraph = IGRAPH of {graph: igraphNode IGraph.graph,
