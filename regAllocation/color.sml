@@ -48,12 +48,10 @@ struct
 		    val okColors = ref palette
 		    val movePairs = ref moves
 
+		 	val coalesceSuccess = ref false
+		 	val unfreezeSuccess = ref false
+
 		    val numRegs = 27 (*should get this information from registers parameter that's passed in. E.g. List.length registers*)
-
-		    val nodes = IG.nodes(interference) (* List of nodes*)
-		    fun addNodeId(node,lst) = IG.getNodeID(node)::lst (*nods don't come in any particular order*)
-		    val nodeIDList = foldl addNodeId [] nodes (* List of node ids. All node arguments reference this list, so they are id's*)
-
 
 		    fun allMoveNodeIDs() = 
 		    	let
@@ -63,7 +61,7 @@ struct
 		    		foldl oneMovePair Set.empty !movePairs
 		    	end
 
-		    fun lookForSimpliable =
+		    fun lookForSimpliable(nodeIDList) =
 		    	let
 		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList, nonSimplifiable)) =
 		    			let
@@ -92,12 +90,8 @@ struct
 		    		foldr simplifyOneNode (selectStack, ig) simList
 		    	end
 
-		    (*need to make this loop until no more changes*)
-		    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable()
-		    val (updatedStack, updatedInteference) = simplify(Stack.empty, interference, simplifyWorkList)
-
 		    (*look for possible coalescing and perform it, returns the new graph*)
-		    fun coalesceAndReturnNewGraph(ig, movePairs) = 
+		    fun coalesceAndReturnNewGraph(ig) = 
 		    	let
 		    		fun briggs((node1ID, node2ID), g) = 
 		    			let
@@ -109,8 +103,8 @@ struct
 		    					let
 		    						val neighbors = IG.succs'(g, n)
 		    						val succNodes = 
-		    							List.filter (fn nn => (not (IG.getNodeID nn == IG.getNodeID node1))
-		    											andalso (not (IG.getNodeID nn == IG.getNodeID node2)))
+		    							List.filter (fn nn => (not (IG.getNodeID nn = IG.getNodeID node1))
+		    											andalso (not (IG.getNodeID nn = IG.getNodeID node2)))
 		    										neighbors
 
 		    						fun isSignificant(neighborNode) =
@@ -130,12 +124,14 @@ struct
 		    			in
 		    				if totalDegree < numRegs
 		    				then (movePairs := removeFromList((node1ID, node2ID), !movePairs);
+		    					  coalesceSuccess := true
 		    					  mergeNodes(g, node1, node2))
 		    				else g
 		    			end
 
+		    		val newIG = foldr briggs ig !movePairs
 		    	in
-		    		foldr briggs ig movePairs
+		    		(!coalesceSuccess, newIG)
 		    	end
 
 		    (*helper function for Briggs Coalescing*)
@@ -143,7 +139,7 @@ struct
 		    	let
 		    		val node1Succs = IG.succs(n1)
 		    		fun addEdge(succID, g) =
-		    			if succID == IG.getNodeID n2
+		    			if succID = IG.getNodeID n2
 		    			then g
 		    			else IG.doubleEdge(g, IG.getNodeID n2, succID)
 		    		val addedG = foldl addEdge ig node1Succs
@@ -160,18 +156,21 @@ struct
 		    			then currNodeID
 		    			else bestNodeID
 		    	in
-		    		foldr compareDegree (hd moveNodeIDs) moveNodeIDs
+		    		(unfreezeSuccess := List.length(moveNodeIDs) > 0;
+		    		foldr compareDegree (hd moveNodeIDs) moveNodeIDs)
 		    	end
 
 		    (*turn move edges associated with this node into normal edges, should restart from simplify after this step*)
 		    fun unfreezeMove(moveNodeID) =
 		    	let 
 		    		fun noHaveThisNode((n1, n2)) =
-		    			if (IG.getNodeID n1 == moveNodeID orelse IG.getNodeID n2 == moveNodeID)
+		    			if (IG.getNodeID n1 = moveNodeID orelse IG.getNodeID n2 = moveNodeID)
 		    			then true
 		    			else false
 		    	in
-		    		movePairs := List.filter noHaveThisNode !movePairs 
+		    		if !unfreezeSuccess = true
+		    		then (movePairs := List.filter noHaveThisNode !movePairs; true)
+		    		else false
 		    	end
 
 
@@ -181,16 +180,14 @@ struct
 		    		then (g, node)
 		    		else (g, bestSoFar)
 
-		    fun selectSpill(ig, simplifyWorkList, spillWorkList) =
+		    fun selectSpill(ig, selectStack, spillWorkList) =
 		    	let 
 		    		val head = hd spillWorkList
-		    		val spillNodeID = foldl selectBestSpillNode (ig, head) spillWorkList 
-		    		val spillWorkList' = removeFromList(spillNodeID, spillWorkList)
-		    		val simplifyWorkList' = spillNodeID::simplifyWorkList
-		    		(*i think we remove this spill node from the igraph and restart all over from simplify*)
+		    		val spillNodeID = foldl selectBestSpillNode (ig, head) spillWorkList
+		    		val selectStack' = Stack.push(spillNodeID, selectStack)
 		    		val ig' = IG.removeNode'(ig, spillNodeID)
 		    	in 
-		    		(ig', simplifyWorkList', spillWorkList')
+		    		(ig', selectStack')
 		    	end	
 
 		    fun filterColors(node, initial) =
@@ -217,9 +214,33 @@ struct
 			 		foldl assignColor (initial, []) selectStack
 		 		end
 
-		 	fun runRegAlloc()
-		in
-			body
-		end
 
+		 	(*main loop*)
+		 	fun runRegAlloc(ig, selectStack) = 
+		 		let
+				    val nodes = IG.nodes(ig) (* List of nodes*)
+				    fun addNodeId(node,lst) = IG.getNodeID(node)::lst (*nods don't come in any particular order*)
+				    val nodeIDList = foldl addNodeId [] nodes (* List of node ids *)
+
+				    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable(nodeIDList)
+				    val simplifySuccess = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
+				    val (updatedStack, updatedIG) = simplify(selectStack, ig, simplifyWorkList)
+				in
+					case simplifySuccess of 
+					true => assignColors(updatedStack, ??)
+					| false => (case coalesceAndReturnNewGraph(updatedIG, movePairs) of 
+								(true, newIG) => (coalesceSuccess := false;
+												  runRegAlloc(newIG, updatedStack))
+								| (false, newIG) => (case unfreezeMove(bestMoveNodeToFreeze(newIG)) of 
+													 true => (unfreezeSuccess := false;
+													 		  runRegAlloc(newIG, selectStack))
+													 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
+													 			(ig', stack') => runRegAlloc(ig', stack')
+													 			)
+													 )
+								)
+				end
+		in
+			runRegAlloc(interference, Stack.empty)
+		end
 end
