@@ -25,6 +25,7 @@ struct
 	structure Te = Temp
 	structure Table = Te.Table
 	structure L = Liveness
+  	structure Set = Te.Set
 
 	structure Stack = 
 	struct
@@ -37,42 +38,42 @@ struct
 
 	val spilled = ref false
 
-  	structure Set = Te.Set
+
+	fun removeFromList (elem, myList) = List.filter (fn x => x <> elem) myList;
 
 	fun color ({L.IGRAPH {graph=interference, moves=moves}, initial, spillCost, registers}) =
 		let
 		    val coloredNodes = ref Set.empty (* The nodes we have colored so far*)
 		  	val regColorMap = ref initial : allocation ref
 		    val okColors = ref palette
+		    val movePairs = ref moves
+
+		    val numRegs = 27 (*should get this information from registers parameter that's passed in. E.g. List.length registers*)
 
 		    val nodes = IG.nodes(interference) (* List of nodes*)
 		    fun addNodeId(node,lst) = IG.getNodeID(node)::lst (*nods don't come in any particular order*)
 		    val nodeIDList = foldl addNodeId [] nodes (* List of node ids. All node arguments reference this list, so they are id's*)
 
-		    val allMoveNodes = 
+
+		    fun allMoveNodes() = 
 		    	let
 		    		fun oneMovePair((oneNode, otherNode), currSet) =
 		    			Set.add(Set.add(currSet, IG.getNodeID oneNode), IG.getNodeID otherNode)
 		    	in
-		    		foldl oneMovePair Set.empty moves
+		    		foldl oneMovePair Set.empty !movePairs
 		    	end
-
-		    val numRegs = 27 (*should get this information from registers parameter that's passed in. E.g. List.length registers*)
-
-			fun remove (elem, myList) = List.filter (fn x => x <> elem) myList;
-
-			fun moveRelated(nodeID) = Set.member(allMoveNodes, nodeID)
 
 		    fun lookForSimpliable =
 		    	let
 		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList, nonSimplifiable)) =
 		    			let
 		    				val currentNode = IG.getNode(currentNodeID)
-		    				val preColored = Table.look(initial, currentNodeID) (*Check if node has been precolored*)
+		    				val preColored = Table.look(initial, currentNodeID)
+		    				val moveNodeSet = allMoveNodes()
 		    			in
 		    				case preColored of 
-		    					SOME(color) => (simplifyWorkList, freezeWorkList) (*Do not color if node has been precolored*)
-		    				  | NONE => if moveRelated(currentNodeID) 
+		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable)
+		    				  | NONE => if Set.member(moveNodeSet, currentNodeID)
 		    				  			then (simplifyWorkList, currentNode::freezeWorkList, nonSimplifiable)
 		    						    else (if IG.outdegree(currentNode)< numRegs
 		    						    	  then (currentNode::simplifyWorkList, freezeWorkList, nonSimplifiable)
@@ -81,8 +82,6 @@ struct
 		    	in
 		    		foldl addNodeToList ([], [], []) nodeIDList
 		    	end
-
-		    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable()
 
 		    (* simplify all nodes in the simplifyWorkList, returns the updated stack, lists and graph*)
 		    fun simplify(selectStack, ig, simList) = 
@@ -94,8 +93,10 @@ struct
 		    	end
 
 		    (*need to make this loop until no more changes*)
+		    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable()
 		    val (updatedStack, updatedInteference) = simplify(Stack.empty, interference, simplifyWorkList)
 
+		    (*look for possible coalescing and perform it, returns the new graph*)
 		    fun coalesceAndReturnNewGraph(ig, movePairs) = 
 		    	let
 		    		fun briggs((node1ID, node2ID), g) = 
@@ -136,6 +137,7 @@ struct
 		    		foldr briggs ig movePairs
 		    	end
 
+		    (*helper function for Briggs Coalescing*)
 		    fun mergeNodes(ig, n1, n2) = 
 		    	let
 		    		val node1Succs = IG.succs(n1)
