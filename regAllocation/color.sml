@@ -56,22 +56,33 @@ struct
 
 			fun remove (elem myList) = List.filter (fn x => x <> elem) myList;
 
+			fun nodeMoves(node, activeMoves, workListMoves, moveList) = (* Where does moveList come from??? *)
+				let
+					val allMoves = Set.union(activeMoves, workListMoves)
+				in 
+					Set.intersection(moveList(node), allMoves)
+				end
+
+			fun moveRelated(node, nodeMoves) = nodeMoves(node) <> []
+
 		    fun makeWorkList =
 		    	let
-		    		fun addNodeToList(currentNode, (simplifyWorkList, spillWorkList)) =
+		    		fun addNodeToList(currentNode, (simplifyWorkList, freezeWorkList)) =
 		    			let
 		    				val preColored = Table.look(initial, IG.getNodeID(currentNode)) (*Check if node has been precolored*)
 		    			in
 		    				case preColored of 
 		    					SOME(color) => (simplifyWorkList, spillWorkList) (*Do not color if node has been precolored*)
-		    				  | NONE => if getDegree(currentNode) > numRegs then (simplifyWorkList, currentNode::spillWorkList)
-		    						   else (currentNode::simplifyWorkList, spillWorkList)
+		    				  | NONE => if moveRelated(currentNode) then (simplifyWorkList, currentNode::freezeWorkList)
+		    						   else (currentNode::simplifyWorkList, freezeWorkList)
 		    			end
 		    	in
 		    		foldl addNodeToList ([],[]) nodeList
 		    	end
 
-		    val simplifyWorkList = #1 makeWorkList()
+		    val lists = makeWorkList()
+		    val simplifyWorkList = #1 lists
+		    val freezeWorkList = #2 lists
 
 		    (* Simplifies a node, removes it from the graph*)
 		    fun simplify(node, selectStack, simplifyWorkList, spillWorkList, interference) = 
@@ -95,13 +106,30 @@ struct
 
 		    val selectStack = runSimplify(simplifyWorklist, [], interference)
 
-		     (* Do we even need this is were not doing spill??? *)
+		    fun enableMoves(nodes, activeMoves, workListMoves) =
+		    	let 
+		    		fun enable node (activeMoves, workListMoves) =
+		    			let
+		    				val moves = nodeMoves(node)
+		    				val result = foldl processMove (activeMoves, workListMoves) moves
+		    			in
+		    				(#1 result, #2 result)
+		    			end
+		    	in
+		    		foldl enable (activeMoves, workListMoves) nodes
+		    	end
+
+		    fun processMove(move, (activeMoves, workListMoves)) =
+		    	if SET.member(activeMoves, move)
+		    	then (SET.add(activeMoves, move), SET.add(workListMoves, move))
+
+		     (* Do we even need this if were not doing spill??? *)
 		    fun decrementDegree(node, (simplifyWorkList, spillWorkList)) =
 		    	let
 		    		val d = IG.degree(node)
 		    		(* No need to decrement node degree *)
 		    	in
-		    		if d < numRegs 
+		    		if d < numRegs (* Shouldnt this be an equal? *)
 		    		then (node::simplifyWorkList, remove(node, spillWorkList)) (*Move node from spill list to simplify list*)
 		    		else (simplifyWorkList, spillWorkList)
 		    	end
