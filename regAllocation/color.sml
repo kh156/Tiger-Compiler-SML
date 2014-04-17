@@ -37,74 +37,67 @@ struct
 
 	val spilled = ref false
 
-  	structure Set = Temp.Set
+  	structure Set = Te.Set
 
 	fun color ({L.IGRAPH {graph=interference, moves=moves}, initial, spillCost, registers}) =
 		let
 		    val coloredNodes = ref Set.empty (* The nodes we have colored so far*)
 		  	val regColorMap = ref initial : allocation ref
 		    val okColors = ref palette
+
 		    val nodes = IG.nodes(interference) (* List of nodes*)
+		    fun addNodeId(node,lst) = IG.getNodeID(node)::lst (*nods don't come in any particular order*)
+		    val nodeIDList = foldl addNodeId [] nodes (* List of node ids. All node arguments reference this list, so they are id's*)
 
-		    fun addNodeId node lst = IG.getNodeID(node)::lst
+		    val allMoveNodes = 
+		    	let
+		    		fun oneMovePair((oneNode, otherNode), currSet) =
+		    			Set.add(Set.add(currSet, oneNode), otherNode)
+		    	in
+		    		foldl oneMovePair Set.empty moves
+		    	end
 
-		    val nodeList = foldl addNodeId [] nodes (* List of node ids. All node arguments reference this list, so they are id's*)
-
-		    val numRegs = 27 (*should get this information from registers parameter that's passed in*)
+		    val numRegs = 27 (*should get this information from registers parameter that's passed in. E.g. List.length registers*)
 
 		    fun getDegree node = IG.outDegree(node)
 
-			fun remove (elem myList) = List.filter (fn x => x <> elem) myList;
+			fun remove (elem, myList) = List.filter (fn x => x <> elem) myList;
 
-			fun nodeMoves(node, activeMoves, workListMoves, moveList) = (* Where does moveList come from??? *)
-				let
-					val allMoves = Set.union(activeMoves, workListMoves)
-				in 
-					Set.intersection(moveList(node), allMoves)
-				end
+			fun nodeMoves(node) = (* moveList comes from moves in the paramter of fun color *)
+				Set.intersection(Set.singleton node, allMoveNodes)
 
 			fun moveRelated(node, nodeMoves) = nodeMoves(node) <> []
 
 		    fun makeWorkList =
 		    	let
-		    		fun addNodeToList(currentNode, (simplifyWorkList, freezeWorkList)) =
+		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList)) =
 		    			let
-		    				val preColored = Table.look(initial, IG.getNodeID(currentNode)) (*Check if node has been precolored*)
+		    				val preColored = Table.look(initial, currentNodeID) (*Check if node has been precolored*)
 		    			in
 		    				case preColored of 
-		    					SOME(color) => (simplifyWorkList, spillWorkList) (*Do not color if node has been precolored*)
+		    					SOME(color) => (simplifyWorkList, freezeWorkList) (*Do not color if node has been precolored*)
 		    				  | NONE => if moveRelated(currentNode) then (simplifyWorkList, currentNode::freezeWorkList)
 		    						   else (currentNode::simplifyWorkList, freezeWorkList)
 		    			end
 		    	in
-		    		foldl addNodeToList ([],[]) nodeList
+		    		foldl addNodeToList ([],[]) nodeIDList
 		    	end
 
 		    val lists = makeWorkList()
 		    val simplifyWorkList = #1 lists
 		    val freezeWorkList = #2 lists
 
-		    (* Simplifies a node, removes it from the graph*)
-		    fun simplify(node, selectStack, simplifyWorkList, spillWorkList, interference) = 
+		    (* simplify all nodes in the simplifyWorkList, returns the updated stack, lists and graph*)
+		    fun simplify(selectStack, interference, simplifyWorkList) = 
 		    	let 
-		    		val adjacentNodes = IG.adj(interference', node) (*i think these nodes will retain the original degree...hmm*)
-		    		val selectStack' = Stack.push(node, selectStack)
-		    		val simplifyWorkList' = remove(node, simplifyWorkList)
-		    		val interference' = IG.remove(interference, node) (* Remove the node from the graph*)
-		    		val (simplifyWorkList', spillWorkList) = foldl decrementDegree (simplifyWorkList', spillWorkList) adjacentNodes
+		    		fun simplifyOneNode (nodeID, (stack, g)) =
+		    			(Stack.push(nodeID, stack), IG.removeNode'(g, nodeID))
 		    	in
-		    		(selectStack, simplifyWorklist, spillWorkList, interference')
+		    		foldr simplifyOneNode (selectStack, interference) simplifyWorklist
 		    	end
 
-		    fun runSimplify([],selectStack,interference) = selectStack
-		      | runSimplify(node::rest,selectStack,interference) =
-		        let 
-		        	val (selectStack, simplifyWorklist, spillWorkList, interference) = simplify(node, selectStack, simplifyWorklist, interference)
-		        in 
-		        	runSimplify(rest, selectStack, interference)
-		        end
+		    val (updatedStack, updatedInteference) = simplify(Stack.empty, interference, simplifyWorkList)
 
-		    val selectStack = runSimplify(simplifyWorklist, [], interference)
 
 		    fun enableMoves(nodes, activeMoves, workListMoves) =
 		    	let 
@@ -122,17 +115,6 @@ struct
 		    fun processMove(move, (activeMoves, workListMoves)) =
 		    	if SET.member(activeMoves, move)
 		    	then (SET.add(activeMoves, move), SET.add(workListMoves, move))
-
-		     (* Do we even need this if were not doing spill??? *)
-		    fun decrementDegree(node, (simplifyWorkList, spillWorkList)) =
-		    	let
-		    		val d = IG.degree(node)
-		    		(* No need to decrement node degree *)
-		    	in
-		    		if d < numRegs (* Shouldnt this be an equal? *)
-		    		then (node::simplifyWorkList, remove(node, spillWorkList)) (*Move node from spill list to simplify list*)
-		    		else (simplifyWorkList, spillWorkList)
-		    	end
 
 		    fun selectBestNode(node, bestSoFar) = 
 		    		if (spillCost(node)<spillCost(bestSoFar)) (* Heuristic for selecting best node to spill *)
