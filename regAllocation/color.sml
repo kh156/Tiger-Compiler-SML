@@ -102,7 +102,30 @@ struct
 		    			let
 		    				val node1 = IG.getNode(g, node1ID)
 		    				val node2 = IG.getNode(g, node2ID)
-		    				val totalDegree = IG.outDegree(node1) + IG.outDegree(node2) - 2 (*minus the edge between them*)
+
+		    				(*num of neighbors with significant degree after merge*)
+		    				fun significantDegree(n) = 
+		    					let
+		    						val neighbors = IG.succs'(g, n)
+		    						val succNodes = 
+		    							List.filter (fn nn => (not (IG.getNodeID nn == IG.getNodeID node1))
+		    											andalso (not (IG.getNodeID nn == IG.getNodeID node2)))
+		    										neighbors
+
+		    						fun isSignificant(neighborNode) =
+		    							let
+		    								val adjToBoth = 
+		    									if IG.isAdjacent(neighborNode, node1) andalso IG.isAdjacent(neighborNode, node2)
+		    									then 1
+		    									else 0
+		    							in
+		    								IG.outDegree(neighborNode) - adjToBoth
+		    							end
+		    					in
+		    						List.length(List.filter (fn b => b) (map significantDegree succNodes))
+		    					end
+
+		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
 		    			in
 		    				if totalDegree < numRegs
 		    				then mergeNodes(g, node1, node2)
@@ -124,6 +147,7 @@ struct
 		    	in
 		    		IG.remove(addedG, n1)
 		    	end
+
 
 		    fun enableMoves(nodes, activeMoves, workListMoves) =
 		    	let 
