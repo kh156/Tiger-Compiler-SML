@@ -55,7 +55,7 @@ struct
 		    val nodeIDList = foldl addNodeId [] nodes (* List of node ids. All node arguments reference this list, so they are id's*)
 
 
-		    fun allMoveNodes() = 
+		    fun allMoveNodeIDs() = 
 		    	let
 		    		fun oneMovePair((oneNode, otherNode), currSet) =
 		    			Set.add(Set.add(currSet, IG.getNodeID oneNode), IG.getNodeID otherNode)
@@ -69,7 +69,7 @@ struct
 		    			let
 		    				val currentNode = IG.getNode(currentNodeID)
 		    				val preColored = Table.look(initial, currentNodeID)
-		    				val moveNodeSet = allMoveNodes()
+		    				val moveNodeSet = allMoveNodeIDs()
 		    			in
 		    				case preColored of 
 		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable)
@@ -129,7 +129,8 @@ struct
 		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
 		    			in
 		    				if totalDegree < numRegs
-		    				then mergeNodes(g, node1, node2)
+		    				then (movePairs := removeFromList((node1ID, node2ID), !movePairs);
+		    					  mergeNodes(g, node1, node2))
 		    				else g
 		    			end
 
@@ -150,38 +151,46 @@ struct
 		    		IG.remove(addedG, n1)
 		    	end
 
-
-		    fun enableMoves(nodes, activeMoves, workListMoves) =
-		    	let 
-		    		fun enable node (activeMoves, workListMoves) =
-		    			let
-		    				val moves = nodeMoves(node)
-		    				val result = foldl processMove (activeMoves, workListMoves) moves
-		    			in
-		    				(#1 result, #2 result)
-		    			end
+		    (*subroutine for unfreeze procedure*)
+		    fun bestMoveNodeToFreeze(ig) = 
+		    	let
+		    		val moveNodeIDs = allMoveNodeIDs()
+		    		fun compareDegree(currNodeID, bestNodeID) = 
+		    			if IG.outDegree(IG.getNode(ig, currNodeID)) < IG.outDegree(IG.getNode(ig, bestNodeID))
+		    			then currNodeID
+		    			else bestNodeID
 		    	in
-		    		foldl enable (activeMoves, workListMoves) nodes
+		    		foldr compareDegree (hd moveNodeIDs) moveNodeIDs
 		    	end
 
-		    fun processMove(move, (activeMoves, workListMoves)) =
-		    	if SET.member(activeMoves, move)
-		    	then (SET.add(activeMoves, move), SET.add(workListMoves, move))
+		    (*turn move edges associated with this node into normal edges, should restart from simplify after this step*)
+		    fun unfreezeMove(moveNodeID) =
+		    	let 
+		    		fun noHaveThisNode((n1, n2)) =
+		    			if (IG.getNodeID n1 == moveNodeID orelse IG.getNodeID n2 == moveNodeID)
+		    			then true
+		    			else false
+		    	in
+		    		movePairs := List.filter noHaveThisNode !movePairs 
+		    	end
 
-		    fun selectBestNode(node, bestSoFar) = 
-		    		if (spillCost(node)<spillCost(bestSoFar)) (* Heuristic for selecting best node to spill *)
-		    		then node
-		    		else bestSoFar
 
-		    fun selectSpill(simplifyWorkList, spillWorkList) =
+		    (*we should use 1/IG.outDegree(node) as our spillCost function, so that we pick the highest degree node to spill*)
+		    fun selectBestSpillNode(nodeID, (g, bestSoFarID)) = 
+		    		if spillCost(IG.getNode nodeID)<spillCost(IG.getNode bestSoFarID)
+		    		then (g, node)
+		    		else (g, bestSoFar)
+
+		    fun selectSpill(ig, simplifyWorkList, spillWorkList) =
 		    	let 
 		    		val head = hd spillWorkList
-		    		val spillNode = foldl selectBestNode head spillWorkList 
-		    		val spillWorkList' = remove(spillNode, spillWorkList)
-		    		val simplifyWorkList' = spillNode::simplifyWorkList
-		    		(*i think we remove this spill node from the igraph and restart all over from the beginning*)
+		    		val spillNodeID = foldl selectBestSpillNode (ig, head) spillWorkList 
+		    		val spillWorkList' = removeFromList(spillNodeID, spillWorkList)
+		    		val simplifyWorkList' = spillNodeID::simplifyWorkList
+		    		(*i think we remove this spill node from the igraph and restart all over from simplify*)
+		    		val ig' = IG.removeNode'(ig, spillNodeID)
 		    	in 
-		    		(simplifyWorkList', spillWorkList')
+		    		(ig', simplifyWorkList', spillWorkList')
 		    	end	
 
 		    fun filterColors(node, initial) =
@@ -207,6 +216,8 @@ struct
 			 	in 
 			 		foldl assignColor (initial, []) selectStack
 		 		end
+
+		 	fun runRegAlloc()
 		in
 			body
 		end
