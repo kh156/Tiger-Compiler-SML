@@ -77,8 +77,8 @@ struct
                         | NONE => g
         in
           case edgeOption of 
-            SOME(edge) => (print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));
-                          (G.addEdge(gWithJumps, edge), getRest(labelList)))
+            SOME(edge) => (G.addEdge(gWithJumps, edge), getRest(labelList))
+            (*(print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));*)
             | NONE => (gWithJumps, getRest(labelList))
         end
 
@@ -89,8 +89,8 @@ struct
                       | NONE => NONE
         in
           case edgeOption of 
-            SOME(edge) => (print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));
-                          (G.addEdge(g, edge), getRest(labelList)))
+            SOME(edge) => (G.addEdge(g, edge), getRest(labelList))
+            (*(print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));*)
             | NONE => (g, getRest(labelList))
         end
 
@@ -101,8 +101,8 @@ struct
                       | NONE => NONE
         in
           case edgeOption of 
-            SOME(edge) => (print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));
-                          (G.addEdge(g, edge), getRest(labelList)))
+            SOME(edge) => (G.addEdge(g, edge), getRest(labelList))
+            (*(print("edge from "^Symbol.name(#from edge)^" to "^Symbol.name(#to edge));*)
             | NONE => (g, getRest(labelList))
         end
 

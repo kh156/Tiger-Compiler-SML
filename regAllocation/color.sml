@@ -41,6 +41,7 @@ struct
 	fun color ({interference=L.IGRAPH {graph=interference, moves=moves}, initial=initial, spillCost=spillCost, registers=registers}) =
 		let
 		    val movePairs = ref moves
+		    val mergedPairs = ref [] : (IG.nodeID * IG.nodeID) list ref
 
 		 	val coalesceSuccess = ref false
 		 	val unfreezeSuccess = ref false
@@ -120,6 +121,7 @@ struct
 		    			in
 		    				if totalDegree < numRegs
 		    				then (movePairs := removeFromList((node1ID, node2ID), (!movePairs));
+		    					  mergedPairs := (node1ID, node2ID)::(!mergedPairs);
 		    					  coalesceSuccess := true;
 		    					  mergeNodes(g, node1, node2))
 		    				else g
@@ -130,7 +132,7 @@ struct
 		    		(!coalesceSuccess, newIG)
 		    	end
 
-		    (*helper function for Briggs Coalescing*)
+		    (*helper function for Briggs Coalescing. Result: n1 is merged into n2. Only n2 exists afterwards*)
 		    and mergeNodes(ig, n1, n2) = 
 		    	let
 		    		val node1Succs = IG.succs(n1)
@@ -215,8 +217,21 @@ struct
 		 					 else ();
 		 					 addedAlloc)
 		 				end
+
+		 			val firstRoundAlloc = foldl assignColor initial selectStack
+
+		 			fun colorMergedPairs((n1ID, n2ID), alloc) = 
+		 				let
+		 					val n2Color = Table.look(alloc, n2ID)
+		 				in
+		 					case n2Color of 
+		 						SOME(r) => (case Table.look(alloc, n1ID) of 
+		 									SOME(rr) => alloc
+		 									| NONE => Table.enter(alloc, n1ID, r))
+		 						| NONE => ErrorMsg.impossible "Error coloring coalesced pairs of nodes..."
+		 				end
 			 	in 
-			 		foldl assignColor initial selectStack
+			 		foldl colorMergedPairs firstRoundAlloc (!mergedPairs)
 		 		end
 
 		 	(*main loop*)
