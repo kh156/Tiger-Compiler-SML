@@ -7,7 +7,7 @@ sig
   type igraphNode = int 
 
   datatype igraph = IGRAPH of {graph: igraphNode IGraph.graph,
-                               moves: (igraphNode IGraph.graph.node * igraphNode IGraph.graph.node) list}
+                               moves: (IGraph.nodeID * IGraph.nodeID) list}
   
   val interferenceGraph : Flow.flowgraph * Flow.flowNodeInfo Flow.Graph.node list -> igraph 
   (** do we need the (Flow.flowNodeInfo -> Temp.temp list)? Isn't that intermediate data used to generate the igraph?*)
@@ -26,7 +26,7 @@ struct
   type igraphNode = int 
 
   datatype igraph = IGRAPH of {graph: igraphNode IGraph.graph,
-                               moves: (igraphNode IG.graph.node * igraphNode IG.graph.node) list}
+                               moves: (IG.nodeID * IG.nodeID) list}
 
   val changed = ref false
 

@@ -1,10 +1,8 @@
-structure InterferenceGraph = FuncGraph(Temp.TempOrd)
-
 signature COLOR = 
 sig
-	structure Frame : FRAME
+	structure F : FRAME
 
-	type allocation = Frame.register Temp.table 
+	type allocation = F.register Temp.table 
 
 	(*initial is pre-colored nodes due to calling conventions*)
 	(*spillCost evaluates how much it costs to spill a variable, naive approach returns 1 for every temp*)
@@ -12,20 +10,21 @@ sig
 	(*Temp.temp list in the output is a spill list*)
 	val color: {interference: Liveness.igraph,
 				initial: allocation,
-				spillCost: Liveness.igraphNode InterferenceGraph.node -> int,
-				registers: Frame.register list}
+				spillCost: Liveness.igraphNode IGraph.node -> int,
+				registers: F.register list}
 				-> allocation * Temp.temp list
-				}
 end
 
 structure Color :> COLOR =
 struct
-	structure IG = InterferenceGraph
+	structure IG = IGraph
 	structure F = MipsFrame
 	structure Te = Temp
 	structure Table = Te.Table
 	structure L = Liveness
   	structure Set = Te.Set
+
+	type allocation = F.register Te.table 
 
 	structure Stack = 
 	struct
@@ -41,11 +40,8 @@ struct
 
 	fun removeFromList (elem, myList) = List.filter (fn x => x <> elem) myList;
 
-	fun color ({L.IGRAPH {graph=interference, moves=moves}, initial, spillCost, registers}) =
+	fun color ({interference=L.IGRAPH {graph=interference, moves=moves}, initial=initial, spillCost=spillCost, registers=registers}) =
 		let
-		    val coloredNodes = ref Set.empty (* The nodes we have colored so far*)
-		  	val regColorMap = ref initial : allocation ref
-		    val okColors = ref palette
 		    val movePairs = ref moves
 
 		 	val coalesceSuccess = ref false
@@ -56,26 +52,26 @@ struct
 		    fun allMoveNodeIDs() = 
 		    	let
 		    		fun oneMovePair((oneNode, otherNode), currSet) =
-		    			Set.add(Set.add(currSet, IG.getNodeID oneNode), IG.getNodeID otherNode)
+		    			Set.add(Set.add(currSet, oneNode), otherNode)
 		    	in
-		    		foldl oneMovePair Set.empty !movePairs
+		    		foldl oneMovePair Set.empty (!movePairs)
 		    	end
 
-		    fun lookForSimpliable(nodeIDList) =
+		    fun lookForSimpliable(ig, nodeIDList) =
 		    	let
 		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList, nonSimplifiable)) =
 		    			let
-		    				val currentNode = IG.getNode(currentNodeID)
+		    				val currentNode = IG.getNode(ig, currentNodeID)
 		    				val preColored = Table.look(initial, currentNodeID)
 		    				val moveNodeSet = allMoveNodeIDs()
 		    			in
 		    				case preColored of 
 		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable)
 		    				  | NONE => if Set.member(moveNodeSet, currentNodeID)
-		    				  			then (simplifyWorkList, currentNode::freezeWorkList, nonSimplifiable)
-		    						    else (if IG.outdegree(currentNode)< numRegs
-		    						    	  then (currentNode::simplifyWorkList, freezeWorkList, nonSimplifiable)
-		    						    	  else (simplifyWorkList, freezeWorkList, currentNode::nonSimplifiable))
+		    				  			then (simplifyWorkList, currentNodeID::freezeWorkList, nonSimplifiable)
+		    						    else (if IG.outDegree(currentNode)< numRegs
+		    						    	  then (currentNodeID::simplifyWorkList, freezeWorkList, nonSimplifiable)
+		    						    	  else (simplifyWorkList, freezeWorkList, currentNodeID::nonSimplifiable))
 		    			end
 		    	in
 		    		foldl addNodeToList ([], [], []) nodeIDList
@@ -101,7 +97,7 @@ struct
 		    				(*num of neighbors with significant degree after merge*)
 		    				fun significantDegree(n) = 
 		    					let
-		    						val neighbors = IG.succs'(g, n)
+		    						val neighbors = IG.succs' g n
 		    						val succNodes = 
 		    							List.filter (fn nn => (not (IG.getNodeID nn = IG.getNodeID node1))
 		    											andalso (not (IG.getNodeID nn = IG.getNodeID node2)))
@@ -114,28 +110,30 @@ struct
 		    									then 1
 		    									else 0
 		    							in
-		    								IG.outDegree(neighborNode) - adjToBoth
+		    								if IG.outDegree(neighborNode)-adjToBoth < numRegs
+		    								then false
+		    								else true
 		    							end
 		    					in
-		    						List.length(List.filter (fn b => b) (map significantDegree succNodes))
+		    						List.length(List.filter (fn b => b) (map isSignificant succNodes))
 		    					end
 
 		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
 		    			in
 		    				if totalDegree < numRegs
-		    				then (movePairs := removeFromList((node1ID, node2ID), !movePairs);
-		    					  coalesceSuccess := true
+		    				then (movePairs := removeFromList((node1ID, node2ID), (!movePairs));
+		    					  coalesceSuccess := true;
 		    					  mergeNodes(g, node1, node2))
 		    				else g
 		    			end
 
-		    		val newIG = foldr briggs ig !movePairs
+		    		val newIG = foldr briggs ig (!movePairs)
 		    	in
 		    		(!coalesceSuccess, newIG)
 		    	end
 
 		    (*helper function for Briggs Coalescing*)
-		    fun mergeNodes(ig, n1, n2) = 
+		    and mergeNodes(ig, n1, n2) = 
 		    	let
 		    		val node1Succs = IG.succs(n1)
 		    		fun addEdge(succID, g) =
@@ -150,7 +148,7 @@ struct
 		    (*subroutine for unfreeze procedure*)
 		    fun bestMoveNodeToFreeze(ig) = 
 		    	let
-		    		val moveNodeIDs = allMoveNodeIDs()
+		    		val moveNodeIDs = Set.listItems(allMoveNodeIDs())
 		    		fun compareDegree(currNodeID, bestNodeID) = 
 		    			if IG.outDegree(IG.getNode(ig, currNodeID)) < IG.outDegree(IG.getNode(ig, bestNodeID))
 		    			then currNodeID
@@ -164,76 +162,83 @@ struct
 		    fun unfreezeMove(moveNodeID) =
 		    	let 
 		    		fun noHaveThisNode((n1, n2)) =
-		    			if (IG.getNodeID n1 = moveNodeID orelse IG.getNodeID n2 = moveNodeID)
+		    			if (n1 = moveNodeID orelse n2 = moveNodeID)
 		    			then true
 		    			else false
 		    	in
 		    		if !unfreezeSuccess = true
-		    		then (movePairs := List.filter noHaveThisNode !movePairs; true)
+		    		then (movePairs := List.filter noHaveThisNode (!movePairs); true)
 		    		else false
 		    	end
 
 
 		    (*we should use 1/IG.outDegree(node) as our spillCost function, so that we pick the highest degree node to spill*)
 		    fun selectBestSpillNode(nodeID, (g, bestSoFarID)) = 
-		    		if spillCost(IG.getNode nodeID)<spillCost(IG.getNode bestSoFarID)
-		    		then (g, node)
-		    		else (g, bestSoFar)
+		    		if spillCost(IG.getNode (g,nodeID))<spillCost(IG.getNode (g, bestSoFarID))
+		    		then (g, nodeID)
+		    		else (g, bestSoFarID)
 
 		    fun selectSpill(ig, selectStack, spillWorkList) =
 		    	let 
 		    		val head = hd spillWorkList
-		    		val spillNodeID = foldl selectBestSpillNode (ig, head) spillWorkList
+		    		val (_, spillNodeID) = foldl selectBestSpillNode (ig, head) spillWorkList
 		    		val selectStack' = Stack.push(spillNodeID, selectStack)
 		    		val ig' = IG.removeNode'(ig, spillNodeID)
 		    	in 
-		    		(ig', selectStack')
+		    		(if List.length(spillWorkList) <= 0
+		 					 then ErrorMsg.impossible "No more node to select for potential spill...but algorithm doesn't end???"
+		 					 else ();
+		    		(ig', selectStack'))
 		    	end	
 
-		    fun filterColors(node, initial) =
+		    fun filterColors(nodeID, (alloc, avaiRegs : F.register list)) =
 				let
-					val color = Table.look(initial, IG.getNodeID(node))
+					val register = Table.look(alloc, nodeID)
 				in
-					remove(color, initial)
+					case register of
+						SOME(r) => (alloc, removeFromList(r, avaiRegs))
+						| NONE => (alloc, avaiRegs)
 				end					
 
-		 	fun assignColors(selectStack, okColors) = 
+			(*this method uses a coulpe global variables: initial, registers*)
+		 	fun assignColors(oldIG, selectStack) = 
 		 		let 
-			 		fun assignColor(node, (initial, coloredNodes)) =
+			 		fun assignColor(nodeID, alloc) =
 			 			let
-			 				val okColors = List.tabulate(numRegs, fn x => x); (* Generates list [0,1,2,..numRegs]*)
-	 						val adjacent = IG.adj node
-	 						val okColors' = foldl filterColors okColors adjacent
+			 				(*val okColors = List.tabulate(numRegs, fn x => x); (* Generates list [0,1,2,..numRegs]*)*)
+			 				val okColors : F.register list = registers
+	 						val adjacent = IG.adj (IG.getNode (oldIG, nodeID))
+	 						val (_, okColors') = foldl filterColors (alloc, okColors) adjacent
 	 						val color = hd okColors' (* Just take the first available color to color our node *)
-	 						val coloredNodes' = node::coloredNodes
-	 						val colorTable = Table.enter(initial, node, color)
+	 						val addedAlloc = Table.enter(alloc, nodeID, color)
 		 				in
-		 					(colorTable, coloredNodes')
+		 					(if List.length(okColors') <= 0
+		 					 then ErrorMsg.impossible "No color assignable for a temp node, actual spill occurs..."
+		 					 else ();
+		 					 addedAlloc)
 		 				end
 			 	in 
-			 		foldl assignColor (initial, []) selectStack
+			 		foldl assignColor initial selectStack
 		 		end
-
 
 		 	(*main loop*)
 		 	fun runRegAlloc(ig, selectStack) = 
 		 		let
 				    val nodes = IG.nodes(ig) (* List of nodes*)
-				    fun addNodeId(node,lst) = IG.getNodeID(node)::lst (*nods don't come in any particular order*)
-				    val nodeIDList = foldl addNodeId [] nodes (* List of node ids *)
+				    val nodeIDList = map IG.getNodeID nodes (* List of node ids *)
 
-				    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable(nodeIDList)
+				    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable(ig, nodeIDList)
 				    val simplifySuccess = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
 				    val (updatedStack, updatedIG) = simplify(selectStack, ig, simplifyWorkList)
 				in
 					case simplifySuccess of 
-					true => assignColors(updatedStack, ??)
-					| false => (case coalesceAndReturnNewGraph(updatedIG, movePairs) of 
+					true => assignColors(interference, updatedStack)
+					| false => (case coalesceAndReturnNewGraph(updatedIG) of 
 								(true, newIG) => (coalesceSuccess := false;
 												  runRegAlloc(newIG, updatedStack))
 								| (false, newIG) => (case unfreezeMove(bestMoveNodeToFreeze(newIG)) of 
 													 true => (unfreezeSuccess := false;
-													 		  runRegAlloc(newIG, selectStack))
+													 		  runRegAlloc(newIG, updatedStack))
 													 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
 													 			(ig', stack') => runRegAlloc(ig', stack')
 													 			)
@@ -241,6 +246,6 @@ struct
 								)
 				end
 		in
-			runRegAlloc(interference, Stack.empty)
+			(runRegAlloc(interference, Stack.empty), [])
 		end
 end
