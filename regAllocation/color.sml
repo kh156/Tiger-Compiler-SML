@@ -50,7 +50,7 @@ struct
 						SOME(color) => true
 						| NONE => false
 				in
-					not(node1Colored or node2Colored)
+					not(node1Colored orelse node2Colored)
 				end
 			val movesMinusInitial = List.filter checkInitialInMoves moves
 		    val movePairs = ref movesMinusInitial
@@ -76,6 +76,7 @@ struct
 		    				val currentNode = IG.getNode(ig, currentNodeID)
 		    				val preColored = Table.look(initial, currentNodeID)
 		    				val moveNodeSet = allMoveNodeIDs()
+		    				val test = print("processing " ^ Int.toString currentNodeID ^ "\n");
 		    			in
 		    				case preColored of 
 		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable)
@@ -101,10 +102,18 @@ struct
 		    (*look for possible coalescing and perform it, returns the new graph*)
 		    fun coalesceAndReturnNewGraph(ig) = 
 		    	let
-		    		fun briggs((node1ID, node2ID), g) = 
+		    		fun briggs((node1ID, node2ID)::rest, g) = 
 		    			let
+		    				val test = print("0 " ^ Int.toString node1ID ^ "\n");
 		    				val node1 = IG.getNode(g, node1ID)
+		    				val test = print("1 " ^ Int.toString node2ID ^ "\n");
 		    				val node2 = IG.getNode(g, node2ID)
+							val test = print("2\n");
+
+							fun noHaveNode1((n1, n2)) =
+				    			if (n1 = node1ID orelse n2 = node1ID)
+				    			then false
+				    			else true
 
 		    				(*num of neighbors with significant degree after merge*)
 		    				fun significantDegree(n) = 
@@ -131,16 +140,20 @@ struct
 		    					end
 
 		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
+
+		    				val updatedIG = if totalDegree < numRegs
+						    				then (movePairs := List.filter noHaveNode1 (!movePairs);
+						    					  mergedPairs := (node1ID, node2ID)::(!mergedPairs);
+						    					  coalesceSuccess := true;
+						    					  mergeNodes(g, node1, node2))
+						    				else g
 		    			in
-		    				if totalDegree < numRegs
-		    				then (movePairs := removeFromList((node1ID, node2ID), (!movePairs));
-		    					  mergedPairs := (node1ID, node2ID)::(!mergedPairs);
-		    					  coalesceSuccess := true;
-		    					  mergeNodes(g, node1, node2))
-		    				else g
+		    				briggs(!movePairs, updatedIG)
 		    			end
 
-		    		val newIG = foldr briggs ig (!movePairs)
+		    		| briggs([], g) = g
+
+		    		val newIG = briggs((!movePairs), ig)
 		    	in
 		    		(!coalesceSuccess, newIG)
 		    	end
@@ -176,8 +189,8 @@ struct
 		    	let 
 		    		fun noHaveThisNode((n1, n2)) =
 		    			if (n1 = moveNodeID orelse n2 = moveNodeID)
-		    			then true
-		    			else false
+		    			then false
+		    			else true
 		    	in
 		    		if !unfreezeSuccess = true
 		    		then (movePairs := List.filter noHaveThisNode (!movePairs); true)
@@ -252,22 +265,23 @@ struct
 		 		let
 				    val nodes = IG.nodes(ig) (* List of nodes*)
 				    val nodeIDList = map IG.getNodeID nodes (* List of node ids *)
-
 				    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable(ig, nodeIDList)
 				    val graphEmpty = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
 				    val simplifyDidWork = List.length(simplifyWorkList) > 0
 				    val (updatedStack, updatedIG) = simplify(selectStack, ig, simplifyWorkList)
 				in
 					case simplifyDidWork of 
-						true => runRegAlloc(updatedIG, updatedStack)
+						true => (print("Simplified\n"); runRegAlloc(updatedIG, updatedStack))
 						| false =>
 							(case graphEmpty of 
-							true => assignColors(interference, updatedStack)
+							true => (print("I'm done\n"); assignColors(interference, updatedStack))
 							| false => (case coalesceAndReturnNewGraph(updatedIG) of 
 										(true, newIG) => (coalesceSuccess := false;
+															print("Coalesced\n");
 														  runRegAlloc(newIG, updatedStack))
 										| (false, newIG) => (case unfreezeMove(bestMoveNodeToFreeze(newIG)) of 
 															 true => (unfreezeSuccess := false;
+															 			print("Unfreezed\n");
 															 		  runRegAlloc(newIG, updatedStack))
 															 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
 															 			(ig', stack') => runRegAlloc(ig', stack')

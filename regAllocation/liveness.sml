@@ -109,6 +109,7 @@ struct
   (* backwards union analysis method: Liveness analysis *)
   fun interferenceGraph(flowGraph: Flow.flowgraph, orderedNodeList: Flow.flowNodeInfo Flow.Graph.node list) = 
 	let
+    val resetMoves = (moveList := [])
     (*val _ = print("node list has " ^ Int.toString(List.length orderedNodeList) ^ " elements\n")*)
 		val (liveInTable, liveOutTable) = 
 			doUntilNoChange(flowGraph, orderedNodeList, emptySetTable(orderedNodeList), emptySetTable(orderedNodeList))
