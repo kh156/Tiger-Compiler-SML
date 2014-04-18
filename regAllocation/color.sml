@@ -61,7 +61,7 @@ struct
 		 	val coalesceSuccess = ref false
 		 	val unfreezeSuccess = ref false
 
-		    val numRegs = 27 (*should get this information from registers parameter that's passed in. E.g. List.length registers*)
+		    val numRegs = List.length(registers)
 
 		    fun allMoveNodeIDs() = 
 		    	let
@@ -73,23 +73,23 @@ struct
 
 		    fun lookForSimpliable(ig, nodeIDList) =
 		    	let
-		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList, nonSimplifiable)) =
+		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList, nonSimplifiable, graph)) =
 		    			let
-		    				val currentNode = IG.getNode(ig, currentNodeID)
+		    				val currentNode = IG.getNode(graph, currentNodeID)
 		    				val preColored = Table.look(initial, currentNodeID)
 		    				val moveNodeSet = allMoveNodeIDs()
 		    				val test = print("processing " ^ Int.toString currentNodeID ^ "\n");
 		    			in
 		    				case preColored of 
-		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable)
+		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable, IG.remove(graph, currentNode))
 		    				  | NONE => if Set.member(moveNodeSet, currentNodeID)
-		    				  			then (simplifyWorkList, currentNodeID::freezeWorkList, nonSimplifiable)
+		    				  			then (simplifyWorkList, currentNodeID::freezeWorkList, nonSimplifiable, graph)
 		    						    else (if IG.outDegree(currentNode)< numRegs
-		    						    	  then (currentNodeID::simplifyWorkList, freezeWorkList, nonSimplifiable)
-		    						    	  else (simplifyWorkList, freezeWorkList, currentNodeID::nonSimplifiable))
+		    						    	  then (currentNodeID::simplifyWorkList, freezeWorkList, nonSimplifiable, graph)
+		    						    	  else (simplifyWorkList, freezeWorkList, currentNodeID::nonSimplifiable, graph))
 		    			end
 		    	in
-		    		foldl addNodeToList ([], [], []) nodeIDList
+		    		foldl addNodeToList ([], [], [], ig) nodeIDList
 		    	end
 
 		    (* simplify all nodes in the simplifyWorkList, returns the updated stack, lists and graph*)
@@ -293,10 +293,10 @@ struct
 		 		let
 				    val nodes = IG.nodes(ig) (* List of nodes*)
 				    val nodeIDList = map IG.getNodeID nodes (* List of node ids *)
-				    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable(ig, nodeIDList)
+				    val (simplifyWorkList, freezeWorkList, nonSimplifiable, graphNoReserve) = lookForSimpliable(ig, nodeIDList)
 				    val graphEmpty = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
 				    val simplifyDidWork = List.length(simplifyWorkList) > 0
-				    val (updatedStack, updatedIG) = simplify(selectStack, ig, simplifyWorkList)
+				    val (updatedStack, updatedIG) = simplify(selectStack, graphNoReserve, simplifyWorkList)
 				in
 					case simplifyDidWork of 
 						true => (print("Simplified\n"); runRegAlloc(updatedIG, updatedStack))
