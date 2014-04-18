@@ -13,6 +13,7 @@ sig
 	val allocLocal : frame -> bool -> access
 
   val colorable : Temp.temp list
+  val colorableRegs : register list
 
   val FP : Temp.temp
   val exp : access -> Tree.exp -> Tree.exp
@@ -23,8 +24,11 @@ sig
   val externalCall: string * Tree.exp list -> Tree.exp
 
   val tempMap: register Temp.table
+  val setTempMap: register Temp.table -> unit
 
   val getTempName: Temp.temp -> string
+
+  val getReg : Temp.temp -> register
 
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
@@ -57,14 +61,6 @@ struct
   val SP = Te.newtemp() 
   val ZERO = Te.newtemp()
 
-  val tempMap = foldr (fn ((temp, regEntry), table) => Te.enter(table, temp, regEntry))
-            Te.empty
-            [(FP, Reg "$fp"),
-             (RV, Reg "$v0"),
-             (RA, Reg "$ra"),
-             (SP, Reg "$sp"),
-             (ZERO, Reg "$0")]
-
   val v0 = Te.newtemp()   (* Return Vals*)
   val v1 = Te.newtemp()   
  
@@ -92,6 +88,40 @@ struct
   val s5 = Te.newtemp()   
   val s6 = Te.newtemp()   
   val s7 = Te.newtemp()   
+
+  val tempMap = foldr (fn ((temp, regEntry), table) => Te.enter(table, temp, regEntry))
+            Te.empty
+            [(FP, Reg "$fp"),
+             (RV, Reg "$v0"),
+             (RA, Reg "$ra"),
+             (SP, Reg "$sp"),
+             (ZERO, Reg "$0"),
+             (v0, Reg "$v0"),
+             (v1, Reg "$v1"),
+             (a0, Reg "$a0"),
+             (a1, Reg "$a1"),
+             (a2, Reg "$a2"),
+             (a3, Reg "$a3"),
+             (t0, Reg "$t0"),
+             (t1, Reg "$t1"),
+             (t2, Reg "$t2"),
+             (t3, Reg "$t3"),
+             (t4, Reg "$t4"),
+             (t5, Reg "$t5"),
+             (t6, Reg "$t6"),
+             (t7, Reg "$t7"),
+             (t8, Reg "$t8"),
+             (t9, Reg "$t9"),
+             (s0, Reg "$s0"),
+             (s1, Reg "$s1"),
+             (s2, Reg "$s2"),
+             (s3, Reg "$s3"),
+             (s4, Reg "$s4"),
+             (s5, Reg "$s5"),
+             (s6, Reg "$s6"),
+             (s7, Reg "$s7")]
+
+  val myTempMap = ref tempMap
 
   val specialregs =  [FP, RV, RA, SP, ZERO, v0, v1] 
   val argregs = [a0,a1,a2,a3] (* $a0-$a3 *)
@@ -168,11 +198,26 @@ struct
   fun externalCall(s, args) =
     Tr.CALL(Tr.NAME(Te.namedlabel s), args)
 
+
   fun getTempName(temp) =
     let 
-      val name = Te.Table.look(tempMap, temp)
+      val name = Te.Table.look(!myTempMap, temp)
     in
       case name of NONE => Te.makestring(temp)
                  | SOME(Reg regstr) => regstr
     end
+
+  fun getReg (temp) =
+    let 
+      val name = Te.Table.look(!myTempMap, temp)
+    in
+      case name of NONE => Reg "Undefined"
+                 | SOME(regstr) => regstr
+    end
+
+  fun setTempMap (newTempMap) =
+    myTempMap := newTempMap
+  (*To my understanding, are these all the pre-colored regs???*)  
+  val colorableRegs = map getReg colorable
+
 end

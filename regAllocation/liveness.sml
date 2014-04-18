@@ -29,6 +29,7 @@ struct
                                moves: (IG.nodeID * IG.nodeID) list}
 
   val changed = ref false
+  val moveList = ref [] : (IGraph.nodeID * IGraph.nodeID) list ref
 
   fun emptySetTable(orderedNodeList) = 
   	foldr (fn (node, table) => FG.addNode(table, FG.getNodeID(node), TS.empty)) FG.empty orderedNodeList
@@ -89,13 +90,17 @@ struct
   		fun addEdges(aTemp::rest, igLocal) = 
   			addEdges(rest, doubleEdge(aTemp, rest, igLocal))
 
-		| addEdges([], igLocal) = igLocal
+		  | addEdges([], igLocal) = igLocal
 
   		fun oneNode(node, igLocal) = 
   			let 
   				val liveOuts = TS.listItems (FG.nodeInfo (FG.getNode(liveOutTable, FG.getNodeID(node))))
+          val (_, defList, useList, isMove) = FG.nodeInfo node
   			in
-  				addEdges(liveOuts, igLocal)
+          (if isMove
+           then moveList := (hd defList, hd useList)::(!moveList)
+           else ();
+  				addEdges(liveOuts, igLocal))
   			end
   	in
   		foldr oneNode ig orderedNodeList
@@ -120,7 +125,7 @@ struct
 		val iiGraph = foldr (fn (oneTemp, g) => IG.addNode(g, oneTemp, defaultNodeColor)) IG.empty allTemps
 		val resultG = addIntefereEdges(iiGraph, orderedNodeList, liveOutTable)
 	in
-		IGRAPH {graph = resultG, moves = []}
+		IGRAPH {graph = resultG, moves = !moveList}
 	end
 
   fun show(outStream, IGRAPH {graph=igraph, moves=moves}) = 

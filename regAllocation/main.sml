@@ -29,6 +29,13 @@ struct
 (*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
          val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
 	       val instrs =   List.concat(map (Mips.codegen frame) stms')
+
+         val (flowGraph, nodeList) = MakeGraph.instrs2graph(instrs)
+         val iGraph = Liveness.interferenceGraph (flowGraph, nodeList)
+         val (regTable, spillList) = Color.color({interference=iGraph, initial=F.tempMap, 
+            spillCost=(fn n=> 1 div IGraph.outDegree(n)), registers=F.colorableRegs})
+         val _ = F.setTempMap regTable
+         
          val format0 = Assem.format(F.getTempName)
       in  
          app (fn i => TextIO.output(out,format0 i)) instrs

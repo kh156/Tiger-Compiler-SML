@@ -1,8 +1,7 @@
 signature COLOR = 
 sig
-	structure F : FRAME
 
-	type allocation = F.register Temp.table 
+	type allocation = MipsFrame.register Temp.table 
 
 	(*initial is pre-colored nodes due to calling conventions*)
 	(*spillCost evaluates how much it costs to spill a variable, naive approach returns 1 for every temp*)
@@ -11,20 +10,19 @@ sig
 	val color: {interference: Liveness.igraph,
 				initial: allocation,
 				spillCost: Liveness.igraphNode IGraph.node -> int,
-				registers: F.register list}
+				registers: MipsFrame.register list}
 				-> allocation * Temp.temp list
 end
 
 structure Color :> COLOR =
 struct
 	structure IG = IGraph
-	structure F = MipsFrame
 	structure Te = Temp
 	structure Table = Te.Table
 	structure L = Liveness
   	structure Set = Te.Set
 
-	type allocation = F.register Te.table 
+	type allocation = MipsFrame.register Te.table 
 
 	structure Stack = 
 	struct
@@ -191,7 +189,7 @@ struct
 		    		(ig', selectStack'))
 		    	end	
 
-		    fun filterColors(nodeID, (alloc, avaiRegs : F.register list)) =
+		    fun filterColors(nodeID, (alloc, avaiRegs)) =
 				let
 					val register = Table.look(alloc, nodeID)
 				in
@@ -206,7 +204,7 @@ struct
 			 		fun assignColor(nodeID, alloc) =
 			 			let
 			 				(*val okColors = List.tabulate(numRegs, fn x => x); (* Generates list [0,1,2,..numRegs]*)*)
-			 				val okColors : F.register list = registers
+			 				val okColors = registers
 	 						val adjacent = IG.adj (IG.getNode (oldIG, nodeID))
 	 						val (_, okColors') = foldl filterColors (alloc, okColors) adjacent
 	 						val color = hd okColors' (* Just take the first available color to color our node *)
