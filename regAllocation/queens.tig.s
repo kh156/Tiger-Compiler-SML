@@ -2,37 +2,45 @@ L37:
 li $s3, 8
 li $s0, 4
 mult $s0, $s3, $s0
+move $a0, $s0
 jal malloc
 move $s0, $v0
-li $s2, 0
+move $a0, $s3
+li $a1, 0
 jal initArray
 li $s0, 4
 mult $s0, $s3, $s0
+move $a0, $s0
 jal malloc
 move $s0, $v0
-li $s2, 0
+move $a0, $s3
+li $a1, 0
 jal initArray
 add $s0, $s3, $s3
 addi $s2, $s0, ~1
 li $s0, 4
 mult $s0, $s2, $s0
+move $a0, $s0
 jal malloc
-move $s2, $v0
-add $s0, $s3, $s3
-addi $s0, $s0, ~1
-li $s0, 0
+move $s0, $v0
+add $s2, $s3, $s3
+addi $s2, $s2, ~1
+move $a0, $s2
+li $a1, 0
 jal initArray
 add $s0, $s3, $s3
 addi $s2, $s0, ~1
 li $s0, 4
 mult $s0, $s2, $s0
+move $a0, $s0
 jal malloc
-move $s2, $v0
-add $s0, $s3, $s3
-addi $s0, $s0, ~1
-li $s0, 0
+move $s0, $v0
+add $s2, $s3, $s3
+addi $s2, $s2, ~1
+move $a0, $s2
+li $a1, 0
 jal initArray
-li $s0, 0
+li $a0, 0
 jal L3
 j L36
 L36:
@@ -134,6 +142,7 @@ mult $s0, $t1, $s0
 add $s0, $s6, $s0
 lw $s2, 0($s0)
 addi $s0, $s3, 1
+move $a0, $s0
 jal L3
 li $s0, 0
 addi $t2, $s2, ~1
@@ -176,6 +185,7 @@ bne $s0, $s3, L10
 L10:
 la $s0, L8
 L11:
+move $a0, $s0
 jal print
 addi $s0, $s6, ~1
 beq $s3, $s0, L6
@@ -188,6 +198,7 @@ la $s0, L7
 j L11
 L6:
 la $s0, L14
+move $a0, $s0
 jal print
 addi $s0, $s6, ~1
 beq $s4, $s0, L5
@@ -197,6 +208,7 @@ addi $s0, $s4, 1
 j L15
 L5:
 la $s0, L17
+move $a0, $s0
 jal print
 j L197
 L197:

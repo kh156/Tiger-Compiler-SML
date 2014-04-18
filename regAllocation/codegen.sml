@@ -95,9 +95,9 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.MOVE(T.TEMP r , exp)) = emitMoveInstr(munchExp(exp), r)
 
         | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS, e1, T.CONST i)), exp)) =
-            emit(A.OPER {assem = "sw `s0, " ^ Int.toString i ^ "(`d0)\n",
-                        src = [munchExp exp],
-                        dst = [munchExp e1],
+            emit(A.OPER {assem = "sw `s0, " ^ Int.toString i ^ "(`s1)\n",
+                        src = [munchExp exp, munchExp e1],
+                        dst = [],
                         jump = NONE})
             
         (*neither of src and dst is register*)
@@ -161,7 +161,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
             									src = [munchExp e1, munchExp e2], 
             									dst=[r], 
             									jump=NONE}))
-    (* T.MEM *)
+        (* T.MEM *)
 		| 	munchExp (T.MEM e1) = 
 		   	result(fn r => emit(A.OPER {assem = "lw `d0, 0(`s0)\n",
 		   									src=[munchExp e1], 
@@ -191,7 +191,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
     				(emit(A.OPER {
     					assem = "jal " ^ S.name(label) ^ "\n",
     					src = munchArgs(0, args),	(*should be all the $a registers*)
-    					dst = [F.RV],	(*RV, and all the $t registers because they could get altered*)
+    					dst = F.RV::F.callersaves,	(*RV, and all the $t registers because they could get altered*)
     					jump = NONE
     				});
                     F.RV)
@@ -202,7 +202,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 	and munchArgs (i, []) = []
 	  | munchArgs(i, a::l) = 
 		  let
-		  	val argReg = Temp.newtemp();
+		  	val argReg = if i<4 then List.nth(F.argregs,i) else Temp.newtemp();
 		  in
 		  	(munchStm(T.MOVE(T.TEMP(argReg), a));
 		  	argReg::munchArgs(i+1,l))

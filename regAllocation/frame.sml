@@ -21,6 +21,11 @@ sig
   val RV : Temp.temp
   val procEntryExit1 : frame * Tree.stm -> Tree.stm
 
+  val specialregs : Temp.temp list
+  val argregs : Temp.temp list
+  val calleesaves : Temp.temp list
+  val callersaves : Temp.temp list
+
   val externalCall: string * Tree.exp list -> Tree.exp
 
   val tempMap: register Temp.table
