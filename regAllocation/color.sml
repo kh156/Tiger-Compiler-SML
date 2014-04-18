@@ -40,9 +40,22 @@ struct
 
 	fun color ({interference=L.IGRAPH {graph=interference, moves=moves}, initial=initial, spillCost=spillCost, registers=registers}) =
 		let
-		    val movePairs = ref moves
+			fun checkInitialInMoves (node1, node2) = 
+				let val color1 = Table.look(initial, node1)
+					val color2 = Table.look(initial, node2)
+					val node1Colored = case color1 of
+						SOME(color) => true
+						| NONE => false
+					val node2Colored = case color2 of
+						SOME(color) => true
+						| NONE => false
+				in
+					not(node1Colored or node2Colored)
+				end
+			val movesMinusInitial = List.filter checkInitialInMoves moves
+		    val movePairs = ref movesMinusInitial
+		    
 		    val mergedPairs = ref [] : (IG.nodeID * IG.nodeID) list ref
-
 		 	val coalesceSuccess = ref false
 		 	val unfreezeSuccess = ref false
 
