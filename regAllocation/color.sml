@@ -226,22 +226,27 @@ struct
 				    val nodeIDList = map IG.getNodeID nodes (* List of node ids *)
 
 				    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable(ig, nodeIDList)
-				    val simplifySuccess = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
+				    val graphEmpty = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
+				    val simplifyDidWork = List.length(simplifyWorkList) > 0
 				    val (updatedStack, updatedIG) = simplify(selectStack, ig, simplifyWorkList)
 				in
-					case simplifySuccess of 
-					true => assignColors(interference, updatedStack)
-					| false => (case coalesceAndReturnNewGraph(updatedIG) of 
-								(true, newIG) => (coalesceSuccess := false;
-												  runRegAlloc(newIG, updatedStack))
-								| (false, newIG) => (case unfreezeMove(bestMoveNodeToFreeze(newIG)) of 
-													 true => (unfreezeSuccess := false;
-													 		  runRegAlloc(newIG, updatedStack))
-													 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
-													 			(ig', stack') => runRegAlloc(ig', stack')
-													 			)
-													 )
-								)
+					case simplifyDidWork of 
+						true => runRegAlloc(updatedIG, updatedStack)
+						| false =>
+							(case graphEmpty of 
+							true => assignColors(interference, updatedStack)
+							| false => (case coalesceAndReturnNewGraph(updatedIG) of 
+										(true, newIG) => (coalesceSuccess := false;
+														  runRegAlloc(newIG, updatedStack))
+										| (false, newIG) => (case unfreezeMove(bestMoveNodeToFreeze(newIG)) of 
+															 true => (unfreezeSuccess := false;
+															 		  runRegAlloc(newIG, updatedStack))
+															 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
+															 			(ig', stack') => runRegAlloc(ig', stack')
+															 			)
+															 )
+										)
+							)
 				end
 		in
 			(runRegAlloc(interference, Stack.empty), [])
