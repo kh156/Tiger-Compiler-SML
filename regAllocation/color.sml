@@ -38,6 +38,8 @@ struct
 
 	fun removeFromList (elem, myList) = List.filter (fn x => x <> elem) myList;
 
+	fun isInList(elem, myList) = List.length(List.filter (fn x => x = elem) myList) > 0
+
 	fun color ({interference=L.IGRAPH {graph=interference, moves=moves}, initial=initial, spillCost=spillCost, registers=registers}) =
 		let
 			fun checkInitialInMoves (node1, node2) = 
@@ -108,12 +110,7 @@ struct
 		    				val node1 = IG.getNode(g, node1ID)
 		    				val test = print("1 " ^ Int.toString node2ID ^ "\n");
 		    				val node2 = IG.getNode(g, node2ID)
-							val test = print("2\n");
-
-							fun noHaveNode1((n1, n2)) =
-				    			if (n1 = node1ID orelse n2 = node1ID)
-				    			then false
-				    			else true
+							val test = print("2\n")
 
 		    				(*num of neighbors with significant degree after merge*)
 		    				fun significantDegree(n) = 
@@ -142,8 +139,7 @@ struct
 		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
 
 		    				val updatedIG = if totalDegree < numRegs
-						    				then (movePairs := List.filter noHaveNode1 (!movePairs);
-						    					  mergedPairs := (node1ID, node2ID)::(!mergedPairs);
+						    				then (mergedPairs := (node1ID, node2ID)::(!mergedPairs);
 						    					  coalesceSuccess := true;
 						    					  mergeNodes(g, node1, node2))
 						    				else g
@@ -161,12 +157,44 @@ struct
 		    (*helper function for Briggs Coalescing. Result: n1 is merged into n2. Only n2 exists afterwards*)
 		    and mergeNodes(ig, n1, n2) = 
 		    	let
+		    		val node1ID	= IG.getNodeID n1
+		    		val node2ID = IG.getNodeID n2
 		    		val node1Succs = IG.succs(n1)
+		    		val node2Succs = IG.succs(n2)
 		    		fun addEdge(succID, g) =
 		    			if succID = IG.getNodeID n2
 		    			then g
 		    			else IG.doubleEdge(g, IG.getNodeID n2, succID)
 		    		val addedG = foldl addEdge ig node1Succs
+
+
+					fun noHaveNode1((nn1, nn2)) =
+				    			if (nn1 = node1ID orelse nn2 = node1ID)
+				    			then false
+				    			else true
+
+		    		fun isTrueEdge(n1ID, n2ID, g) = 
+		    			(case IG.isAdjacent(IG.getNode (g, n1ID), IG.getNode (g, n2ID)) of
+		    				true => (if isInList((n1ID, n2ID), !movePairs)
+		    						 then false
+		    						 else true)
+		    				| false => false)
+
+		    		fun removeConstraintMoves(selfNode, otherNode, moveNeighbors, g) = 
+		    			map (fn neighbor => if isTrueEdge(otherNode, neighbor, g)
+		    								then (movePairs := removeFromList((selfNode, neighbor), !movePairs);
+		    									 movePairs := removeFromList((neighbor, selfNode), !movePairs))
+		    								else ()) moveNeighbors
+
+					val node1MoveNeighbors = 
+		    			List.filter (fn neighbor => isInList((node1ID, neighbor), !movePairs) orelse isInList((neighbor, node1ID), !movePairs)) node1Succs
+		    		val node2MoveNeighbors = 
+		    			List.filter (fn neighbor => isInList((node2ID, neighbor), !movePairs) orelse isInList((neighbor, node2ID), !movePairs)) node2Succs
+
+		    		val _ = removeConstraintMoves(node1ID, node2ID, node1MoveNeighbors, ig)
+		    		val _ = removeConstraintMoves(node2ID, node1ID, node2MoveNeighbors, ig)
+		    		val _ = movePairs := List.filter noHaveNode1 (!movePairs)
+
 		    	in
 		    		IG.remove(addedG, n1)
 		    	end
