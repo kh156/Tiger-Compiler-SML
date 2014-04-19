@@ -38,6 +38,8 @@ struct
 
 	fun removeFromList (elem, myList) = List.filter (fn x => x <> elem) myList;
 
+	fun isInList(elem, myList) = List.length(List.filter (fn x => x = elem) myList) > 0
+
 	fun color ({interference=L.IGRAPH {graph=interference, moves=moves}, initial=initial, spillCost=spillCost, registers=registers}) =
 		let
 			fun checkInitialInMoves (node1, node2) = 
@@ -59,7 +61,7 @@ struct
 		 	val coalesceSuccess = ref false
 		 	val unfreezeSuccess = ref false
 
-		    val numRegs = 27 (*should get this information from registers parameter that's passed in. E.g. List.length registers*)
+		    val numRegs = List.length(registers)
 
 		    fun allMoveNodeIDs() = 
 		    	let
@@ -71,23 +73,23 @@ struct
 
 		    fun lookForSimpliable(ig, nodeIDList) =
 		    	let
-		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList, nonSimplifiable)) =
+		    		fun addNodeToList(currentNodeID, (simplifyWorkList, freezeWorkList, nonSimplifiable, graph)) =
 		    			let
-		    				val currentNode = IG.getNode(ig, currentNodeID)
+		    				val currentNode = IG.getNode(graph, currentNodeID)
 		    				val preColored = Table.look(initial, currentNodeID)
 		    				val moveNodeSet = allMoveNodeIDs()
 		    				val test = print("processing " ^ Int.toString currentNodeID ^ "\n");
 		    			in
 		    				case preColored of 
-		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable)
+		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable, IG.remove(graph, currentNode))
 		    				  | NONE => if Set.member(moveNodeSet, currentNodeID)
-		    				  			then (simplifyWorkList, currentNodeID::freezeWorkList, nonSimplifiable)
+		    				  			then (simplifyWorkList, currentNodeID::freezeWorkList, nonSimplifiable, graph)
 		    						    else (if IG.outDegree(currentNode)< numRegs
-		    						    	  then (currentNodeID::simplifyWorkList, freezeWorkList, nonSimplifiable)
-		    						    	  else (simplifyWorkList, freezeWorkList, currentNodeID::nonSimplifiable))
+		    						    	  then (currentNodeID::simplifyWorkList, freezeWorkList, nonSimplifiable, graph)
+		    						    	  else (simplifyWorkList, freezeWorkList, currentNodeID::nonSimplifiable, graph))
 		    			end
 		    	in
-		    		foldl addNodeToList ([], [], []) nodeIDList
+		    		foldl addNodeToList ([], [], [], ig) nodeIDList
 		    	end
 
 		    (* simplify all nodes in the simplifyWorkList, returns the updated stack, lists and graph*)
@@ -108,12 +110,7 @@ struct
 		    				val node1 = IG.getNode(g, node1ID)
 		    				val test = print("1 " ^ Int.toString node2ID ^ "\n");
 		    				val node2 = IG.getNode(g, node2ID)
-							val test = print("2\n");
-
-							fun noHaveNode1((n1, n2)) =
-				    			if (n1 = node1ID orelse n2 = node1ID)
-				    			then false
-				    			else true
+							val test = print("2\n")
 
 		    				(*num of neighbors with significant degree after merge*)
 		    				fun significantDegree(n) = 
@@ -141,13 +138,8 @@ struct
 
 		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
 
-		    				(* check constrained move *)
-		    				val constrained = IG.isAdjacent (node1, node2)
-		    				val test = print(if constrained then "constrained\n" else "not constrained\n")
-
-		    				val updatedIG = if (totalDegree < numRegs) andalso (not constrained)
-						    				then (movePairs := List.filter noHaveNode1 (!movePairs);
-						    					  mergedPairs := (node1ID, node2ID)::(!mergedPairs);
+		    				val updatedIG = if totalDegree < numRegs
+						    				then (mergedPairs := (node1ID, node2ID)::(!mergedPairs);
 						    					  coalesceSuccess := true;
 						    					  mergeNodes(g, node1, node2))
 						    				else g
@@ -165,12 +157,44 @@ struct
 		    (*helper function for Briggs Coalescing. Result: n1 is merged into n2. Only n2 exists afterwards*)
 		    and mergeNodes(ig, n1, n2) = 
 		    	let
+		    		val node1ID	= IG.getNodeID n1
+		    		val node2ID = IG.getNodeID n2
 		    		val node1Succs = IG.succs(n1)
+		    		val node2Succs = IG.succs(n2)
 		    		fun addEdge(succID, g) =
 		    			if succID = IG.getNodeID n2
 		    			then g
 		    			else IG.doubleEdge(g, IG.getNodeID n2, succID)
 		    		val addedG = foldl addEdge ig node1Succs
+
+
+					fun noHaveNode1((nn1, nn2)) =
+				    			if (nn1 = node1ID orelse nn2 = node1ID)
+				    			then false
+				    			else true
+
+		    		fun isTrueEdge(n1ID, n2ID, g) = 
+		    			(case IG.isAdjacent(IG.getNode (g, n1ID), IG.getNode (g, n2ID)) of
+		    				true => (if isInList((n1ID, n2ID), !movePairs)
+		    						 then false
+		    						 else true)
+		    				| false => false)
+
+		    		fun removeConstraintMoves(selfNode, otherNode, moveNeighbors, g) = 
+		    			map (fn neighbor => if isTrueEdge(otherNode, neighbor, g)
+		    								then (movePairs := removeFromList((selfNode, neighbor), !movePairs);
+		    									 movePairs := removeFromList((neighbor, selfNode), !movePairs))
+		    								else ()) moveNeighbors
+
+					val node1MoveNeighbors = 
+		    			List.filter (fn neighbor => isInList((node1ID, neighbor), !movePairs) orelse isInList((neighbor, node1ID), !movePairs)) node1Succs
+		    		val node2MoveNeighbors = 
+		    			List.filter (fn neighbor => isInList((node2ID, neighbor), !movePairs) orelse isInList((neighbor, node2ID), !movePairs)) node2Succs
+
+		    		val _ = removeConstraintMoves(node1ID, node2ID, node1MoveNeighbors, ig)
+		    		val _ = removeConstraintMoves(node2ID, node1ID, node2MoveNeighbors, ig)
+		    		val _ = movePairs := List.filter noHaveNode1 (!movePairs)
+
 		    	in
 		    		IG.remove(addedG, n1)
 		    	end
@@ -232,7 +256,7 @@ struct
 
 			(*this method uses a coulpe global variables: initial, registers*)
 		 	fun assignColors(oldIG, selectStack) = 
-		 		let 
+		 		let
 			 		fun assignColor(nodeID, alloc) =
 			 			let
 			 				(*val okColors = List.tabulate(numRegs, fn x => x); (* Generates list [0,1,2,..numRegs]*)*)
@@ -269,10 +293,10 @@ struct
 		 		let
 				    val nodes = IG.nodes(ig) (* List of nodes*)
 				    val nodeIDList = map IG.getNodeID nodes (* List of node ids *)
-				    val (simplifyWorkList, freezeWorkList, nonSimplifiable) = lookForSimpliable(ig, nodeIDList)
+				    val (simplifyWorkList, freezeWorkList, nonSimplifiable, graphNoReserve) = lookForSimpliable(ig, nodeIDList)
 				    val graphEmpty = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
 				    val simplifyDidWork = List.length(simplifyWorkList) > 0
-				    val (updatedStack, updatedIG) = simplify(selectStack, ig, simplifyWorkList)
+				    val (updatedStack, updatedIG) = simplify(selectStack, graphNoReserve, simplifyWorkList)
 				in
 					case simplifyDidWork of 
 						true => (print("Simplified\n"); runRegAlloc(updatedIG, updatedStack))
