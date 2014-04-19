@@ -141,7 +141,11 @@ struct
 
 		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
 
-		    				val updatedIG = if totalDegree < numRegs
+		    				(* check constrained move *)
+		    				val constrained = IG.isAdjacent (node1, node2)
+		    				val test = print(if constrained then "constrained\n" else "not constrained\n")
+
+		    				val updatedIG = if (totalDegree < numRegs) andalso (not constrained)
 						    				then (movePairs := List.filter noHaveNode1 (!movePairs);
 						    					  mergedPairs := (node1ID, node2ID)::(!mergedPairs);
 						    					  coalesceSuccess := true;
