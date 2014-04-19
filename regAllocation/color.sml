@@ -40,6 +40,8 @@ struct
 
 	fun isInList(elem, myList) = List.length(List.filter (fn x => x = elem) myList) > 0
 
+	fun inPairList(n, myList) = List.length(List.filter (fn (n1, n2) => n1=n orelse n2=n ) myList) > 0
+
 	fun color ({interference=L.IGRAPH {graph=interference, moves=moves}, initial=initial, spillCost=spillCost, registers=registers}) =
 		let
 			fun checkInitialInMoves (node1, node2) = 
@@ -57,9 +59,21 @@ struct
 			val movesMinusInitial = List.filter checkInitialInMoves moves
 		    val movePairs = ref movesMinusInitial
 		    
-		    val mergedPairs = ref [] : (IG.nodeID * IG.nodeID) list ref
+		    (*val mergedPairs = ref [] : (IG.nodeID * IG.nodeID) list ref*)
 		 	val coalesceSuccess = ref false
 		 	val unfreezeSuccess = ref false
+
+		 	fun addAllTemps(nodes, t) =
+		 		foldr (fn (n, currT) => Table.enter(currT, n, Set.singleton n)) t nodes
+
+		 	fun getSet(id, table) = case Table.look(table, id) of
+		 							SOME(r) => r
+		 							| NONE => ErrorMsg.impossible "During mergeTable operations... Set with ID not found..."
+
+		 	val mergeTable = ref (addAllTemps(map IG.getNodeID (IG.nodes(interference)), Table.empty))
+
+		 	fun mergeSets(n1ID, n2ID, table) = 
+		 		Table.enter(table, n2ID, Set.union(getSet(n1ID, table), getSet(n2ID, table)))
 
 		    val numRegs = List.length(registers)
 
@@ -78,7 +92,7 @@ struct
 		    				val currentNode = IG.getNode(graph, currentNodeID)
 		    				val preColored = Table.look(initial, currentNodeID)
 		    				val moveNodeSet = allMoveNodeIDs()
-		    				val test = print("processing " ^ Int.toString currentNodeID ^ "\n");
+		    				(*val test = print("processing " ^ Int.toString currentNodeID ^ "\n");*)
 		    			in
 		    				case preColored of 
 		    					SOME(color) => (simplifyWorkList, freezeWorkList, nonSimplifiable, IG.remove(graph, currentNode))
@@ -106,11 +120,11 @@ struct
 		    	let
 		    		fun briggs((node1ID, node2ID)::rest, g) = 
 		    			let
-		    				val test = print("0 " ^ Int.toString node1ID ^ "\n");
+		    				(*val test = print("0 " ^ Int.toString node1ID ^ "\n");*)
 		    				val node1 = IG.getNode(g, node1ID)
-		    				val test = print("1 " ^ Int.toString node2ID ^ "\n");
+		    				(*val test = print("1 " ^ Int.toString node2ID ^ "\n");*)
 		    				val node2 = IG.getNode(g, node2ID)
-							val test = print("2\n")
+							(*val test = print("2\n")*)
 
 		    				(*num of neighbors with significant degree after merge*)
 		    				fun significantDegree(n) = 
@@ -139,7 +153,7 @@ struct
 		    				val totalDegree = significantDegree(node1) + significantDegree(node2)
 
 		    				val updatedIG = if totalDegree < numRegs
-						    				then (mergedPairs := (node1ID, node2ID)::(!mergedPairs);
+						    				then (mergeTable := mergeSets(node1ID, node2ID, !mergeTable);
 						    					  coalesceSuccess := true;
 						    					  mergeNodes(g, node1, node2))
 						    				else g
@@ -254,38 +268,42 @@ struct
 						| NONE => (alloc, avaiRegs)
 				end					
 
+			fun findExtraNeighbors(node::rest, graph) = (IG.adj (IG.getNode (graph, node))) @ findExtraNeighbors(rest, graph)
+				| findExtraNeighbors([], graph) = []
+
+			fun enterIfNotPresent(t, oneID::rest, color) = 
+				(case Table.look(t, oneID) of 
+					SOME(c) => enterIfNotPresent(t, rest, color)
+					| NONE => enterIfNotPresent(Table.enter(t, oneID, color), rest, color))
+
+				| enterIfNotPresent(t, [], color) = t
+
 			(*this method uses a coulpe global variables: initial, registers*)
 		 	fun assignColors(oldIG, selectStack) = 
 		 		let 
+		 			(*val _ = app (fn e => print("Node on the stack: " ^ Int.toString e ^ "\n")) selectStack*)
 			 		fun assignColor(nodeID, alloc) =
 			 			let
 			 				(*val okColors = List.tabulate(numRegs, fn x => x); (* Generates list [0,1,2,..numRegs]*)*)
 			 				val okColors = registers
 	 						val adjacent = IG.adj (IG.getNode (oldIG, nodeID))
 	 						val (_, okColors') = foldl filterColors (alloc, okColors) adjacent
-	 						val color = hd okColors' (* Just take the first available color to color our node *)
+	 						val mergedNodeIDs = Set.listItems (getSet(nodeID, !mergeTable))
+	 						val (_, avaiColors) = foldl filterColors (alloc, okColors') (findExtraNeighbors(mergedNodeIDs, oldIG))
+
+	 						val color = hd avaiColors (* Just take the first available color to color our node *)
 	 						val addedAlloc = Table.enter(alloc, nodeID, color)
+	 						val completeAlloc = enterIfNotPresent(addedAlloc, mergedNodeIDs, color)
 		 				in
 		 					(if List.length(okColors') <= 0
 		 					 then ErrorMsg.impossible "No color assignable for a temp node, actual spill occurs..."
 		 					 else ();
-		 					 addedAlloc)
+		 					 completeAlloc)
 		 				end
 
-		 			val firstRoundAlloc = foldl assignColor initial selectStack
-
-		 			fun colorMergedPairs((n1ID, n2ID), alloc) = 
-		 				let
-		 					val n2Color = Table.look(alloc, n2ID)
-		 				in
-		 					case n2Color of 
-		 						SOME(r) => (case Table.look(alloc, n1ID) of 
-		 									SOME(rr) => alloc
-		 									| NONE => Table.enter(alloc, n1ID, r))
-		 						| NONE => ErrorMsg.impossible "Error coloring coalesced pairs of nodes..."
-		 				end
+		 			val newAlloc = foldl assignColor initial selectStack
 			 	in 
-			 		foldl colorMergedPairs firstRoundAlloc (!mergedPairs)
+			 		newAlloc
 		 		end
 
 		 	(*main loop*)
@@ -302,7 +320,9 @@ struct
 						true => (print("Simplified\n"); runRegAlloc(updatedIG, updatedStack))
 						| false =>
 							(case graphEmpty of 
-							true => (print("I'm done\n"); assignColors(interference, updatedStack))
+							true => (print("I'm done\n");
+				    				(*Liveness.show(TextIO.stdOut, Liveness.IGRAPH {graph=interference, moves=[]});*)
+									assignColors(interference, updatedStack))
 							| false => (case coalesceAndReturnNewGraph(updatedIG) of 
 										(true, newIG) => (coalesceSuccess := false;
 															print("Coalesced\n");
