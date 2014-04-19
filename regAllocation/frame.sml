@@ -66,7 +66,6 @@ struct
   val SP = Te.newtemp() 
   val ZERO = Te.newtemp()
 
-  val v0 = Te.newtemp()   (* Return Vals*)
   val v1 = Te.newtemp()   
  
   val a0 = Te.newtemp()   (* Arguments *)
@@ -101,7 +100,6 @@ struct
              (RA, Reg "$ra"),
              (SP, Reg "$sp"),
              (ZERO, Reg "$0"),
-             (v0, Reg "$v0"),
              (v1, Reg "$v1"),
              (a0, Reg "$a0"),
              (a1, Reg "$a1"),
@@ -128,7 +126,7 @@ struct
 
   val myTempMap = ref tempMap
 
-  val specialregs =  [FP, RV, RA, SP, ZERO, v0, v1] 
+  val specialregs =  [FP, RV, RA, SP, ZERO, v1] 
   val argregs = [a0,a1,a2,a3] (* $a0-$a3 *)
   val calleesaves = [s0,s2,s2,s3,s4,s5,s6,s7] (* $s0-$s7 *)
   val callersaves = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]  (* $t0-$t9 *)
@@ -188,17 +186,35 @@ struct
       stm (*no idea what to do here*)
   end
 
+  (*what does this do??... 04/18 by Ang*)
   fun procEntryExit2 (frame,body) =
       body @ 
       [A.OPER{assem="",
               src=specialregs @ calleesaves,
               dst=[],jump=SOME[]}]
 
-  fun procEntryExit3 ({name=name, formals=formals, spOffset=locals}:frame, (*locals access list is not added yet...*)
+(*I'll finish this soon...
+  val argList = ref argregs
+  val argPtr = ref ~4
+  fun resetArgList() = argList := argregs
+  fun nextArg() = case (!argList) of 
+                  oneArgReg::others => (argList := others; oneArgReg)
+                  | [] => (argPtr := !argPtr - 4; Translate.munchExp(exp (InFrame (!argPtr))))
+  fun moveArgs(oneLocal : access) = 
+    A.OPER{assem="move `d0, `s0",
+           src=nextArg(),
+           dst=,
+           jump=NONE}*)
+
+  fun procEntryExit3 ({name=name, formals=formals, locals=locals}, (*locals access list is not added yet...*)
                       body : Assem.instr list) =
+    let
+      val _ = ()
+    in
       {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n",
        body = body,
        epilog = "END " ^ Symbol.name name ^ "\n"}
+    end
 
   fun externalCall(s, args) =
     Tr.CALL(Tr.NAME(Te.namedlabel s), args)

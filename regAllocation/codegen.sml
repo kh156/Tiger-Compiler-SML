@@ -202,7 +202,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 	and munchArgs (i, []) = []
 	  | munchArgs(i, a::l) = 
 		  let
-		  	val argReg = if i<4 then List.nth(F.argregs,i) else Temp.newtemp();
+		  	val argReg = if i<4 then List.nth(F.argregs,i) else Temp.newtemp() (*else should push args on the stack...*)
 		  in
 		  	(munchStm(T.MOVE(T.TEMP(argReg), a));
 		  	argReg::munchArgs(i+1,l))

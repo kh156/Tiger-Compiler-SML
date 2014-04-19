@@ -1,7 +1,6 @@
 let
 	var x := 5
-	var y := x
-	var z := x
+	function f(a: int): int = a + 6
 in
-	x+y+z
+	x + f(7)
 end

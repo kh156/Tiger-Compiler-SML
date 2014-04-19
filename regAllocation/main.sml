@@ -37,6 +37,8 @@ struct
          val _ = F.setTempMap regTable
          
          val format0 = Assem.format(F.getTempName)
+         
+         (*val _ = Liveness.show(TextIO.stdOut, iGraph)*)
       in  
          app (fn i => TextIO.output(out,format0 i)) instrs
      end
