@@ -1,0 +1,6 @@
+let
+	var x := 5
+	function f(a: int): int = a + 6
+in
+	x + f(7)
+end
