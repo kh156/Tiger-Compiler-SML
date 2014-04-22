@@ -284,8 +284,7 @@ fun yyAction45 (strm, lastMatch : yymatch) = (yystrm := strm;
 fun yyAction46 (strm, lastMatch : yymatch) = let
       val yytext = yymktext(strm)
       in
-        yystrm := strm;
-        (strBuilder := !strBuilder ^ valOf(String.fromString yytext); continue())
+        yystrm := strm; (strBuilder := !strBuilder ^ yytext; continue())
       end
 fun yyAction47 (strm, lastMatch : yymatch) = (yystrm := strm;
       (YYBEGIN NPSTRING; continue()))

@@ -250,6 +250,11 @@ struct
   val colorableRegs = map getReg colorable
 
   fun stringFrag(lab, str) = 
-    Symbol.name lab ^ ": .asciiz \"" ^ str ^ "\"\n"
+    let
+      val l = String.size str
+      val numOfSlash = List.length(List.filter (fn c => c = #"\\") (explode str))
+    in
+      Symbol.name lab ^ ":\n\t.word " ^ (Int.toString (l-numOfSlash)) ^ "\n\t.ascii \"" ^ str ^ "\"\n"
+    end
 
 end
