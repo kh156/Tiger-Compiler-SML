@@ -50,7 +50,7 @@ struct
 
   datatype access = InFrame of int
                   | InReg of Temp.temp
-  type frame = {name: Temp.label, formals: access list, spOffset: int ref}
+  type frame = {name: Temp.label, formals: access list, spOffset: int ref, moveArgStms: Tree.stm}
 
   datatype register = Reg of string
   
@@ -138,29 +138,12 @@ struct
 
   val colorable = calleesaves @ callersaves (* We can use s and t regs to load vars*)
 
-  fun name({name = name, formals = _ , spOffset = _}) = name
-  fun formals({name = _, formals = formals , spOffset = _}) = formals
+  fun name({name = name, formals = _ , spOffset = _, moveArgStms = _ }) = name
+  fun formals({name = _, formals = formals , spOffset = _, moveArgStms = _ }) = formals
 
-  (*03/24/2014, currently assuming all formals are true--i.e. all parameters escape*)
-  fun newFrame({name = name, formals = formals}) = 
-    let val currOffset = ref 4
-        fun allocFormals([]) = []
-          | allocFormals(escape::rest) = (if escape
-                                    then (currOffset := !currOffset-wordSize; InFrame(!currOffset)::allocFormals(rest))
-                                    else InReg(Te.newtemp())::allocFormals(rest))
-    in
-      {name = name, formals = allocFormals(formals), spOffset = currOffset}
-    end
-
-  fun allocLocal({name = _, formals = _ , spOffset = spOffset}) = 
-    let 
-      val currOffset = spOffset
-      fun allocL(escape) = (if escape
-                            then (currOffset := !currOffset-wordSize; InFrame(!currOffset))
-                            else InReg(Te.newtemp()))
-    in
-      allocL
-    end
+  fun seq (stm::[]) = stm
+    | seq (stm::rest) = Tr.SEQ(stm, seq(rest))
+    | seq ([]) = Tr.EXP (Tr.CONST 0)
 
   fun exp(InFrame offset) = 
     let 
@@ -170,28 +153,65 @@ struct
     end
   | exp(InReg t) = fn _ => Tr.TEMP(t)
 
-  fun move(reg, var) = Tr.MOVE(Tr.TEMP(reg), Tr.TEMP(var))
+  val argList = ref argregs
+  val argPtr = ref 4
+  fun resetArgList() = (argList := argregs; argPtr := 4)
+  fun nextFreeArg() = (case (!argList) of 
+                  oneArgReg::others => (argList := others; Tr.TEMP oneArgReg)
+                  | [] => (argPtr := !argPtr + 4; (exp (InFrame (!argPtr)) (Tr.TEMP FP))))
+
+  (*03/24/2014, currently assuming all formals are true--i.e. all parameters escape*)
+  fun newFrame({name = name, formals = formals}) = 
+    let 
+        val _ = resetArgList()
+        val currOffset = ref 4
+        val moveArgList = ref [] : Tr.stm list ref
+
+        val temp = Te.newtemp()
+
+        fun allocFormals([]) = []
+          | allocFormals(escape::rest) = (if escape
+                                    then (currOffset := !currOffset-wordSize;
+                                          moveArgList := (!moveArgList) @ [Tr.MOVE(exp (InFrame (!currOffset)) (Tr.TEMP FP), nextFreeArg())];
+                                          InFrame(!currOffset)::allocFormals(rest))
+                                    else (moveArgList := (!moveArgList) @ [Tr.MOVE(Tr.TEMP temp, nextFreeArg())];
+                                          InReg(temp)::allocFormals(rest)))
+
+        val allocatedFormals = allocFormals(formals)
+        val _ = resetArgList()
+    in
+      {name = name, formals = allocatedFormals, spOffset = currOffset, moveArgStms = seq(!moveArgList)}
+    end
+
+  fun allocLocal({name = _, formals = _ , spOffset = spOffset, moveArgStms = _}) = 
+    let 
+      val currOffset = spOffset
+      fun allocL(escape) = (if escape
+                            then (currOffset := !currOffset-wordSize; InFrame(!currOffset))
+                            else InReg(Te.newtemp()))
+    in
+      allocL
+    end
 
   fun seq (stm::[]) = stm
     | seq (stm::rest) = Tr.SEQ(stm, seq(rest))
     | seq ([]) = Tr.EXP (Tr.CONST 0)
 
-  fun moveArg (arg, access) =
-      Tr.MOVE (exp access (Tr.TEMP(FP)), Tr.TEMP(arg))
 
   fun procEntryExit1 (frame: frame, bodyExp) =
     let
-      val saved = RA :: calleesaves
+      (*val saved = RA :: calleesaves
       val tempRegs = map (fn temp => Temp.newtemp ()) saved
       val moveRegs = ListPair.mapEq move
       val saveRegs = seq ( moveRegs (tempRegs, saved))
-      val restoreRegs = seq ( moveRegs (saved, tempRegs))
+      val restoreRegs = seq ( moveRegs (saved, tempRegs))*)
       (*This is all I know how to do*)
       
       (*by Ang 04/22/2014*)
       val lab = Tr.LABEL (#name frame)
+      val addedMoveArgs = Tr.ESEQ(#moveArgStms frame, bodyExp)
   in
-      Tr.ESEQ(lab, bodyExp)
+      Tr.ESEQ(lab, addedMoveArgs)
   end
 
   (*what does this do??... 04/18 by Ang*)
@@ -201,18 +221,6 @@ struct
               src=specialregs @ calleesaves,
               dst=[],jump=SOME[]}]
 
-(*I'll finish this soon...
-  val argList = ref argregs
-  val argPtr = ref ~4
-  fun resetArgList() = argList := argregs
-  fun nextArg() = case (!argList) of 
-                  oneArgReg::others => (argList := others; oneArgReg)
-                  | [] => (argPtr := !argPtr - 4; Translate.munchExp(exp (InFrame (!argPtr))))
-  fun moveArgs(oneLocal : access) = 
-    A.OPER{assem="move `d0, `s0",
-           src=nextArg(),
-           dst=,
-           jump=NONE}*)
 
   fun procEntryExit3 ({name=name, formals=formals, locals=locals}, (*locals access list is not added yet...*)
                       body : Assem.instr list) =

@@ -146,7 +146,6 @@ struct
       | fpOfDesLevel(_, _, _) = ErrorMsg.impossible "Tracing static link reaches the ROOT level..."
     in
       Ex (F.exp fa (fpOfDesLevel(CHILD {parent=parent, frame=f, unique=uniqueRef}, l, Tr.TEMP F.FP)))
-      (*F.FP? a single global FP? only move when in Function calls?*)
     end
     | simpleVar ((ROOT, fa: F.access), l:level) = ErrorMsg.impossible "Reached ROOT level while tracing static links..."
 
@@ -232,7 +231,24 @@ struct
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
 
-  fun callExp (l:level, label, exps) = Ex (Tr.CALL(Tr.NAME(label), map unEx exps))
+  fun callExp (callingLevel:level, parentOfCalled:level, label, exps) = (*this level is the calling fn level, not necessarily the statically enclosing level*)
+    let
+      fun fpOfDesLevel(CHILD {parent=desParent, frame=desFrame, unique=desUnique},
+                            CHILD {parent=curParent, frame=curFrame, unique=curUnique}, newFP) = 
+        if (curUnique = desUnique)
+        then newFP
+        else 
+          let
+            val slExpOfCurLevel = getStaticLink(CHILD {parent=curParent, frame=curFrame, unique=curUnique}, newFP)
+          in
+            fpOfDesLevel(CHILD {parent=desParent, frame=desFrame, unique=desUnique}, curParent, slExpOfCurLevel)
+          end
+      | fpOfDesLevel(_, _, _) = ErrorMsg.impossible "Tracing static link reaches the ROOT level..."
+
+      val slExp = fpOfDesLevel(parentOfCalled, callingLevel, Tr.TEMP F.FP)
+    in
+      Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps)))
+    end
 
   fun letExp ([], body) = body
     | letExp (decs, body) = Ex (Tr.ESEQ (seq (map unNx decs), unEx body))

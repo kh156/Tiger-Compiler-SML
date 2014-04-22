@@ -236,6 +236,10 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  		  ( let 
 	  		  		fun transExpHere(oneExp) = transExp(venv, tenv, oneExp, doneLabel, level)
 	  				val argResults = map transExpHere args
+	  				val calledParent = (case funLevel of 
+	  								 Trans.CHILD {parent=calledFuncParent, frame=_, unique=_} => calledFuncParent
+	  								 | _ => ErrorMsg.impossible "Error: function has no parent level and is called...")
+
 	  				fun compareTypes (ty1::lst1, ty2::lst2, pos) =
 							if compareType(ty1,ty2, pos, pos) 
 								then compareTypes(lst1,lst2, pos)
@@ -246,12 +250,12 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  			in
 		  			if length(argResults) <> length(formals) then
 		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args)));
-		  					{exp=Trans.callExp(level, label, map (#exp) argResults), ty=actual_ty(result, pos)})
+		  					{exp=Trans.callExp(level, calledParent, label, map (#exp) argResults), ty=actual_ty(result, pos)})
 	            	else (
 	            		if compareTypes (formals, map (#ty) argResults, pos) 
 	            			then ()
 	            			else (error pos ("Params do not match with function: "^S.name(func)));
-			            {exp=Trans.callExp(level, label, map (#exp) argResults), ty=actual_ty(result, pos)}
+			            {exp=Trans.callExp(level, calledParent, label, map (#exp) argResults), ty=actual_ty(result, pos)}
 			        )
 				end
 			  )

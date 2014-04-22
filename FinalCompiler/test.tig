@@ -1,12 +1,12 @@
 let
 	var x := 5
-	function f(a: int): int = 
+	function f(a: int, c: int): int = 
 		let
 			function g (b: int) : int =
-				a + b
+				a - b - c
 		in
 			g(6)
 		end
 in
-	x + f(7)
+	x + f(7, 8)
 end
