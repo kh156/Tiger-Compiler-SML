@@ -477,7 +477,7 @@ and transDec(venv, tenv, A.VarDec{name: A.symbol,
 						(S.enter (venvCurr, name, E.VarEntry {access = Trans.allocLocal (#level entryRecord) (!escape), ty = ty}), []))
 					end
 
-				val (venv', _) = foldr enterparam (venv, formalAccesses) params
+				val (venv', _) = foldr enterparam (venv, formalAccesses) (rev params)
 				val {exp = bodyExp, ty = tybody} = transExp (venv', tenv, body, doneLabel, (#level entryRecord))
 
 				val entryRecord = case S.look(venv, name) of 
