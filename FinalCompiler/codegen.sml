@@ -60,7 +60,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | T.UGE => "bltu")
 
     fun emitBranchInstr(relop, result0, result1, tlabel, flabel)
-                 = emit(A.OPER {assem = firstBr(relop) ^ " `s0, `s1, `j0\n" ^ secondBr(relop) ^ " `s0, `s1, `j1\n",
+                 = emit(A.OPER {assem = firstBr(relop) ^ " `s0, `s1, `j0\n\t" ^ secondBr(relop) ^ " `s0, `s1, `j1\n",
                                 src = [result0, result1],
                                 dst = [],
                                 jump = SOME([tlabel, flabel])})
@@ -72,11 +72,17 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
           emit(A.LABEL {assem = (Symbol.name label ^ ":\n"),
                       lab = label})
 
+        | munchStm(T.JUMP(T.TEMP ra, _)) = 
+          emit(A.OPER {assem = "jr `s0\n",
+                       src = [ra],
+                       dst = [],
+                       jump = NONE})
+
         | munchStm(T.JUMP(T.NAME labelName, l::rest)) = 
           emit(A.OPER {assem = "j `j0\n", 
                       src = [],
                       dst = [],
-                      jump = SOME([l])})
+                      jump = SOME(l::rest)})
 
         | munchStm(T.JUMP(_, _)) = ErrorMsg.impossible "Tree.JUMP doesn't jump to a single label...(only case I know of)..."
 
@@ -190,7 +196,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
                 in
     				(emit(A.OPER {
     					assem = "jal " ^ S.name(label) ^ "\n",
-    					src = munchArgs(0, args),	(*should be all the $a registers*)
+    					src = munchArgs(0, args),	(*should be all the $a registers used in this fn call*)
     					dst = F.RV::F.callersaves,	(*RV, and all the $t registers because they could get altered*)
     					jump = NONE
     				});

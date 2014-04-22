@@ -131,7 +131,7 @@ struct
                                 next(T.JUMP(T.NAME lab,[lab]) :: stms, thisblock)
 		   | next(s::rest, thisblock) = next(rest, s::thisblock)
 		   | next(nil, thisblock) = 
-			     next([T.JUMP(T.NAME done, [done])], thisblock)
+			     next([T.JUMP(T.TEMP MipsFrame.RA, [])], thisblock)
 		 
 		 and endblock(stms, thisblock) = 
 		            blocks(stms, rev thisblock :: blist)
@@ -139,7 +139,7 @@ struct
 	     in next(tail, [head])
 	     end
 	   | blocks(nil, blist) = rev blist
-	   | blocks(stms, blist) = blocks(T.LABEL(Temp.newlabel())::stms, blist)
+	   | blocks(stms, blist) = blocks(stms, blist)
       in (blocks(stms,nil), done)
      end
 
@@ -182,6 +182,5 @@ struct
 
   fun traceSchedule(blocks,done) = 
        getnext(foldr enterblock Symbol.empty blocks, blocks)
-         @ [T.LABEL done]
 
 end

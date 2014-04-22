@@ -29,12 +29,12 @@ structure Assem = struct
 		  | f nil = nil
 	    in implode(f(explode assem))
 	    end
-      in fn OPER{assem,dst,src,jump=NONE} => speak(assem,dst,src,nil)
-          | OPER{assem,dst,src,jump=SOME j} => speak(assem,dst,src,j)
+      in fn OPER{assem,dst,src,jump=NONE} => "\t" ^ speak(assem,dst,src,nil)
+          | OPER{assem,dst,src,jump=SOME j} => "\t" ^ speak(assem,dst,src,j)
 	  	  | LABEL{assem,...} => assem
 	  	  | MOVE{assem,dst,src} => (case (saytemp dst) = (saytemp src) of
 	  	  							true => ""
-	  	  							| false => speak(assem,[dst],[src],nil))
+	  	  							| false => "\t" ^ speak(assem,[dst],[src],nil))
      end
 
 end

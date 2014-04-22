@@ -18,8 +18,13 @@ sig
   val FP : Temp.temp
   val exp : access -> Tree.exp -> Tree.exp
 
+  val SP : Temp.temp
+  val RA : Temp.temp
+  val ZERO : Temp.temp
   val RV : Temp.temp
-  val procEntryExit1 : frame * Tree.stm -> Tree.stm
+  val procEntryExit1 : frame * Tree.exp -> Tree.exp
+
+  val stringFrag : Temp.label * string -> string
 
   val specialregs : Temp.temp list
   val argregs : Temp.temp list
@@ -174,7 +179,7 @@ struct
   fun moveArg (arg, access) =
       Tr.MOVE (exp access (Tr.TEMP(FP)), Tr.TEMP(arg))
 
-  fun procEntryExit1 (frame, stm) =
+  fun procEntryExit1 (frame: frame, bodyExp) =
     let
       val saved = RA :: calleesaves
       val tempRegs = map (fn temp => Temp.newtemp ()) saved
@@ -182,9 +187,11 @@ struct
       val saveRegs = seq ( moveRegs (tempRegs, saved))
       val restoreRegs = seq ( moveRegs (saved, tempRegs))
       (*This is all I know how to do*)
-      (* append the frame label to the beginning of the code block here, too *)
+      
+      (*by Ang 04/22/2014*)
+      val lab = Tr.LABEL (#name frame)
   in
-      stm (*no idea what to do here*)
+      Tr.ESEQ(lab, bodyExp)
   end
 
   (*what does this do??... 04/18 by Ang*)
@@ -241,5 +248,8 @@ struct
     myTempMap := newTempMap
   (*To my understanding, are these all the pre-colored regs???*)  
   val colorableRegs = map getReg colorable
+
+  fun stringFrag(lab, str) = 
+    Symbol.name lab ^ ": .asciiz \"" ^ str ^ "\"\n"
 
 end

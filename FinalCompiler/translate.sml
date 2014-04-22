@@ -162,8 +162,8 @@ struct
   fun procEntryExit({level=CHILD {frame=frame, parent=parent, unique=unique}, body=body}) = 
     let
       val funFrame = frame
-      val addedSteps = F.procEntryExit1(funFrame, unNx(body))
-      val moveStm = Tr.MOVE((Tr.TEMP F.RV), unEx (Nx addedSteps))
+      val addedSteps = F.procEntryExit1(funFrame, unEx(body))
+      val moveStm = Tr.MOVE((Tr.TEMP F.RV), addedSteps)
     in
       fragList := (F.PROC {body = moveStm, frame = funFrame})::(!fragList)
     end
