@@ -143,7 +143,7 @@ struct
 
   (*03/24/2014, currently assuming all formals are true--i.e. all parameters escape*)
   fun newFrame({name = name, formals = formals}) = 
-    let val currOffset = ref 0
+    let val currOffset = ref 4
         fun allocFormals([]) = []
           | allocFormals(escape::rest) = (if escape
                                     then (currOffset := !currOffset-wordSize; InFrame(!currOffset)::allocFormals(rest))
