@@ -227,7 +227,7 @@ struct
     let
       fun append1(level) = 
         if level <= 7
-          then append1(level + 1) @ [Assem.OPER{assem="addi $sp, $sp, 4\n",
+          then append1(level + 1) @ [Assem.OPER{assem="addi $sp, $sp, -4\n",
                                                 dst=[],
                                                 src=[], 
                                                 jump=NONE},
