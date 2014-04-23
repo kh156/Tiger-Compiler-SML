@@ -12,6 +12,10 @@ struct
 	structure A = Assem
 	structure S = Symbol
 
+    fun intToString i = if i >= 0
+                        then Int.toString i
+                        else "-" ^ Int.toString(~i)
+
     fun getBinopString T.PLUS = "add"
 	| 	getBinopString T.MINUS = "sub"
 	| 	getBinopString T.MUL = "mult"
@@ -93,7 +97,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.MOVE(T.TEMP r1, T.TEMP r2)) = emitMoveInstr(r2, r1)
 
         (*li instructions*)
-        | munchStm(T.MOVE(T.TEMP r, T.CONST i)) = emit(A.OPER {assem = "li `d0, " ^ Int.toString i ^ "\n",
+        | munchStm(T.MOVE(T.TEMP r, T.CONST i)) = emit(A.OPER {assem = "li `d0, " ^ intToString i ^ "\n",
                                                         src = [],
                                                         dst = [r],
                                                         jump = NONE})
@@ -101,7 +105,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.MOVE(T.TEMP r , exp)) = emitMoveInstr(munchExp(exp), r)
 
         | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS, e1, T.CONST i)), exp)) =
-            emit(A.OPER {assem = "sw `s0, " ^ Int.toString i ^ "(`s1)\n",
+            emit(A.OPER {assem = "sw `s0, " ^ intToString i ^ "(`s1)\n",
                         src = [munchExp exp, munchExp e1],
                         dst = [],
                         jump = NONE})
@@ -112,52 +116,52 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
         | munchStm(T.EXP exp) = (munchExp(exp);())
 
 	and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = 
-		 		result(fn r => emit(A.OPER {assem = "lw `d0, " ^ Int.toString i ^ "(`s0)\n",
+		 		result(fn r => emit(A.OPER {assem = "lw `d0, " ^ intToString i ^ "(`s0)\n",
 		 		 							src = [munchExp e1], 
 		 		 							dst = [r], 
 		 		 							jump = NONE}))
 		| 	munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e1))) = 
-		 		result(fn r => emit(A.OPER {assem = "lw `d0, " ^ Int.toString i ^ "(`s0)\n",
+		 		result(fn r => emit(A.OPER {assem = "lw `d0, " ^ intToString i ^ "(`s0)\n",
 		 									src = [munchExp e1], 
 		 									dst = [r], 
 		 									jump = NONE}))
 
 			(* addi *)
 		|	munchExp(T.BINOP(T.PLUS, e1, T.CONST i)) =
-            result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ Int.toString i ^ "\n",
+            result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ intToString i ^ "\n",
             								src = [munchExp e1], 
             								dst = [r], 
             								jump = NONE}))
         | 	munchExp(T.BINOP(T.PLUS, T.CONST i, e1)) =
-           	result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ Int.toString i ^ "\n",
+           	result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ intToString i ^ "\n",
                									src = [munchExp e1],
                									dst = [r],
                									jump = NONE}))
         (* subi *)
         | 	munchExp(T.BINOP(T.MINUS, e1, T.CONST i)) =
-    			  result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ Int.toString (~i) ^ "\n",
+    			  result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ intToString (~i) ^ "\n",
                 								src = [munchExp e1], 
                 								dst = [r], 
                 								jump = NONE}))
     		(* andi *)
         | 	munchExp(T.BINOP(T.AND, e1, T.CONST i)) =
-            result(fn r => emit(A.OPER {assem="andi `d0, `s0, " ^ Int.toString i ^ "\n",
+            result(fn r => emit(A.OPER {assem="andi `d0, `s0, " ^ intToString i ^ "\n",
             									src=[munchExp e1], 
             									dst=[r], 
             									jump=NONE}))
         | 	munchExp(T.BINOP(T.AND, T.CONST i, e1)) =
-        		result(fn r => emit(A.OPER {assem="andi `d0, `s0, " ^ Int.toString i ^ "\n",
+        		result(fn r => emit(A.OPER {assem="andi `d0, `s0, " ^ intToString i ^ "\n",
                 								src=[munchExp e1], 
                 								dst=[r], 
                 								jump=NONE}))
         (* ori *)
         | 	munchExp(T.BINOP(T.OR, e1, T.CONST i)) =
-         		result(fn r => emit(A.OPER {assem="ori `d0, `s0, " ^ Int.toString i ^ "\n",
+         		result(fn r => emit(A.OPER {assem="ori `d0, `s0, " ^ intToString i ^ "\n",
                 								src=[munchExp e1], 
                 								dst=[r], 
                 								jump=NONE}))
         | 	munchExp(T.BINOP(T.OR, T.CONST i, e1)) =
-            result(fn r => emit(A.OPER {assem="ori `d0, `s0, " ^ Int.toString i ^ "\n",
+            result(fn r => emit(A.OPER {assem="ori `d0, `s0, " ^ intToString i ^ "\n",
                 								src=[munchExp e1], 
                 								dst=[r], 
                 								jump=NONE}))
@@ -183,7 +187,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
             								jump=NONE}))
 		(* T.CONST *)
 		|	munchExp (T.CONST c) = 
-				result(fn r => emit(A.OPER {assem = "li `d0, " ^ Int.toString c ^ "\n",
+				result(fn r => emit(A.OPER {assem = "li `d0, " ^ intToString c ^ "\n",
 											src = [],
 											dst = [r],
 											jump = NONE}))
@@ -208,7 +212,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
                                             jump = NONE
                                         })
                     val processSP = emit(A.OPER{
-                                            assem = "addi $sp, $sp, " ^ Int.toString(nextFrameSize + (~4)) ^ "\n",
+                                            assem = "addi $sp, $sp, " ^ intToString (nextFrameSize + (~4)) ^ "\n",
                                             src = [F.SP],
                                             dst = [F.SP],
                                             jump = NONE
@@ -221,7 +225,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
     					jump = NONE
     				});
                     emit(A.OPER{
-                        assem = "addi $sp, $sp, " ^ Int.toString(~nextFrameSize + 4) ^ "\n",
+                        assem = "addi $sp, $sp, " ^ intToString (~nextFrameSize + 4) ^ "\n",
                         src = [F.SP],
                         dst = [F.SP],
                         jump = NONE

@@ -218,25 +218,34 @@ struct
 
   fun procEntryExit3 (body : Assem.instr list) =
     let
-      fun append1(level) = 
-        if level <= 7
-          then append1(level + 1) @ [Assem.OPER{assem="addi $sp, $sp, -4\n",
+      val t = List.last body
+      val (h, b) = (case body of 
+                  hd::body => (hd, List.filter (fn e => e <> t) body)
+                  | _ => ErrorMsg.impossible "Error : body of instr list has no elements")
+
+      val allocspace = Assem.OPER{assem="addi $sp, $sp, -32\n",
                                                 dst=[],
                                                 src=[], 
-                                                jump=NONE},
-                                    Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", 0($sp)\n",
+                                                jump=NONE}
+      fun append1(level) = 
+        if level <= 7
+          then append1(level + 1) @ [Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", " ^ (Int.toString (level*4)) ^ "($sp)\n",
                                                 dst=[], 
                                                 src=[], 
                                                 jump=NONE}]
           else []
       fun append2(level)= 
         if level <= 7 
-          then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", " ^ Int.toString (level * 4) ^ "($p)\n", 
+          then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", " ^ (Int.toString (level * 4)) ^ "($sp)\n", 
                             dst=[], 
                             src=[], 
-                            jump=NONE}] @ append1(level+1)
+                            jump=NONE}] @ append2(level+1)
           else []
-      val body' = append1(0) @ body @ append2(0)
+      val freespace = Assem.OPER{assem="addi $sp, $sp, 32\n",
+                                                dst=[],
+                                                src=[], 
+                                                jump=NONE}
+      val body' = h :: (allocspace::append1(0) @ b @ append2(0)) @ [freespace, t]
     in
       {prolog = "PROCEDURE",
        body = body',
