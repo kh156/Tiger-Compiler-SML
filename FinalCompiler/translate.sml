@@ -162,9 +162,8 @@ struct
     let
       val funFrame : F.frame = frame
       val addedSteps = F.procEntryExit1(funFrame, unEx(body))
-      val moveStm = Tr.MOVE((Tr.TEMP F.RV), addedSteps)
     in
-      fragList := (F.PROC {body = moveStm, frame = funFrame})::(!fragList)
+      fragList := (F.PROC {body = addedSteps, frame = funFrame})::(!fragList)
     end
     | procEntryExit({level=ROOT, body=body}) = (ErrorMsg.impossible "Error: no function should be at the ROOT level!")
 
@@ -246,16 +245,12 @@ struct
       | fpOfDesLevel(_, _, _) = ErrorMsg.impossible "Tracing static link reaches the ROOT level..."
 
       val slExp = fpOfDesLevel(parentOfCalled, callingLevel, Tr.TEMP F.FP)
-      val frame = (case called of 
-                CHILD {parent=_, frame=f, unique=_} => f
-                | _ => ErrorMsg.impossible "Error: couldn't find frame of a function's level...")
-      val spaceForFP = allocLocal callingLevel true
       fun allocTimes(count) = if count > 0 then ((allocLocal callingLevel true); allocTimes(count-1)) else ()
       val spaceForArgs = allocTimes(List.length(exps) + (~3))
       (*val spaceForCalleeSaves = allocTimes(8)*)
 
     in
-      Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps), !(#spOffset frame)))
+      Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps)))
     end
 
   fun letExp ([], body) = body

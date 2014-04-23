@@ -23,7 +23,7 @@ sig
   val ZERO : Temp.temp
   val RV : Temp.temp
   val a0 : Temp.temp
-  val procEntryExit1 : frame * Tree.exp -> Tree.exp
+  val procEntryExit1 : frame * Tree.exp -> Tree.stm
   val procEntryExit3 : Assem.instr list -> {body: Assem.instr list, prolog: string, epilog: string}
 
   val stringFrag : Temp.label * string -> string
@@ -156,8 +156,8 @@ struct
   | exp(InReg t) = fn _ => Tr.TEMP(t)
 
   val argList = ref argregs
-  val argPtr = ref 4
-  fun resetArgList() = (argList := argregs; argPtr := 4)
+  val argPtr = ref 0
+  fun resetArgList() = (argList := argregs; argPtr := 0)
   fun nextFreeArg() = (case (!argList) of 
                   oneArgReg::others => (argList := others; Tr.TEMP oneArgReg)
                   | [] => (argPtr := !argPtr + 4; (exp (InFrame (!argPtr)) (Tr.TEMP FP))))
@@ -166,7 +166,7 @@ struct
   fun newFrame({name = name, formals = formals}) = 
     let 
         val _ = resetArgList()
-        val currOffset = ref ~36
+        val currOffset = ref ~40
         val moveArgList = ref [] : Tr.stm list ref
 
         fun allocFormals([]) = []
@@ -209,16 +209,20 @@ struct
     let
       val lab = Tr.LABEL (#name frame)
       val addedMoveArgs = Tr.ESEQ(#moveArgStms frame, bodyExp)
+      val frameSize = !(#spOffset frame)
+      val moveSPDown = Tr.MOVE(Tr.TEMP SP, Tr.BINOP(Tr.PLUS, Tr.TEMP SP, Tr.CONST (frameSize+(~4))))
+      val moveSPUp = Tr.MOVE(Tr.TEMP SP, Tr.BINOP(Tr.MINUS, Tr.TEMP SP, Tr.CONST (frameSize+(~4))))
+      val moveStm = Tr.MOVE((Tr.TEMP RV), addedMoveArgs)
   in
-      Tr.ESEQ(lab, addedMoveArgs)
+      seq [lab, moveSPDown, moveStm, moveSPUp]
   end
 
   (*what does this do??... 04/18 by Ang*)
-  fun procEntryExit2 (frame,body) =
+(*  fun procEntryExit2 (frame,body) =
       body @ 
       [A.OPER{assem="",
               src=specialregs @ calleesaves,
-              dst=[],jump=SOME[]}]
+              dst=[],jump=SOME[]}]*)
 
 
   fun procEntryExit3 (body : Assem.instr list) =
@@ -231,21 +235,32 @@ struct
 (*      val allocspace = Assem.OPER{assem="addi $sp, $sp, -32\n",
                                                 dst=[],
                                                 src=[], 
-                                                jump=NONE}*)
+                                                jump=NONE}*)      
+      val saveFP = Assem.OPER{assem="sw $fp, -12($sp)\n",
+                                                dst=[],
+                                                src=[FP], 
+                                                jump=NONE}       
+
+      val moveFP = Assem.OPER{assem="addi $fp, $sp, -4\n",
+                                                dst=[],
+                                                src=[RA], 
+                                                jump=NONE}
+
       val saveRA = Assem.OPER{assem="sw $ra, -4($fp)\n",
                                                 dst=[],
                                                 src=[RA], 
                                                 jump=NONE}
+                             
       fun append1(level) = 
         if level <= 7
-          then append1(level + 1) @ [Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level*4+8)) ^ "($fp)\n",
+          then append1(level + 1) @ [Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level*4+12)) ^ "($fp)\n",
                                                 dst=[], 
                                                 src=[], 
                                                 jump=NONE}]
           else []
       fun append2(level)= 
         if level <= 7 
-          then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level * 4 + 8)) ^ "($fp)\n", 
+          then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level * 4 + 12)) ^ "($fp)\n", 
                             dst=[], 
                             src=[], 
                             jump=NONE}] @ append2(level+1)
@@ -258,7 +273,11 @@ struct
                                                 dst=[RA],
                                                 src=[], 
                                                 jump=NONE}
-      val body' = h :: (saveRA::append1(0) @ b @ append2(0)) @ [loadRA, t]
+      val loadFP = Assem.OPER{assem="lw $fp, -12($sp)\n",
+                                                dst=[FP],
+                                                src=[FP], 
+                                                jump=NONE}   
+      val body' = h :: ([saveFP, moveFP, saveRA] @ append1(0) @ b @ append2(0)) @ [loadRA, loadFP, t]
     in
       {prolog = "PROCEDURE",
        body = body',
@@ -266,7 +285,7 @@ struct
     end
 
   fun externalCall(s, args) =
-    Tr.CALL(Tr.NAME(Te.namedlabel s), args, 0)
+    Tr.CALL(Tr.NAME(Te.namedlabel s), args)
 
 
   fun getTempName(temp) =

@@ -31,7 +31,7 @@ fun printtree (outstream, s0) =
 			  exp(e,d+1); say ")")
     | exp(T.NAME lab, d) = (indent d; say "NAME "; say (Symbol.name lab))
     | exp(T.CONST i, d) = (indent d; say "CONST "; say(Int.toString i))
-    | exp(T.CALL(e,el, _),d) = (indent d; sayln "CALL("; exp(e,d+1);
+    | exp(T.CALL(e,el),d) = (indent d; sayln "CALL("; exp(e,d+1);
 			   app (fn a => (sayln ","; exp(a,d+2))) el;
 			   say ")")
 

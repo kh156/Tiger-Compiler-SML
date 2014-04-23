@@ -192,50 +192,20 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 											dst = [r],
 											jump = NONE}))
 		(* T.CALL *)
-		| 	munchExp (T.CALL (lexp, args, nextFrameSize)) = 
+		| 	munchExp (T.CALL (lexp, args)) = 
                 let
                     val label= (case lexp of
                                 T.NAME l => l
                                 | _ => ErrorMsg.impossible "Call expression with non-label...(not function call??)...")
-                    val argTemps = munchArgs(0, args, 4)
+                    val argTemps = munchArgs(0, args, 0)
 
-                    val saveFP = emit(A.OPER{
-                                            assem = "sw $fp, 0($sp)\n",
-                                            src = [F.FP],
-                                            dst = [],
-                                            jump = NONE
-                                        })
-                    val processFP = emit(A.OPER{
-                                            assem = "addi $fp, $sp, -4\n",
-                                            src = [F.SP],
-                                            dst = [F.FP],
-                                            jump = NONE
-                                        })
-                    val processSP = emit(A.OPER{
-                                            assem = "addi $sp, $sp, " ^ intToString (nextFrameSize + (~4)) ^ "\n",
-                                            src = [F.SP],
-                                            dst = [F.SP],
-                                            jump = NONE
-                                        })
                 in
     				(emit(A.OPER {
     					assem = "jal " ^ S.name(label) ^ "\n",
     					src = argTemps,	(*should be all the $a registers used in this fn call*)
     					dst = F.RV::F.callersaves,	(*RV, and all the $t registers because they could get altered*)
-    					jump = NONE
-    				});
-                    emit(A.OPER{
-                        assem = "addi $sp, $sp, " ^ intToString (~nextFrameSize + 4) ^ "\n",
-                        src = [F.SP],
-                        dst = [F.SP],
-                        jump = NONE
-                    });
-                    emit(A.OPER{
-                        assem = "lw $fp, 0($sp)\n",
-                        src = [F.SP],
-                        dst = [F.FP],
-                        jump = NONE
-                    });
+    					jump = NONE});
+ 
                     F.RV)
                 end
         |   munchExp (T.ESEQ(_, _)) = ErrorMsg.impossible "Tree.ESEQ shouldn't appear in instruction selection phase..."
