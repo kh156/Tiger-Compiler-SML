@@ -869,7 +869,7 @@ tig_main:
 	move $s0, $v0
 	move $a0, $fp
 	li $a1, 0
-	jal L2084
+	jal L124
 	addi $s0, $sp, 44
 	move $sp, $s0
 	lw $s0, -12($fp)
@@ -883,7 +883,7 @@ tig_main:
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
 	jr $ra
-L2084:
+L124:
 	sw $fp, -12($sp)
 	addi $fp, $sp, -4
 	sw $ra, -4($fp)
@@ -899,27 +899,27 @@ L2084:
 	move $sp, $s0
 	sw $a0, 0($fp)
 	move $s3, $a1
-	beq $s3, $t4, L2114
-	bne $s3, $t4, L2115
-L2114:
+	beq $s3, $t4, L154
+	bne $s3, $t4, L155
+L154:
 	lw $s0, 0($fp)
 	move $a0, $s0
-	jal L2085
+	jal L125
 	move $s0, $v0
-	j L2116
-L2115:
+	j L156
+L155:
 	li $s2, 0
-	j L2112
-L2112:
+	j L152
+L152:
 	addi $s4, $s2, -1
 	li $s0, 4
 	mul $s0, $s4, $s0
 	add $s0, $t3, $s0
 	lw $s4, 0($s0)
 	li $s0, 0
-	beq $s4, $s0, L2100
-	bne $s4, $s0, L2101
-L2100:
+	beq $s4, $s0, L140
+	bne $s4, $s0, L141
+L140:
 	li $s0, 1
 	add $s4, $s2, $s3
 	addi $s5, $s4, -1
@@ -928,21 +928,21 @@ L2100:
 	add $s4, $t1, $s4
 	lw $s5, 0($s4)
 	li $s4, 0
-	beq $s5, $s4, L2103
-	bne $s5, $s4, L2104
-L2104:
+	beq $s5, $s4, L143
+	bne $s5, $s4, L144
+L144:
 	li $s0, 0
-	j L2103
-L2103:
-	j L2102
-L2101:
+	j L143
+L143:
+	j L142
+L141:
 	li $s0, 0
-	j L2102
-L2102:
+	j L142
+L142:
 	li $s4, 0
-	bne $s0, $s4, L2105
-	beq $s0, $s4, L2106
-L2105:
+	bne $s0, $s4, L145
+	beq $s0, $s4, L146
+L145:
 	li $s0, 1
 	addi $s4, $s2, 7
 	sub $s4, $s4, $s3
@@ -952,21 +952,21 @@ L2105:
 	add $s4, $t0, $s4
 	lw $s5, 0($s4)
 	li $s4, 0
-	beq $s5, $s4, L2108
-	bne $s5, $s4, L2109
-L2109:
+	beq $s5, $s4, L148
+	bne $s5, $s4, L149
+L149:
 	li $s0, 0
-	j L2108
-L2108:
-	j L2107
-L2106:
+	j L148
+L148:
+	j L147
+L146:
 	li $s0, 0
-	j L2107
-L2107:
+	j L147
+L147:
 	li $s4, 0
-	bne $s0, $s4, L2110
-	beq $s0, $s4, L2111
-L2110:
+	bne $s0, $s4, L150
+	beq $s0, $s4, L151
+L150:
 	li $s0, 1
 	addi $s5, $s2, -1
 	li $s4, 4
@@ -997,7 +997,7 @@ L2110:
 	move $a0, $s0
 	addi $s0, $s3, 1
 	move $a1, $s0
-	jal L2084
+	jal L124
 	li $s0, 0
 	addi $s5, $s2, -1
 	li $s4, 4
@@ -1019,18 +1019,18 @@ L2110:
 	mul $s4, $s5, $s4
 	add $s4, $t0, $s4
 	lw $s0, 0($s4)
-	j L2111
-L2111:
+	j L151
+L151:
 	addi $s0, $t4, -1
-	beq $s2, $s0, L2099
-	bne $s2, $s0, L2113
-L2113:
+	beq $s2, $s0, L139
+	bne $s2, $s0, L153
+L153:
 	addi $s0, $s2, 1
-	j L2112
-L2099:
+	j L152
+L139:
 	li $s0, 0
-	j L2116
-L2116:
+	j L156
+L156:
 	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
@@ -1045,7 +1045,7 @@ L2116:
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
 	jr $ra
-L2085:
+L125:
 	sw $fp, -12($sp)
 	addi $fp, $sp, -4
 	sw $ra, -4($fp)
@@ -1060,51 +1060,47 @@ L2085:
 	addi $s0, $sp, -44
 	move $sp, $s0
 	sw $a0, 0($fp)
-	li $s5, 0
-	j L2096
-L2096:
 	li $s4, 0
-	j L2093
-L2093:
-	move $s3, $fp
-	addi $s2, $s5, -1
+	j L136
+L136:
+	li $s3, 0
+	j L133
+L133:
+	addi $s2, $s4, -1
 	li $s0, 4
 	mul $s0, $s2, $s0
 	add $s0, $t0, $s0
 	lw $s0, 0($s0)
-	beq $s0, $s4, L2090
-	bne $s0, $s4, L2091
-L2090:
-	la $s0, L2088
-	j L2092
-L2091:
-	la $s0, L2089
-	j L2092
-L2092:
-	move $a0, $s3
-	move $a1, $s0
+	beq $s0, $s3, L130
+	bne $s0, $s3, L131
+L130:
+	la $s0, L128
+	j L132
+L131:
+	la $s0, L129
+	j L132
+L132:
+	move $a0, $s0
 	jal tig_print
 	addi $s0, $t1, -1
-	beq $s4, $s0, L2087
-	bne $s4, $s0, L2094
-L2094:
+	beq $s3, $s0, L127
+	bne $s3, $s0, L134
+L134:
+	addi $s0, $s3, 1
+	j L133
+L127:
+	la $s0, L135
+	move $a0, $s0
+	jal tig_print
+	addi $s0, $t1, -1
+	beq $s4, $s0, L126
+	bne $s4, $s0, L137
+L137:
 	addi $s0, $s4, 1
-	j L2093
-L2087:
-	move $a0, $fp
-	la $s0, L2095
-	move $a1, $s0
-	jal tig_print
-	addi $s0, $t1, -1
-	beq $s5, $s0, L2086
-	bne $s5, $s0, L2097
-L2097:
-	addi $s0, $s5, 1
-	j L2096
-L2086:
-	move $a0, $fp
-	la $s0, L2098
-	move $a1, $s0
+	j L136
+L126:
+	la $s0, L138
+	move $a0, $s0
 	jal tig_print
 	addi $s0, $sp, 44
 	move $sp, $s0
@@ -1122,15 +1118,15 @@ L2086:
 
 .data
 .align 4
-L2098:
+L138:
 	.word 1
 	.ascii "\n"
-L2095:
+L135:
 	.word 1
 	.ascii "\n"
-L2089:
+L129:
 	.word 2
 	.ascii " ."
-L2088:
+L128:
 	.word 2
 	.ascii " O"

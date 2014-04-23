@@ -842,7 +842,7 @@ tig_main:
 	li $s0, 4
 	mul $s0, $s2, $s0
 	move $a0, $s0
-	li $a1, 5
+	li $a1, 6
 	jal tig_initArray
 	move $s0, $v0
 	li $s2, 5
@@ -852,23 +852,21 @@ tig_main:
 	add $s0, $s0, $s2
 	lw $s2, 0($s0)
 	li $s0, 5
-	beq $s2, $s0, L4
-	bne $s2, $s0, L5
-L4:
-	move $a0, $fp
-	la $s0, L2
-	move $a1, $s0
+	beq $s2, $s0, L65
+	bne $s2, $s0, L66
+L65:
+	la $s0, L63
+	move $a0, $s0
 	jal tig_print
 	move $s0, $v0
-	j L6
-L5:
-	move $a0, $fp
-	la $s0, L3
-	move $a1, $s0
+	j L67
+L66:
+	la $s0, L64
+	move $a0, $s0
 	jal tig_print
 	move $s0, $v0
-	j L6
-L6:
+	j L67
+L67:
 	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
@@ -886,9 +884,9 @@ L6:
 
 .data
 .align 4
-L3:
+L64:
 	.word 19
 	.ascii "it's not five :(..."
-L2:
+L63:
 	.word 10
 	.ascii "it's five!"

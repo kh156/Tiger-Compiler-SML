@@ -247,8 +247,15 @@ struct
       val spaceForArgs = allocTimes(List.length(exps) + (~3))
       (*val spaceForCalleeSaves = allocTimes(8)*)
 
+      val listOfBuiltIn = ["tig_print", "tig_flush", "tig_getchar", "tig_ord", "tig_chr", "tig_size", "tig_substring",
+                        "tig_concat", "tig_not", "tig_exit", "tig_initArray"]
+      val isBuiltIn = 
+        List.length(List.filter (fn e => e = (Symbol.name label)) listOfBuiltIn) > 0
+
     in
-      Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps)))
+      if isBuiltIn
+      then Ex (Tr.CALL(Tr.NAME(label), (map unEx exps)))
+      else Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps)))
     end
 
   fun letExp ([], body) = body
