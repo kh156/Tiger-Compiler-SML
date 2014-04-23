@@ -252,6 +252,7 @@ struct
       val spaceForFP = allocLocal callingLevel true
       fun allocTimes(count) = if count > 0 then ((allocLocal callingLevel true); allocTimes(count-1)) else ()
       val spaceForArgs = allocTimes(List.length(exps) + (~3))
+      (*val spaceForCalleeSaves = allocTimes(8)*)
 
     in
       Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps), !(#spOffset frame)))

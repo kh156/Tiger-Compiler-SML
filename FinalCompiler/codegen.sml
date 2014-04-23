@@ -197,10 +197,10 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
                     val label= (case lexp of
                                 T.NAME l => l
                                 | _ => ErrorMsg.impossible "Call expression with non-label...(not function call??)...")
-                    val argTemps = munchArgs(0, args, 4)
+                    val argTemps = munchArgs(0, args, 36)
 
                     val saveFP = emit(A.OPER{
-                                            assem = "sw $fp, 0($sp)\n",
+                                            assem = "sw $fp, 32($sp)\n",
                                             src = [F.FP],
                                             dst = [],
                                             jump = NONE
@@ -231,7 +231,7 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
                         jump = NONE
                     });
                     emit(A.OPER{
-                        assem = "lw $fp, 0($sp)\n",
+                        assem = "lw $fp, 32($sp)\n",
                         src = [F.SP],
                         dst = [F.FP],
                         jump = NONE

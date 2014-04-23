@@ -156,8 +156,8 @@ struct
   | exp(InReg t) = fn _ => Tr.TEMP(t)
 
   val argList = ref argregs
-  val argPtr = ref 4
-  fun resetArgList() = (argList := argregs; argPtr := 4)
+  val argPtr = ref 36
+  fun resetArgList() = (argList := argregs; argPtr := 36)
   fun nextFreeArg() = (case (!argList) of 
                   oneArgReg::others => (argList := others; Tr.TEMP oneArgReg)
                   | [] => (argPtr := !argPtr + 4; (exp (InFrame (!argPtr)) (Tr.TEMP FP))))
@@ -248,7 +248,7 @@ struct
                                                 dst=[],
                                                 src=[], 
                                                 jump=NONE}
-      val body' = h :: (allocspace::append1(0) @ b @ append2(0)) @ [freespace, t]
+      val body' = h :: (allocspace :: append1(0) @ b @ append2(0)) @ [freespace, t]
     in
       {prolog = "PROCEDURE",
        body = body',
