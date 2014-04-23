@@ -317,19 +317,19 @@ struct
 				    val (updatedStack, updatedIG) = simplify(selectStack, graphNoReserve, simplifyWorkList)
 				in
 					case simplifyDidWork of 
-						true => (print("Simplified\n"); runRegAlloc(updatedIG, updatedStack))
+						true => runRegAlloc(updatedIG, updatedStack)
 						| false =>
 							(case graphEmpty of 
-							true => (print("I'm done\n");
+							true => ((*print("I'm done\n");*)
 				    				(*Liveness.show(TextIO.stdOut, Liveness.IGRAPH {graph=interference, moves=[]});*)
 									assignColors(interference, updatedStack))
 							| false => (case coalesceAndReturnNewGraph(updatedIG) of 
 										(true, newIG) => (coalesceSuccess := false;
-															print("Coalesced\n");
+															(*print("Coalesced\n");*)
 														  runRegAlloc(newIG, updatedStack))
 										| (false, newIG) => (case unfreezeMove(bestMoveNodeToFreeze(newIG)) of 
 															 true => (unfreezeSuccess := false;
-															 			print("Unfreezed\n");
+															 			(*print("Unfreezed\n");*)
 															 		  runRegAlloc(newIG, updatedStack))
 															 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
 															 			(ig', stack') => runRegAlloc(ig', stack')

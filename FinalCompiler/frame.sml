@@ -169,15 +169,18 @@ struct
         val currOffset = ref 4
         val moveArgList = ref [] : Tr.stm list ref
 
-        val temp = Te.newtemp()
-
         fun allocFormals([]) = []
-          | allocFormals(escape::rest) = (if escape
-                                    then (currOffset := !currOffset-wordSize;
-                                          moveArgList := (!moveArgList) @ [Tr.MOVE(exp (InFrame (!currOffset)) (Tr.TEMP FP), nextFreeArg())];
-                                          InFrame(!currOffset)::allocFormals(rest))
-                                    else (moveArgList := (!moveArgList) @ [Tr.MOVE(Tr.TEMP temp, nextFreeArg())];
-                                          InReg(temp)::allocFormals(rest)))
+          | allocFormals(escape::rest) = 
+            let
+              val temp = Te.newtemp()
+            in
+              (if escape
+               then (currOffset := !currOffset-wordSize;
+               moveArgList := (!moveArgList) @ [Tr.MOVE(exp (InFrame (!currOffset)) (Tr.TEMP FP), nextFreeArg())];
+               InFrame(!currOffset)::allocFormals(rest))
+               else (moveArgList := (!moveArgList) @ [Tr.MOVE(Tr.TEMP temp, nextFreeArg())];
+               InReg(temp)::allocFormals(rest)))
+            end
 
         val allocatedFormals = allocFormals(formals)
         val _ = resetArgList()
