@@ -242,8 +242,8 @@ struct
                                                 jump=NONE}       
 
       val moveFP = Assem.OPER{assem="addi $fp, $sp, -4\n",
-                                                dst=[],
-                                                src=[RA], 
+                                                dst=[FP],
+                                                src=[SP], 
                                                 jump=NONE}
 
       val saveRA = Assem.OPER{assem="sw $ra, -4($fp)\n",
@@ -255,14 +255,14 @@ struct
         if level <= 7
           then append1(level + 1) @ [Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level*4+12)) ^ "($fp)\n",
                                                 dst=[], 
-                                                src=[], 
+                                                src=[List.nth(calleesaves, level)], 
                                                 jump=NONE}]
           else []
       fun append2(level)= 
         if level <= 7 
           then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level * 4 + 12)) ^ "($fp)\n", 
-                            dst=[], 
-                            src=[], 
+                            dst=[List.nth(calleesaves, level)], 
+                            src=[FP], 
                             jump=NONE}] @ append2(level+1)
           else []
 (*      val freespace = Assem.OPER{assem="addi $sp, $sp, 32\n",
@@ -271,11 +271,11 @@ struct
                                                 jump=NONE}*)
       val loadRA = Assem.OPER{assem="lw $ra, -4($fp)\n",
                                                 dst=[RA],
-                                                src=[], 
+                                                src=[FP], 
                                                 jump=NONE}
       val loadFP = Assem.OPER{assem="lw $fp, -12($sp)\n",
                                                 dst=[FP],
-                                                src=[FP], 
+                                                src=[SP], 
                                                 jump=NONE}   
       val body' = h :: ([saveFP, moveFP, saveRA] @ append1(0) @ b @ append2(0)) @ [loadRA, loadFP, t]
     in

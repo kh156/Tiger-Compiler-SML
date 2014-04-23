@@ -35,6 +35,8 @@ struct
    fun getsome (SOME x) = x
     | getsome (_) = ErrorMsg.impossible "Error during getSome in MainGiven..."
 
+   val firstStr = ref true
+
    fun emitproc out (F.PROC{body,frame}) =
      let val _ = print ("emit " ^ Symbol.name (F.name frame) ^ "\n")
 (*         val _ = Printtree.printtree(out,body); *)
@@ -57,7 +59,8 @@ struct
       in  
          app (fn i => TextIO.output(out,format0 i)) instrs
      end
-    | emitproc out (F.STRING(lab,s)) = TextIO.output(out, F.stringFrag(lab, s))
+    | emitproc out (F.STRING(lab,s)) = (if (!firstStr) then (TextIO.output(out, "\n.data\n.align 4\n"); firstStr := false) else ();
+                                       TextIO.output(out, F.stringFrag(lab, s)))
 
    fun withOpenFile fname f = 
        let 
@@ -68,10 +71,11 @@ struct
 
    fun compile filename = 
        let val absyn = Parse.parse filename
+           val _ = firstStr := true
            val frags = (FindEscape.findEscape absyn; Semant.transProg absyn)
         in 
             withOpenFile (filename ^ ".s") 
-	     (fn out => ((app (emitproc out) frags); printRunTimeFiles out))
+	     (fn out => (printRunTimeFiles out; (app (emitproc out) frags)))
        end
 
 

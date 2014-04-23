@@ -1,79 +1,3 @@
-tig_main:
-	sw $fp, -12($sp)
-	addi $fp, $sp, -4
-	sw $ra, -4($fp)
-	sw $s7, -40($fp)
-	sw $s6, -36($fp)
-	sw $s5, -32($fp)
-	sw $s4, -28($fp)
-	sw $s3, -24($fp)
-	sw $s2, -20($fp)
-	sw $s1, -16($fp)
-	sw $s0, -12($fp)
-	addi $s0, $sp, -44
-	move $sp, $s0
-	sw $a0, 0($fp)
-	move $a0, $fp
-	li $a1, 10
-	jal L309
-	addi $s0, $sp, 44
-	move $sp, $s0
-	lw $s0, -12($fp)
-	lw $s1, -16($fp)
-	lw $s2, -20($fp)
-	lw $s3, -24($fp)
-	lw $s4, -28($fp)
-	lw $s5, -32($fp)
-	lw $s6, -36($fp)
-	lw $s7, -40($fp)
-	lw $ra, -4($fp)
-	lw $fp, -12($sp)
-	jr $ra
-L309:
-	sw $fp, -12($sp)
-	addi $fp, $sp, -4
-	sw $ra, -4($fp)
-	sw $s7, -40($fp)
-	sw $s6, -36($fp)
-	sw $s5, -32($fp)
-	sw $s4, -28($fp)
-	sw $s3, -24($fp)
-	sw $s2, -20($fp)
-	sw $s1, -16($fp)
-	sw $s0, -12($fp)
-	addi $s0, $sp, -44
-	move $sp, $s0
-	sw $a0, 0($fp)
-	move $s0, $a1
-	li $s2, 0
-	beq $s0, $s2, L310
-	bne $s0, $s2, L311
-L311:
-	lw $s2, 0($fp)
-	move $a0, $s2
-	addi $s2, $s0, -1
-	move $a1, $s2
-	jal L309
-	move $s2, $v0
-	mult $s0, $s0, $s2
-L312:
-	move $v0, $s0
-	addi $s0, $sp, 44
-	move $sp, $s0
-	jr $ra
-L310:
-	li $s0, 1
-	lw $s0, -12($fp)
-	lw $s1, -16($fp)
-	lw $s2, -20($fp)
-	lw $s3, -24($fp)
-	lw $s4, -28($fp)
-	lw $s5, -32($fp)
-	lw $s6, -36($fp)
-	lw $s7, -40($fp)
-	lw $ra, -4($fp)
-	lw $fp, -12($sp)
-	j L312
 
 	#.file	1 "runtime.c"
 	.option pic2
@@ -899,3 +823,80 @@ exit:
 	li $v0, 10
 	syscall
 	
+tig_main:
+	sw $fp, -12($sp)
+	addi $fp, $sp, -4
+	sw $ra, -4($fp)
+	sw $s7, -40($fp)
+	sw $s6, -36($fp)
+	sw $s5, -32($fp)
+	sw $s4, -28($fp)
+	sw $s3, -24($fp)
+	sw $s2, -20($fp)
+	sw $s1, -16($fp)
+	sw $s0, -12($fp)
+	addi $s0, $sp, -44
+	move $sp, $s0
+	sw $a0, 0($fp)
+	move $a0, $fp
+	li $a1, 5
+	jal L331
+	addi $s0, $sp, 44
+	move $sp, $s0
+	lw $s0, -12($fp)
+	lw $s1, -16($fp)
+	lw $s2, -20($fp)
+	lw $s3, -24($fp)
+	lw $s4, -28($fp)
+	lw $s5, -32($fp)
+	lw $s6, -36($fp)
+	lw $s7, -40($fp)
+	lw $ra, -4($fp)
+	lw $fp, -12($sp)
+	jr $ra
+L331:
+	sw $fp, -12($sp)
+	addi $fp, $sp, -4
+	sw $ra, -4($fp)
+	sw $s7, -40($fp)
+	sw $s6, -36($fp)
+	sw $s5, -32($fp)
+	sw $s4, -28($fp)
+	sw $s3, -24($fp)
+	sw $s2, -20($fp)
+	sw $s1, -16($fp)
+	sw $s0, -12($fp)
+	addi $s0, $sp, -44
+	move $sp, $s0
+	sw $a0, 0($fp)
+	move $s2, $a1
+	li $s0, 0
+	beq $s2, $s0, L332
+	bne $s2, $s0, L333
+L332:
+	li $s0, 1
+	j L334
+L333:
+	lw $s0, 0($fp)
+	move $a0, $s0
+	addi $s0, $s2, -1
+	move $a1, $s0
+	jal L331
+	move $s0, $v0
+	mul $s0, $s2, $s0
+	j L334
+L334:
+	move $v0, $s0
+	addi $s0, $sp, 44
+	move $sp, $s0
+	lw $s0, -12($fp)
+	lw $s1, -16($fp)
+	lw $s2, -20($fp)
+	lw $s3, -24($fp)
+	lw $s4, -28($fp)
+	lw $s5, -32($fp)
+	lw $s6, -36($fp)
+	lw $s7, -40($fp)
+	lw $ra, -4($fp)
+	lw $fp, -12($sp)
+	jr $ra

@@ -5,7 +5,7 @@ let
 			function g (b: int) : int =
 				a - b - c
 		in
-			g(6)
+			(print ("a"); g(6))
 		end
 in
 	x + f(7, 8)

@@ -180,7 +180,11 @@ struct
     | getnext(table,nil) = nil
     | getnext(_, _) = ErrorMsg.impossible "Pattern match error in Canon.sml..."
 
+  fun listsIntoOne(oneBlock::others, curr) = listsIntoOne(others, curr @ oneBlock)
+    | listsIntoOne([], curr) = curr
+
   fun traceSchedule(blocks,done) = 
-       getnext(foldr enterblock Symbol.empty blocks, blocks)
+       (*getnext(foldr enterblock Symbol.empty blocks, blocks)*)
+       listsIntoOne(blocks, [])
 
 end

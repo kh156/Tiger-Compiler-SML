@@ -18,7 +18,7 @@ struct
 
     fun getBinopString T.PLUS = "add"
 	| 	getBinopString T.MINUS = "sub"
-	| 	getBinopString T.MUL = "mult"
+	| 	getBinopString T.MUL = "mul"
 	| 	getBinopString T.DIV = "div"
 	| 	getBinopString T.AND = "and"
 	| 	getBinopString T.OR = "or"

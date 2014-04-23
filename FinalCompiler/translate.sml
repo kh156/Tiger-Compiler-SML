@@ -240,7 +240,7 @@ struct
           in
             fpOfDesLevel(CHILD {parent=desParent, frame=desFrame, unique=desUnique}, curParent, slExpOfCurLevel)
           end
-      | fpOfDesLevel(_, _, _) = ErrorMsg.impossible "Tracing static link reaches the ROOT level..."
+      | fpOfDesLevel(_, _, newFP) = newFP (*there is some problem with this...*)
 
       val slExp = fpOfDesLevel(parentOfCalled, callingLevel, Tr.TEMP F.FP)
       fun allocTimes(count) = if count > 0 then ((allocLocal callingLevel true); allocTimes(count-1)) else ()
@@ -315,9 +315,8 @@ struct
     let
       val return = Tr.TEMP(Te.newtemp())
     in
-      Ex (Tr.ESEQ(seq[Tr.MOVE(return, F.externalCall("malloc", [Tr.BINOP(Tr.MUL, (unEx size), Tr.CONST F.wordSize)])),
-                      Tr.EXP (F.externalCall("initArray", [unEx size, unEx init]))
-                      ], return))
+      Ex (Tr.ESEQ(Tr.MOVE(return, F.externalCall("tig_initArray", [Tr.BINOP(Tr.MUL, (unEx size), Tr.CONST F.wordSize), unEx init])),
+                  return))
     end
     
   fun addExpListBefore(listToAdd, letBody) = 
