@@ -84,9 +84,7 @@ struct
     let
       val formalAccesses = formals (CHILD {parent=parent, frame=frame, unique=unique})
     in
-      case formalAccesses of
-        (l, fa)::rest => F.exp fa newFP
-        | _ => ErrorMsg.impossible "Error: cannot find static link in a level..."
+      F.exp (F.InFrame 0) newFP
     end
     | getStaticLink(ROOT, newFP) = ErrorMsg.impossible "Error: cannot find static link in ROOT level..."
 

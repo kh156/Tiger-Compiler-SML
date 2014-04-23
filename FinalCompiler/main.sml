@@ -19,6 +19,19 @@ struct
    structure Te = Temp
    (*structure R = RegAlloc*)
 
+  fun printRunTimeFiles (out) = 
+    let
+      val runTime = TextIO.openIn "runtimele.s"
+      val sysSpim = TextIO.openIn "sysspim.s"
+      fun process(inStream) = (case TextIO.inputLine inStream of
+                              SOME(l) => (TextIO.output(out, l); process(inStream))
+                              | NONE => ())
+    in
+      (TextIO.output(out, "\n");
+      process(runTime);
+      process(sysSpim))
+    end
+
    fun getsome (SOME x) = x
     | getsome (_) = ErrorMsg.impossible "Error during getSome in MainGiven..."
 
@@ -58,7 +71,7 @@ struct
            val frags = (FindEscape.findEscape absyn; Semant.transProg absyn)
         in 
             withOpenFile (filename ^ ".s") 
-	     (fn out => (app (emitproc out) frags))
+	     (fn out => ((app (emitproc out) frags); printRunTimeFiles out))
        end
 
 

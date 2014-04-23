@@ -10,25 +10,13 @@ tig_main:
 	sw $s2, -20($fp)
 	sw $s1, -16($fp)
 	sw $s0, -12($fp)
-	addi $s0, $sp, -52
+	addi $s0, $sp, -44
 	move $sp, $s0
 	sw $a0, 0($fp)
-	li $s0, 5
 	move $a0, $fp
-	li $a1, 7
-	li $a2, 8
-	li $a3, 9
-	li $s2, 0
-	addi $s2, $s2, -10
-	sw $s2, 0($sp)
-	li $s2, 0
-	addi $s2, $s2, -11
-	sw $s2, 4($sp)
-	jal L2
-	move $s2, $v0
-	add $s0, $s0, $s2
-	move $v0, $s0
-	addi $s0, $sp, 52
+	li $a1, 10
+	jal L309
+	addi $s0, $sp, 44
 	move $sp, $s0
 	lw $s0, -12($fp)
 	lw $s1, -16($fp)
@@ -41,7 +29,7 @@ tig_main:
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
 	jr $ra
-L2:
+L309:
 	sw $fp, -12($sp)
 	addi $fp, $sp, -4
 	sw $ra, -4($fp)
@@ -56,18 +44,25 @@ L2:
 	addi $s0, $sp, -44
 	move $sp, $s0
 	sw $a0, 0($fp)
-	move $s5, $a1
-	move $s3, $a2
-	move $s4, $a3
-	lw $s2, 4($fp)
-	lw $s0, 8($fp)
-	mult $s3, $s5, $s3
-	mult $s2, $s4, $s2
-	sub $s2, $s3, $s2
-	sub $s0, $s2, $s0
+	move $s0, $a1
+	li $s2, 0
+	beq $s0, $s2, L310
+	bne $s0, $s2, L311
+L311:
+	lw $s2, 0($fp)
+	move $a0, $s2
+	addi $s2, $s0, -1
+	move $a1, $s2
+	jal L309
+	move $s2, $v0
+	mult $s0, $s0, $s2
+L312:
 	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
+	jr $ra
+L310:
+	li $s0, 1
 	lw $s0, -12($fp)
 	lw $s1, -16($fp)
 	lw $s2, -20($fp)
@@ -78,7 +73,7 @@ L2:
 	lw $s7, -40($fp)
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
-	jr $ra
+	j L312
 
 	#.file	1 "runtime.c"
 	.option pic2
