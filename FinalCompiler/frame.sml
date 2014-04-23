@@ -225,10 +225,28 @@ struct
   fun procEntryExit3 ({name=name, formals=formals, locals=locals}, (*locals access list is not added yet...*)
                       body : Assem.instr list) =
     let
-      val _ = ()
+      fun append1(level) = 
+        if level <= 7
+          then append1(level + 1) @ [Assem.OPER{assem="addi $sp, $sp, 4\n",
+                                                dst=[],
+                                                src=[], 
+                                                jump=NONE},
+                                    Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", 0($sp)\n",
+                                                dst=[], 
+                                                src=[], 
+                                                jump=NONE}]
+          else []
+      fun append2(level)= 
+        if level <= 7 
+          then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", " ^ Int.toString (level * 4) ^ "($p)\n", 
+                            dst=[], 
+                            src=[], 
+                            jump=NONE}] @ append1(level+1)
+          else []
+      val body' = append1(0) @ body @ append2(0)
     in
       {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n",
-       body = body,
+       body = body',
        epilog = "END " ^ Symbol.name name ^ "\n"}
     end
 

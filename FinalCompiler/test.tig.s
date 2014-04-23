@@ -1,23 +1,23 @@
-L181:
+L1:
 	sw $a0, 0($fp)
 	li $s0, 5
 	move $a0, $fp
 	li $a1, 7
 	li $a2, 8
-	jal L183
+	jal L3
 	move $s2, $v0
 	add $s0, $s0, $s2
 	move $v0, $s0
 	jr $ra
-L183:
+L3:
 	sw $a0, 0($fp)
 	sw $a1, ~4($fp)
 	sw $a2, ~8($fp)
 	move $a0, $fp
 	li $a1, 6
-	jal L184
+	jal L4
 	jr $ra
-L184:
+L4:
 	sw $a0, 0($fp)
 	move $s2, $a1
 	lw $s0, 0($fp)
