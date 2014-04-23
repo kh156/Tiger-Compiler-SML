@@ -156,8 +156,8 @@ struct
   | exp(InReg t) = fn _ => Tr.TEMP(t)
 
   val argList = ref argregs
-  val argPtr = ref 36
-  fun resetArgList() = (argList := argregs; argPtr := 36)
+  val argPtr = ref 4
+  fun resetArgList() = (argList := argregs; argPtr := 4)
   fun nextFreeArg() = (case (!argList) of 
                   oneArgReg::others => (argList := others; Tr.TEMP oneArgReg)
                   | [] => (argPtr := !argPtr + 4; (exp (InFrame (!argPtr)) (Tr.TEMP FP))))
@@ -166,7 +166,7 @@ struct
   fun newFrame({name = name, formals = formals}) = 
     let 
         val _ = resetArgList()
-        val currOffset = ref 4
+        val currOffset = ref ~36
         val moveArgList = ref [] : Tr.stm list ref
 
         fun allocFormals([]) = []
@@ -182,10 +182,12 @@ struct
                InReg(temp)::allocFormals(rest)))
             end
 
-        val allocatedFormals = allocFormals(formals)
+        val allocatedSL = (moveArgList := (!moveArgList) @ [Tr.MOVE(exp (InFrame (0)) (Tr.TEMP FP), nextFreeArg())];
+                          InFrame(!currOffset))
+        val allocatedFormals = allocFormals (tl formals)
         val _ = resetArgList()
     in
-      {name = name, formals = allocatedFormals, spOffset = currOffset, moveArgStms = seq(!moveArgList)}
+      {name = name, formals = allocatedSL::allocatedFormals, spOffset = currOffset, moveArgStms = seq(!moveArgList)}
     end
 
   fun allocLocal({name = _, formals = _ , spOffset = spOffset, moveArgStms = _}) = 
@@ -226,29 +228,37 @@ struct
                   hd::body => (hd, List.filter (fn e => e <> t) body)
                   | _ => ErrorMsg.impossible "Error : body of instr list has no elements")
 
-      val allocspace = Assem.OPER{assem="addi $sp, $sp, -32\n",
+(*      val allocspace = Assem.OPER{assem="addi $sp, $sp, -32\n",
                                                 dst=[],
                                                 src=[], 
+                                                jump=NONE}*)
+      val saveRA = Assem.OPER{assem="sw $ra, -4($fp)\n",
+                                                dst=[],
+                                                src=[RA], 
                                                 jump=NONE}
       fun append1(level) = 
         if level <= 7
-          then append1(level + 1) @ [Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", " ^ (Int.toString (level*4)) ^ "($sp)\n",
+          then append1(level + 1) @ [Assem.OPER{assem="sw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level*4+8)) ^ "($fp)\n",
                                                 dst=[], 
                                                 src=[], 
                                                 jump=NONE}]
           else []
       fun append2(level)= 
         if level <= 7 
-          then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", " ^ (Int.toString (level * 4)) ^ "($sp)\n", 
+          then [Assem.OPER {assem="lw $s" ^ Int.toString level ^ ", -" ^ (Int.toString (level * 4 + 8)) ^ "($fp)\n", 
                             dst=[], 
                             src=[], 
                             jump=NONE}] @ append2(level+1)
           else []
-      val freespace = Assem.OPER{assem="addi $sp, $sp, 32\n",
+(*      val freespace = Assem.OPER{assem="addi $sp, $sp, 32\n",
                                                 dst=[],
                                                 src=[], 
+                                                jump=NONE}*)
+      val loadRA = Assem.OPER{assem="lw $ra, -4($fp)\n",
+                                                dst=[RA],
+                                                src=[], 
                                                 jump=NONE}
-      val body' = h :: (allocspace :: append1(0) @ b @ append2(0)) @ [freespace, t]
+      val body' = h :: (saveRA::append1(0) @ b @ append2(0)) @ [loadRA, t]
     in
       {prolog = "PROCEDURE",
        body = body',
