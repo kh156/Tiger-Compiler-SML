@@ -1,10 +1,10 @@
 signature FRAME = 
 sig 
 	val wordSize: int
-	type frame
-  datatype register = Reg of string
   datatype access = InFrame of int
                   | InReg of Temp.temp
+	type frame = {name: Temp.label, formals: access list, spOffset: int ref, moveArgStms: Tree.stm}
+  datatype register = Reg of string
 
 	val newFrame : {name: Temp.label,
 					formals: bool list} -> frame
@@ -22,6 +22,7 @@ sig
   val RA : Temp.temp
   val ZERO : Temp.temp
   val RV : Temp.temp
+  val a0 : Temp.temp
   val procEntryExit1 : frame * Tree.exp -> Tree.exp
 
   val stringFrag : Temp.label * string -> string
@@ -200,14 +201,6 @@ struct
 
   fun procEntryExit1 (frame: frame, bodyExp) =
     let
-      (*val saved = RA :: calleesaves
-      val tempRegs = map (fn temp => Temp.newtemp ()) saved
-      val moveRegs = ListPair.mapEq move
-      val saveRegs = seq ( moveRegs (tempRegs, saved))
-      val restoreRegs = seq ( moveRegs (saved, tempRegs))*)
-      (*This is all I know how to do*)
-      
-      (*by Ang 04/22/2014*)
       val lab = Tr.LABEL (#name frame)
       val addedMoveArgs = Tr.ESEQ(#moveArgStms frame, bodyExp)
   in
@@ -222,8 +215,7 @@ struct
               dst=[],jump=SOME[]}]
 
 
-  fun procEntryExit3 ({name=name, formals=formals, locals=locals}, (*locals access list is not added yet...*)
-                      body : Assem.instr list) =
+  fun procEntryExit3 (body : Assem.instr list) =
     let
       val _ = ()
     in
@@ -233,7 +225,7 @@ struct
     end
 
   fun externalCall(s, args) =
-    Tr.CALL(Tr.NAME(Te.namedlabel s), args)
+    Tr.CALL(Tr.NAME(Te.namedlabel s), args, 0)
 
 
   fun getTempName(temp) =

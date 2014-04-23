@@ -79,16 +79,16 @@ struct
 	       reorder_stm([e],fn [e] => T.JUMP(e,labs))
     | do_stm(T.CJUMP(p,a,b,t,f)) = 
                reorder_stm([a,b], fn[a,b]=> T.CJUMP(p,a,b,t,f))
-    | do_stm(T.MOVE(T.TEMP t,T.CALL(e,el))) = 
-               reorder_stm(e::el,fn e::el => T.MOVE(T.TEMP t,T.CALL(e,el)))
+    | do_stm(T.MOVE(T.TEMP t,T.CALL(e,el,offset))) = 
+               reorder_stm(e::el,fn e::el => T.MOVE(T.TEMP t,T.CALL(e,el,offset)))
     | do_stm(T.MOVE(T.TEMP t,b)) = 
 	       reorder_stm([b],fn[b]=>T.MOVE(T.TEMP t,b))
     | do_stm(T.MOVE(T.MEM e,b)) = 
 	       reorder_stm([e,b],fn[e,b]=>T.MOVE(T.MEM e,b))
     | do_stm(T.MOVE(T.ESEQ(s,e),b)) = 
 	       do_stm(T.SEQ(s,T.MOVE(e,b)))
-    | do_stm(T.EXP(T.CALL(e,el))) = 
-	       reorder_stm(e::el,fn e::el => T.EXP(T.CALL(e,el)))
+    | do_stm(T.EXP(T.CALL(e,el,offset))) = 
+	       reorder_stm(e::el,fn e::el => T.EXP(T.CALL(e,el,offset)))
     | do_stm(T.EXP e) = 
 	       reorder_stm([e],fn[e]=>T.EXP e)
     | do_stm s = reorder_stm([],fn[]=>s)
@@ -102,8 +102,8 @@ struct
 		     val (stms',e) = do_exp e
 		  in (stms%stms',e)
 		 end
-    | do_exp(T.CALL(e,el)) = 
-		 reorder_exp(e::el, fn e::el => T.CALL(e,el))
+    | do_exp(T.CALL(e,el,offset)) = 
+		 reorder_exp(e::el, fn e::el => T.CALL(e,el,offset))
     | do_exp e = reorder_exp([],fn[]=>e)
 
   (* linear gets rid of the top-level SEQ's, producing a list *)

@@ -250,12 +250,12 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  			in
 		  			if length(argResults) <> length(formals) then
 		  				(error pos ("Number of arguments incorrect: "^Int.toString(length(args)));
-		  					{exp=Trans.callExp(level, calledParent, label, map (#exp) argResults), ty=actual_ty(result, pos)})
+		  					{exp=Trans.callExp(level, calledParent, funLevel, label, map (#exp) argResults), ty=actual_ty(result, pos)})
 	            	else (
 	            		if compareTypes (formals, map (#ty) argResults, pos) 
 	            			then ()
 	            			else (error pos ("Params do not match with function: "^S.name(func)));
-			            {exp=Trans.callExp(level, calledParent, label, map (#exp) argResults), ty=actual_ty(result, pos)}
+			            {exp=Trans.callExp(level, calledParent, funLevel, label, map (#exp) argResults), ty=actual_ty(result, pos)}
 			        )
 				end
 			  )
@@ -570,7 +570,7 @@ fun transProg(programCode : A.exp) =
     	val unitResult = Trans.resetFragList()
     	val venv = E.base_venv
     	val tenv = E.base_tenv
-		val startOfProgLabel = Temp.newlabel()
+		val startOfProgLabel = Temp.namedlabel "tig_main"
 		val firstLevel = Trans.newLevel {parent = E.stdlibLevel, name = startOfProgLabel, formals = []}
     	val endOfProgLabel = Temp.newlabel()
     	val progResult = transExp(venv, tenv, programCode, endOfProgLabel, firstLevel)

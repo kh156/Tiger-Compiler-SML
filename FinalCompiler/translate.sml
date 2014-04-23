@@ -160,7 +160,7 @@ struct
 
   fun procEntryExit({level=CHILD {frame=frame, parent=parent, unique=unique}, body=body}) = 
     let
-      val funFrame = frame
+      val funFrame : F.frame = frame
       val addedSteps = F.procEntryExit1(funFrame, unEx(body))
       val moveStm = Tr.MOVE((Tr.TEMP F.RV), addedSteps)
     in
@@ -231,7 +231,7 @@ struct
 
   fun assignExp(leftExp ,rightExp) = Nx (Tr.MOVE (unEx leftExp, unEx rightExp))
 
-  fun callExp (callingLevel:level, parentOfCalled:level, label, exps) = (*this level is the calling fn level, not necessarily the statically enclosing level*)
+  fun callExp (callingLevel:level, parentOfCalled:level, called:level, label, exps) = (*this level is the calling fn level, not necessarily the statically enclosing level*)
     let
       fun fpOfDesLevel(CHILD {parent=desParent, frame=desFrame, unique=desUnique},
                             CHILD {parent=curParent, frame=curFrame, unique=curUnique}, newFP) = 
@@ -246,8 +246,15 @@ struct
       | fpOfDesLevel(_, _, _) = ErrorMsg.impossible "Tracing static link reaches the ROOT level..."
 
       val slExp = fpOfDesLevel(parentOfCalled, callingLevel, Tr.TEMP F.FP)
+      val frame = (case called of 
+                CHILD {parent=_, frame=f, unique=_} => f
+                | _ => ErrorMsg.impossible "Error: couldn't find frame of a function's level...")
+      val spaceForFP = allocLocal callingLevel true
+      fun allocTimes(count) = if count > 0 then ((allocLocal callingLevel true); allocTimes(count-1)) else ()
+      val spaceForArgs = allocTimes(List.length(exps) + (~3))
+
     in
-      Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps)))
+      Ex (Tr.CALL(Tr.NAME(label), slExp::(map unEx exps), !(#spOffset frame)))
     end
 
   fun letExp ([], body) = body

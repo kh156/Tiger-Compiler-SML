@@ -1,23 +1,33 @@
-L181:
+tig_main:
 	sw $a0, 0($fp)
 	li $s0, 5
 	move $a0, $fp
 	li $a1, 7
 	li $a2, 8
-	jal L183
+	sw $fp, 0($sp)
+	addi $fp, $sp, -4
+	addi $sp, $sp, ~16
+	jal L508
+	addi $sp, $sp, 16
+	lw $fp, 0($sp)
 	move $s2, $v0
 	add $s0, $s0, $s2
 	move $v0, $s0
 	jr $ra
-L183:
+L508:
 	sw $a0, 0($fp)
 	sw $a1, ~4($fp)
 	sw $a2, ~8($fp)
 	move $a0, $fp
 	li $a1, 6
-	jal L184
+	sw $fp, 0($sp)
+	addi $fp, $sp, -4
+	addi $sp, $sp, ~4
+	jal L509
+	addi $sp, $sp, 4
+	lw $fp, 0($sp)
 	jr $ra
-L184:
+L509:
 	sw $a0, 0($fp)
 	move $s2, $a1
 	lw $s0, 0($fp)
