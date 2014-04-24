@@ -181,6 +181,7 @@ struct
   fun strExp str =
   let
     val label = Te.newlabel()
+    (*val _ = print("added a str frag: " ^ str ^ "\n")*)
   in
     (fragList := F.STRING (label, str) :: !fragList;
     Ex (Tr.NAME label)) (*does string uses Tr.NAME???*)
@@ -220,7 +221,7 @@ struct
       end
     | stringOpExp (_, l, r) = Ex (Tr.CONST 0)
 
-  fun recordExp({translated=fieldExps, size=size}) = 
+  fun recordExp({translated=fieldExps, size=size, tyList=_}) = 
     let
       val r = Te.newtemp()
     in

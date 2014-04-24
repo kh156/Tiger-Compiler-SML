@@ -184,28 +184,33 @@ fun transExp (venv, tenv, A.NilExp, doneLabel, level) = {exp=Trans.nilExp(), ty=
 	  							           T.RECORD([], ref 0))
 	  		(*fields is a (symbol * exp * pos) list*)
 	  		(*symbolTypeList is (Symbol.symbol * ty) list*)
-	  		fun checkRecord((symbol, exp, pos)::otherFields, (tySymbol, ty)::otherTypes) =
-	  			(case (S.name symbol)=(S.name tySymbol) of 
-	  				true => (case compareType( #ty (transExp(venv, tenv, exp, doneLabel, level)), actual_ty (ty,pos), pos, pos)	 of 
-	  						true => checkRecord(otherFields, otherTypes)
-	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
-	  									false))
-	  				| false => (ErrorMsg.error pos "Field name does not match record type during record creation!";
-	  									false))
-	  			| checkRecord([], []) = true
-	  			| checkRecord(_, _) = false
 
-	  		fun translateEachExp((symbol, exp, pos)::otherFields, translated, size) = 
+	  		fun translateEachExp((symbol, exp, pos)::otherFields, translated, tyList, size) = 
 	  			let
 	  				val fieldResult = transExp(venv, tenv, exp, doneLabel, level)
 	  			in
-	  				translateEachExp(otherFields, translated @ [(#exp fieldResult)], size+1)
+	  				translateEachExp(otherFields, translated @ [(#exp fieldResult)], tyList @ [#ty fieldResult], size+1)
 	  			end
-	  			| translateEachExp([], translated, size) = {translated=translated, size=size}
+	  			| translateEachExp([], translated, tyList, size) = {translated=translated, tyList=tyList, size=size}
+
+	  		val translatedFields = translateEachExp(fields, [], [], 0)
+
+	  		fun checkRecord((symbol, exp, pos)::otherFields, oneT::otherTs, (tySymbol, ty)::otherTypes) =
+	  			(case (S.name symbol)=(S.name tySymbol) of 
+	  				true => (case compareType( oneT, actual_ty (ty,pos), pos, pos)	 of 
+	  						true => checkRecord(otherFields, otherTs, otherTypes)
+	  						| false => (ErrorMsg.error pos "Field type does not match record type during record creation!";
+	  									false))
+	  				| false => (ErrorMsg.error pos "Field name does not match record type's field name during record creation!";
+	  									false))
+	  			| checkRecord([], [], []) = true
+	  			| checkRecord(_, _, _) = false
+
+
 	  	in
-	  		if checkRecord(fields, symbolTypeList)
-	  		then {exp=Trans.recordExp(translateEachExp(fields, [], 0)), ty=T.RECORD (symbolTypeList, unique)}
-	  		else {exp=Trans.recordExp(translateEachExp(fields, [], 0)), ty=T.ERROR}
+	  		if checkRecord(fields, #tyList translatedFields, symbolTypeList)
+	  		then {exp=Trans.recordExp(translatedFields), ty=T.RECORD (symbolTypeList, unique)}
+	  		else {exp=Trans.recordExp(translatedFields), ty=T.ERROR}
 	  	end
 
 	  | transExp (venv, tenv, A.AssignExp{var=var,exp=exp,pos=pos}, doneLabel, level) =
