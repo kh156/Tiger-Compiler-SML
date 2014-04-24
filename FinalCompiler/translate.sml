@@ -322,7 +322,7 @@ struct
     let
       val return = Tr.TEMP(Te.newtemp())
     in
-      Ex (Tr.ESEQ(Tr.MOVE(return, F.externalCall("tig_initArray", [Tr.BINOP(Tr.MUL, (unEx size), Tr.CONST F.wordSize), unEx init])),
+      Ex (Tr.ESEQ(Tr.MOVE(return, F.externalCall("tig_initArray", [unEx size, unEx init])),
                   return))
     end
     

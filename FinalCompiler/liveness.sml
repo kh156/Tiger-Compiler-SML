@@ -94,13 +94,15 @@ struct
 
   		fun oneNode(node, igLocal) = 
   			let 
-  				val liveOuts = TS.listItems (FG.nodeInfo (FG.getNode(liveOutTable, FG.getNodeID(node))))
+  				val liveOuts' = FG.nodeInfo (FG.getNode(liveOutTable, FG.getNodeID(node)))
           val (_, defList, useList, isMove) = FG.nodeInfo node
+          val liveOuts = TS.union(liveOuts', TS.addList(TS.empty, defList))
+
   			in
           (if isMove
            then moveList := (hd defList, hd useList)::(!moveList)
            else ();
-  				addEdges(liveOuts, igLocal))
+  				addEdges(TS.listItems liveOuts, igLocal))
   			end
   	in
   		foldr oneNode ig orderedNodeList

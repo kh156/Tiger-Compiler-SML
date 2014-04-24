@@ -135,7 +135,7 @@ struct
 
   val specialregs =  [FP, RV, RA, SP, ZERO, v1] 
   val argregs = [a0,a1,a2,a3] (* $a0-$a3 *)
-  val calleesaves = [s0,s2,s2,s3,s4,s5,s6,s7] (* $s0-$s7 *)
+  val calleesaves = [s0,s1,s2,s3,s4,s5,s6,s7] (* $s0-$s7 *)
   val callersaves = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]  (* $t0-$t9 *)
 
   val colorable = calleesaves @ callersaves (* We can use s and t regs to load vars*)

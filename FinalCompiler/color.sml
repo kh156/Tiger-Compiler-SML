@@ -284,14 +284,15 @@ struct
 		 			(*val _ = app (fn e => print("Node on the stack: " ^ Int.toString e ^ "\n")) selectStack*)
 			 		fun assignColor(nodeID, alloc) =
 			 			let
-			 				(*val okColors = List.tabulate(numRegs, fn x => x); (* Generates list [0,1,2,..numRegs]*)*)
 			 				val okColors = registers
 	 						val adjacent = IG.adj (IG.getNode (oldIG, nodeID))
 	 						val (_, okColors') = foldl filterColors (alloc, okColors) adjacent
 	 						val mergedNodeIDs = Set.listItems (getSet(nodeID, !mergeTable))
 	 						val (_, avaiColors) = foldl filterColors (alloc, okColors') (findExtraNeighbors(mergedNodeIDs, oldIG))
 
-	 						val color = hd avaiColors (* Just take the first available color to color our node *)
+	 						val color = case avaiColors of (* Just take the first available color to color our node *)
+	 									h::rest => h
+	 									| _ => ErrorMsg.impossible "Not enough color... needs actual spilling!"
 	 						val addedAlloc = Table.enter(alloc, nodeID, color)
 	 						val completeAlloc = enterIfNotPresent(addedAlloc, mergedNodeIDs, color)
 		 				in
@@ -317,19 +318,20 @@ struct
 				    val (updatedStack, updatedIG) = simplify(selectStack, graphNoReserve, simplifyWorkList)
 				in
 					case simplifyDidWork of 
-						true => runRegAlloc(updatedIG, updatedStack)
+						true => (print("Simplified");
+								runRegAlloc(updatedIG, updatedStack))
 						| false =>
 							(case graphEmpty of 
-							true => ((*print("I'm done\n");*)
+							true => (print("I'm done\n");
 				    				(*Liveness.show(TextIO.stdOut, Liveness.IGRAPH {graph=interference, moves=[]});*)
 									assignColors(interference, updatedStack))
 							| false => (case coalesceAndReturnNewGraph(updatedIG) of 
 										(true, newIG) => (coalesceSuccess := false;
-															(*print("Coalesced\n");*)
+															print("Coalesced\n");
 														  runRegAlloc(newIG, updatedStack))
 										| (false, newIG) => (case unfreezeMove(bestMoveNodeToFreeze(newIG)) of 
 															 true => (unfreezeSuccess := false;
-															 			(*print("Unfreezed\n");*)
+															 			print("Unfreezed\n");
 															 		  runRegAlloc(newIG, updatedStack))
 															 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
 															 			(ig', stack') => runRegAlloc(ig', stack')
