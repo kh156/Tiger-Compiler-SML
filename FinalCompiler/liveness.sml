@@ -86,23 +86,22 @@ struct
   	let 
   		fun doubleEdge(aNode, otherNodes, igLocal) = 
   			foldr (fn (bNode, g) => IG.doubleEdge(g, aNode, bNode)) igLocal otherNodes
-  		
-  		fun addEdges(aTemp::rest, igLocal) = 
-  			addEdges(rest, doubleEdge(aTemp, rest, igLocal))
-
-		  | addEdges([], igLocal) = igLocal
 
   		fun oneNode(node, igLocal) = 
   			let 
-  				val liveOuts' = FG.nodeInfo (FG.getNode(liveOutTable, FG.getNodeID(node)))
+  				val liveOuts = FG.nodeInfo (FG.getNode(liveOutTable, FG.getNodeID(node)))
           val (_, defList, useList, isMove) = FG.nodeInfo node
-          val liveOuts = TS.union(liveOuts', TS.addList(TS.empty, defList))
+          val def = case defList of 
+                  h::rest => SOME(h)
+                  | _ => NONE
 
   			in
           (if isMove
            then moveList := (hd defList, hd useList)::(!moveList)
            else ();
-  				addEdges(TS.listItems liveOuts, igLocal))
+  				 case def of 
+            SOME(d) => doubleEdge(d, TS.listItems liveOuts, igLocal)
+            | NONE => igLocal)
   			end
   	in
   		foldr oneNode ig orderedNodeList

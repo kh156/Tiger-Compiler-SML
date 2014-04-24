@@ -842,9 +842,9 @@ tig_main:
 	move $a0, $fp
 	li $a1, 7
 	li $a2, 8
-	jal L656
-	move $s2, $v0
-	add $s0, $s0, $s2
+	jal L1094
+	move $s1, $v0
+	add $s0, $s0, $s1
 	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
@@ -859,7 +859,7 @@ tig_main:
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
 	jr $ra
-L656:
+L1094:
 	sw $fp, -12($sp)
 	addi $fp, $sp, -4
 	sw $ra, -4($fp)
@@ -876,10 +876,12 @@ L656:
 	sw $a0, 0($fp)
 	sw $a1, -44($fp)
 	sw $a2, -48($fp)
-	la $s0, L658
+	la $s0, L1096
+	move $a0, $s0
+	jal tig_print
 	move $a0, $fp
 	li $a1, 6
-	jal L657
+	jal L1095
 	addi $s0, $sp, 52
 	move $sp, $s0
 	lw $s0, -12($fp)
@@ -893,10 +895,7 @@ L656:
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
 	jr $ra
-L658:
-	.word 1
-	.ascii "a"
-L657:
+L1095:
 	sw $fp, -12($sp)
 	addi $fp, $sp, -4
 	sw $ra, -4($fp)
@@ -911,13 +910,13 @@ L657:
 	addi $s0, $sp, -44
 	move $sp, $s0
 	sw $a0, 0($fp)
-	move $s2, $a1
+	move $s1, $a1
 	lw $s0, 0($fp)
 	lw $s0, -44($s0)
-	sub $s2, $s0, $s2
+	sub $s1, $s0, $s1
 	lw $s0, 0($fp)
 	lw $s0, -48($s0)
-	sub $s0, $s2, $s0
+	sub $s0, $s1, $s0
 	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
@@ -932,3 +931,9 @@ L657:
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
 	jr $ra
+
+.data
+.align 4
+L1096:
+	.word 1
+	.ascii "a"

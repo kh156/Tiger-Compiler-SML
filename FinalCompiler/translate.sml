@@ -165,7 +165,13 @@ struct
     end
     | procEntryExit({level=ROOT, body=body}) = (ErrorMsg.impossible "Error: no function should be at the ROOT level!")
 
-  fun getResult() = !fragList
+  fun regroupFrags(oneFrag::rest, fns, strs) = 
+      (case oneFrag of
+        F.PROC _ => regroupFrags(rest, oneFrag::fns, strs)
+        | F.STRING _ => regroupFrags(rest, fns, oneFrag::strs))
+    | regroupFrags([], fns, strs) = (rev fns) @ (rev strs)
+
+  fun getResult() = regroupFrags(!fragList, [], [])
 
   fun nilExp () = Ex (Tr.CONST (0))
   fun intExp (i) = Ex (Tr.CONST (i))

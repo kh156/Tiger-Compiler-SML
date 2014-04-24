@@ -127,6 +127,25 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
 		 									jump = NONE}))
 
 			(* addi *)
+
+        |   munchExp(T.BINOP(T.PLUS, T.CONST 0, T.CONST i)) =
+            result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ intToString i ^ "\n",
+                                            src = [F.ZERO], 
+                                            dst = [r], 
+                                            jump = NONE}))
+
+        |   munchExp(T.BINOP(T.PLUS, T.CONST i, T.CONST 0)) =
+            result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ intToString i ^ "\n",
+                                            src = [F.ZERO], 
+                                            dst = [r], 
+                                            jump = NONE}))
+
+        |   munchExp(T.BINOP(T.MINUS, T.CONST 0, T.CONST i)) =
+            result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ intToString (~i) ^ "\n",
+                                            src = [F.ZERO], 
+                                            dst = [r], 
+                                            jump = NONE}))
+
 		|	munchExp(T.BINOP(T.PLUS, e1, T.CONST i)) =
             result(fn r => emit(A.OPER {assem = "addi `d0, `s0, " ^ intToString i ^ "\n",
             								src = [munchExp e1], 
