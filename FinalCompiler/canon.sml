@@ -121,27 +121,25 @@ struct
       every block ends with a JUMP or CJUMP *)
 
   fun basicBlocks stms = 
-     let val done = Temp.newlabel()
-         fun blocks((head as T.LABEL _) :: tail, blist) =
-	     let fun next((s as (T.JUMP _))::rest, thisblock) =
-		                endblock(rest, s::thisblock)
-		   | next((s as (T.CJUMP _))::rest, thisblock) =
-                                endblock(rest,s::thisblock)
-		   | next(stms as (T.LABEL lab :: _), thisblock) =
-                                next(T.JUMP(T.NAME lab,[lab]) :: stms, thisblock)
-		   | next(s::rest, thisblock) = next(rest, s::thisblock)
-		   | next(nil, thisblock) = 
-			     next([T.JUMP(T.TEMP MipsFrame.RA, [])], thisblock)
+     let 
+        val done = Temp.newlabel()
+        fun blocks((head as T.LABEL _) :: tail, blist) =
+	        let
+            fun next((s as (T.JUMP _))::rest, thisblock) = endblock(rest, s::thisblock)
+		          | next((s as (T.CJUMP _))::rest, thisblock) = endblock(rest,s::thisblock)
+		          | next(stms as (T.LABEL lab :: _), thisblock) = next(T.JUMP(T.NAME lab,[lab]) :: stms, thisblock)
+		          | next(s::rest, thisblock) = next(rest, s::thisblock)
+		          | next(nil, thisblock) = next([T.JUMP(T.TEMP MipsFrame.RA, [])], thisblock)
 		 
-		 and endblock(stms, thisblock) = 
-		            blocks(stms, rev thisblock :: blist)
-		     
-	     in next(tail, [head])
-	     end
-	   | blocks(nil, blist) = rev blist
-	   | blocks(stms, blist) = blocks(stms, blist)
-      in (blocks(stms,nil), done)
-     end
+		        and endblock(stms, thisblock) = blocks(stms, rev thisblock :: blist)
+		    in
+          next(tail, [head])
+	       end
+	       | blocks(nil, blist) = rev blist
+	       | blocks(oneNonLabelStm::rest, blist) = blocks(rest, [oneNonLabelStm] :: blist)
+      in
+        (blocks(stms,nil), done)
+      end
 
   fun enterblock(b as (T.LABEL s :: _), table) = Symbol.enter(table,s,b)
     | enterblock(_, table) = table

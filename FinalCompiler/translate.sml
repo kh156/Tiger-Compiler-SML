@@ -212,7 +212,7 @@ struct
 
   fun intExp(i) = Ex (Tr.CONST i)
 
-  fun stringOpExp (A.EqOp, l, r) = Ex (F.externalCall("stringEqual", [unEx l, unEx r]))
+  fun stringOpExp (A.EqOp, l, r) = Ex (F.externalCall("tig_stringEqual", [unEx l, unEx r]))
     | stringOpExp (A.NeqOp, l, r) = 
       let 
         val result = unEx (stringOpExp(A.EqOp, l, r))
@@ -255,7 +255,7 @@ struct
       (*val spaceForCalleeSaves = allocTimes(8)*)
 
       val listOfBuiltIn = ["tig_print", "tig_flush", "tig_getchar", "tig_ord", "tig_chr", "tig_size", "tig_substring",
-                        "tig_concat", "tig_not", "tig_exit", "tig_initArray"]
+                        "tig_concat", "tig_not", "tig_exit", "tig_initArray", "tig_stringEqual"]
       val isBuiltIn = 
         List.length(List.filter (fn e => e = (Symbol.name label)) listOfBuiltIn) > 0
 
@@ -299,12 +299,14 @@ struct
 
   fun whileExp(testExp, bodyExp, doneLabel) =
     let
+      val s = Te.newlabel()
       val l = Te.newlabel()
     in
-      Nx (seq[(unCx testExp (l, doneLabel)),
+      Nx (seq[ Tr.LABEL s,
+                  (unCx testExp (l, doneLabel)),
                   Tr.LABEL l,
                   unNx bodyExp,
-                  (unCx testExp) (l, doneLabel),
+                  Tr.JUMP(Tr.NAME s, [s]),
                   Tr.LABEL doneLabel])
     end
 

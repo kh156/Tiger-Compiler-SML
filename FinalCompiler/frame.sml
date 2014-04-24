@@ -312,7 +312,14 @@ struct
   fun stringFrag(lab, str) = 
     let
       val l = String.size str
-      val numOfSlash = List.length(List.filter (fn c => c = #"\\") (explode str))
+      fun countSlash(oneChar::rest, currCount) = 
+        (case oneChar of 
+          #"\\" => (case rest of
+                    nextChar::rest2 => countSlash(rest2, currCount+1)
+                    | _ => ErrorMsg.impossible "Escape string error: unclosed string because ending with \\ char!")
+          | _ => countSlash(rest, currCount))
+        | countSlash([], currCount) = currCount
+      val numOfSlash = countSlash ((explode str), 0)
     in
       Symbol.name lab ^ ":\n\t.word " ^ (Int.toString (l-numOfSlash)) ^ "\n\t.ascii \"" ^ str ^ "\"\n"
     end

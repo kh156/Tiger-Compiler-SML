@@ -77,7 +77,8 @@ letter  = [a-zA-Z];
 
 <INITIAL>\"		=> (YYBEGIN STRING; strBuilder := ""; strPosition := yypos; uncloseStr := true; continue());
 <STRING>\"    	=> (YYBEGIN INITIAL; uncloseStr := false; Tokens.STRING(!strBuilder, !strPosition, yypos+1));
-<STRING>\\(n|t|\^c|[0-9]{3}|\"|\\)	=> (strBuilder := !strBuilder ^ yytext; continue());
+<STRING>\\(n|t|\^c|\"|\\)	=> (strBuilder := !strBuilder ^ yytext; continue());
+<STRING>\\[0-9]{3} => (strBuilder := !strBuilder ^ valOf(String.fromString yytext); continue());
 <STRING>[\\]   	=> (YYBEGIN NPSTRING; continue());
 <NPSTRING>[\n]  => (lineNum := !lineNum+1; linePos := yypos+1 :: !linePos; continue());
 <NPSTRING>[\ \t\f]	=> (continue()); 

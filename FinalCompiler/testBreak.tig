@@ -1,0 +1,5 @@
+let
+	var x := 11
+in
+	for i := 0 to x do if i>6 then break else ()
+end

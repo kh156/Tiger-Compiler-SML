@@ -1,6 +1,6 @@
 let
 	type r = {i : int, s: string, secS: string, next: r}
-	var rec := r {i = 88, s = "this is a str", secS = "second string\t\123...", next = nil}
+	var rec := r {i = 88, s = "this is a str", secS = "second string\t\078\079\n\\\"...", next = nil}
 in
 	rec.s
 end

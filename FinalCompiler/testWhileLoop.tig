@@ -1,0 +1,5 @@
+let
+	var x := 20
+in
+	 while x=10 | x = 15 do ()
+end

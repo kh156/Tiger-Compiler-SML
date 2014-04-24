@@ -843,9 +843,9 @@ tig_main:
 	move $s0, $v0
 	li $s1, 88
 	sw $s1, 0($s0)
-	la $s1, L495
+	la $s1, L274
 	sw $s1, 4($s0)
-	la $s1, L496
+	la $s1, L275
 	sw $s1, 8($s0)
 	li $s1, 0
 	sw $s1, 12($s0)
@@ -867,9 +867,9 @@ tig_main:
 
 .data
 .align 4
-L496:
-	.word 20
-	.ascii "second string\t\123..."
-L495:
+L275:
+	.word 22
+	.ascii "second string\tNO\n\\\"..."
+L274:
 	.word 13
 	.ascii "this is a str"
