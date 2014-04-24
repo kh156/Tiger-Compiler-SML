@@ -110,6 +110,18 @@ fun codegen (frame) (stm: Tree.stm) : A.instr list =
                         dst = [],
                         jump = NONE})
             
+        | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS, T.CONST i, e1)), exp)) =
+            emit(A.OPER {assem = "sw `s0, " ^ intToString i ^ "(`s1)\n",
+                        src = [munchExp exp, munchExp e1],
+                        dst = [],
+                        jump = NONE})
+
+        | munchStm(T.MOVE(T.MEM(exp1), exp2)) =
+            emit(A.OPER {assem = "sw `s0, 0(`s1)\n",
+                        src = [munchExp exp2, munchExp exp1],
+                        dst = [],
+                        jump = NONE})
+
         (*neither of src and dst is register*)
         | munchStm(T.MOVE(exp1, exp2)) = emitMoveInstr(munchExp(exp2), munchExp(exp1))
 

@@ -317,7 +317,7 @@ struct
                   unNx bodyExp,
                   (unCx (compExp(Tr.EQ, (simpleVar(iAccess, level)), hiExp)) (doneLabel, l2)),
                   Tr.LABEL l2,
-                  Tr.EXP (Tr.BINOP(Tr.PLUS, unEx (simpleVar(iAccess, level)), Tr.CONST 1)),
+                  Tr.MOVE (unEx (simpleVar(iAccess, level)), Tr.BINOP(Tr.PLUS, unEx (simpleVar(iAccess, level)), Tr.CONST 1)),
                   Tr.JUMP (Tr.NAME l, [l]),
                   Tr.LABEL doneLabel])
     end

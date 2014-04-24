@@ -92,7 +92,7 @@ struct
         | traverseDecWrap (A.TypeDec typeDecList, env) = env      (********** Need traverse record type????? **********)
         | traverseDecWrap (_, env) = env
     in
-      foldl traverseDecWrap env s
+      foldl traverseDecWrap env (rev s)
     end
 
 

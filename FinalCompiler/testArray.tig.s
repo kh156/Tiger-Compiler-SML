@@ -850,21 +850,21 @@ tig_main:
 	add $s0, $s0, $s1
 	lw $s1, 0($s0)
 	li $s0, 5
-	beq $s1, $s0, L662
-	bne $s1, $s0, L663
-L662:
-	la $s0, L660
+	beq $s1, $s0, L302
+	bne $s1, $s0, L303
+L302:
+	la $s0, L300
 	move $a0, $s0
 	jal tig_print
 	move $s0, $v0
-	j L664
-L663:
-	la $s0, L661
+	j L304
+L303:
+	la $s0, L301
 	move $a0, $s0
 	jal tig_print
 	move $s0, $v0
-	j L664
-L664:
+	j L304
+L304:
 	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
@@ -882,9 +882,9 @@ L664:
 
 .data
 .align 4
-L661:
+L301:
 	.word 19
 	.ascii "it's not five :(..."
-L660:
+L300:
 	.word 10
 	.ascii "it's five!"

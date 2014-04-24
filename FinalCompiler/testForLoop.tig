@@ -1,0 +1,5 @@
+let
+	var x := 10
+in
+	for r := 0 to x-1 do if r>(x/2) then print("then\n") else print("else\n")
+end
