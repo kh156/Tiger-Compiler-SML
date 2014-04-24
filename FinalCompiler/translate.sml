@@ -151,7 +151,7 @@ struct
 
   fun subscriptVar(varExp, index) =
     let
-      val zeroBasedIndex = Tr.BINOP(Tr.MINUS, unEx index, Tr.CONST 1)
+      val zeroBasedIndex = Tr.BINOP(Tr.PLUS, unEx index, Tr.CONST 1)
     in
       Ex (Tr.MEM(Tr.BINOP(Tr.PLUS, unEx varExp, Tr.BINOP(Tr.MUL, zeroBasedIndex, Tr.CONST (F.wordSize)))))
     end

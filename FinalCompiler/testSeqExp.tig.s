@@ -835,310 +835,69 @@ tig_main:
 	sw $s2, -20($fp)
 	sw $s1, -16($fp)
 	sw $s0, -12($fp)
-	addi $s0, $sp, -64
-	move $sp, $s0
-	sw $a0, 0($fp)
-	li $s0, 8
-	sw $s0, -44($fp)
-	addi $s0, $fp, -48
-	lw $s1, -44($fp)
-	move $a0, $s1
-	li $a1, 0
-	jal tig_initArray
-	move $s1, $v0
-	sw $s1, 0($s0)
-	addi $s0, $fp, -52
-	lw $s1, -44($fp)
-	move $a0, $s1
-	li $a1, 0
-	jal tig_initArray
-	move $s1, $v0
-	sw $s1, 0($s0)
-	addi $s0, $fp, -56
-	lw $s2, -44($fp)
-	lw $s1, -44($fp)
-	add $s1, $s2, $s1
-	addi $s1, $s1, -1
-	move $a0, $s1
-	li $a1, 0
-	jal tig_initArray
-	move $s1, $v0
-	sw $s1, 0($s0)
-	addi $s0, $fp, -60
-	lw $s2, -44($fp)
-	lw $s1, -44($fp)
-	add $s1, $s2, $s1
-	addi $s1, $s1, -1
-	move $a0, $s1
-	li $a1, 0
-	jal tig_initArray
-	move $s1, $v0
-	sw $s1, 0($s0)
-	move $a0, $fp
-	li $a1, 0
-	jal L1535
-	addi $s0, $sp, 64
-	move $sp, $s0
-	lw $s0, -12($fp)
-	lw $s1, -16($fp)
-	lw $s2, -20($fp)
-	lw $s3, -24($fp)
-	lw $s4, -28($fp)
-	lw $s5, -32($fp)
-	lw $s6, -36($fp)
-	lw $s7, -40($fp)
-	lw $ra, -4($fp)
-	lw $fp, -12($sp)
-	jr $ra
-L1535:
-	sw $fp, -12($sp)
-	addi $fp, $sp, -4
-	sw $ra, -4($fp)
-	sw $s7, -40($fp)
-	sw $s6, -36($fp)
-	sw $s5, -32($fp)
-	sw $s4, -28($fp)
-	sw $s3, -24($fp)
-	sw $s2, -20($fp)
-	sw $s1, -16($fp)
-	sw $s0, -12($fp)
 	addi $s0, $sp, -44
 	move $sp, $s0
 	sw $a0, 0($fp)
-	move $s2, $a1
-	lw $s0, 0($fp)
-	lw $s0, -44($s0)
-	beq $s2, $s0, L1565
-	bne $s2, $s0, L1566
-L1565:
-	lw $s0, 0($fp)
+	li $s1, 5
+	li $s3, 6
+	li $s2, 7
+	li $s0, 5
+	beq $s1, $s0, L96
+	bne $s1, $s0, L97
+L96:
+	li $s0, 1
+	li $s1, 6
+	beq $s3, $s1, L99
+	bne $s3, $s1, L100
+L100:
+	li $s0, 0
+	j L99
+L99:
+	j L98
+L97:
+	li $s0, 0
+	j L98
+L98:
+	li $s1, 0
+	bne $s0, $s1, L101
+	beq $s0, $s1, L102
+L101:
+	li $s0, 1
+	li $s1, 7
+	beq $s2, $s1, L104
+	bne $s2, $s1, L105
+L105:
+	li $s0, 0
+	j L104
+L104:
+	j L103
+L102:
+	li $s0, 0
+	j L103
+L103:
+	li $s1, 0
+	bne $s0, $s1, L110
+	beq $s0, $s1, L111
+L110:
+	la $s0, L106
 	move $a0, $s0
-	jal L1536
+	jal tig_print
+	la $s0, L107
+	move $a0, $s0
+	jal tig_print
 	move $s0, $v0
-	j L1567
-L1566:
-	li $s0, 0
-	j L1563
-L1563:
-	lw $s1, 0($fp)
-	lw $s4, -48($s1)
-	addi $s3, $s0, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	lw $s3, 0($s1)
-	li $s1, 0
-	beq $s3, $s1, L1551
-	bne $s3, $s1, L1552
-L1551:
-	li $s1, 1
-	lw $s3, 0($fp)
-	lw $s5, -56($s3)
-	add $s3, $s0, $s2
-	addi $s4, $s3, 1
-	li $s3, 4
-	mul $s3, $s4, $s3
-	add $s3, $s5, $s3
-	lw $s4, 0($s3)
-	li $s3, 0
-	beq $s4, $s3, L1554
-	bne $s4, $s3, L1555
-L1555:
-	li $s1, 0
-	j L1554
-L1554:
-	j L1553
-L1552:
-	li $s1, 0
-	j L1553
-L1553:
-	li $s3, 0
-	bne $s1, $s3, L1556
-	beq $s1, $s3, L1557
-L1556:
-	li $s1, 1
-	lw $s3, 0($fp)
-	lw $s5, -60($s3)
-	addi $s3, $s0, 7
-	sub $s3, $s3, $s2
-	addi $s4, $s3, 1
-	li $s3, 4
-	mul $s3, $s4, $s3
-	add $s3, $s5, $s3
-	lw $s4, 0($s3)
-	li $s3, 0
-	beq $s4, $s3, L1559
-	bne $s4, $s3, L1560
-L1560:
-	li $s1, 0
-	j L1559
-L1559:
-	j L1558
-L1557:
-	li $s1, 0
-	j L1558
-L1558:
-	li $s3, 0
-	bne $s1, $s3, L1561
-	beq $s1, $s3, L1562
-L1561:
-	li $s5, 1
-	lw $s1, 0($fp)
-	lw $s4, -48($s1)
-	addi $s3, $s0, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	sw $s5, 0($s1)
-	li $s5, 1
-	lw $s1, 0($fp)
-	lw $s4, -56($s1)
-	add $s1, $s0, $s2
-	addi $s3, $s1, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	sw $s5, 0($s1)
-	li $s5, 1
-	lw $s1, 0($fp)
-	lw $s4, -60($s1)
-	addi $s1, $s0, 7
-	sub $s1, $s1, $s2
-	addi $s3, $s1, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	sw $s5, 0($s1)
-	lw $s1, 0($fp)
-	lw $s4, -52($s1)
-	addi $s3, $s2, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	sw $s0, 0($s1)
-	lw $s1, 0($fp)
-	move $a0, $s1
-	addi $s1, $s2, 1
-	move $a1, $s1
-	jal L1535
-	li $s5, 0
-	lw $s1, 0($fp)
-	lw $s4, -48($s1)
-	addi $s3, $s0, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	sw $s5, 0($s1)
-	li $s5, 0
-	lw $s1, 0($fp)
-	lw $s4, -56($s1)
-	add $s1, $s0, $s2
-	addi $s3, $s1, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	sw $s5, 0($s1)
-	li $s5, 0
-	lw $s1, 0($fp)
-	lw $s4, -60($s1)
-	addi $s1, $s0, 7
-	sub $s1, $s1, $s2
-	addi $s3, $s1, 1
-	li $s1, 4
-	mul $s1, $s3, $s1
-	add $s1, $s4, $s1
-	sw $s5, 0($s1)
-	j L1562
-L1562:
-	lw $s1, 0($fp)
-	lw $s1, -44($s1)
-	addi $s1, $s1, -1
-	beq $s0, $s1, L1550
-	bne $s0, $s1, L1564
-L1564:
-	addi $s0, $s0, 1
-	j L1563
-L1550:
-	li $s0, 0
-	j L1567
-L1567:
-	move $v0, $s0
-	addi $s0, $sp, 44
-	move $sp, $s0
-	lw $s0, -12($fp)
-	lw $s1, -16($fp)
-	lw $s2, -20($fp)
-	lw $s3, -24($fp)
-	lw $s4, -28($fp)
-	lw $s5, -32($fp)
-	lw $s6, -36($fp)
-	lw $s7, -40($fp)
-	lw $ra, -4($fp)
-	lw $fp, -12($sp)
-	jr $ra
-L1536:
-	sw $fp, -12($sp)
-	addi $fp, $sp, -4
-	sw $ra, -4($fp)
-	sw $s7, -40($fp)
-	sw $s6, -36($fp)
-	sw $s5, -32($fp)
-	sw $s4, -28($fp)
-	sw $s3, -24($fp)
-	sw $s2, -20($fp)
-	sw $s1, -16($fp)
-	sw $s0, -12($fp)
-	addi $s0, $sp, -44
-	move $sp, $s0
-	sw $a0, 0($fp)
-	li $s0, 0
-	j L1547
-L1547:
-	li $s1, 0
-	j L1544
-L1544:
-	lw $s2, 0($fp)
-	lw $s4, -52($s2)
-	addi $s3, $s0, 1
-	li $s2, 4
-	mul $s2, $s3, $s2
-	add $s2, $s4, $s2
-	lw $s2, 0($s2)
-	beq $s2, $s1, L1541
-	bne $s2, $s1, L1542
-L1541:
-	la $s2, L1539
-	j L1543
-L1542:
-	la $s2, L1540
-	j L1543
-L1543:
-	move $a0, $s2
-	jal tig_print
-	lw $s2, 0($fp)
-	lw $s2, -44($s2)
-	addi $s2, $s2, -1
-	beq $s1, $s2, L1538
-	bne $s1, $s2, L1545
-L1545:
-	addi $s1, $s1, 1
-	j L1544
-L1538:
-	la $s1, L1546
-	move $a0, $s1
-	jal tig_print
-	lw $s1, 0($fp)
-	lw $s1, -44($s1)
-	addi $s1, $s1, -1
-	beq $s0, $s1, L1537
-	bne $s0, $s1, L1548
-L1548:
-	addi $s0, $s0, 1
-	j L1547
-L1537:
-	la $s0, L1549
+	j L112
+L111:
+	la $s0, L108
 	move $a0, $s0
 	jal tig_print
+	la $s0, L109
+	move $a0, $s0
+	jal tig_print
+	move $s0, $v0
+	j L112
+L112:
+	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
 	lw $s0, -12($fp)
@@ -1155,15 +914,15 @@ L1537:
 
 .data
 .align 4
-L1549:
-	.word 1
-	.ascii "\n"
-L1546:
-	.word 1
-	.ascii "\n"
-L1540:
-	.word 2
-	.ascii " ."
-L1539:
-	.word 2
-	.ascii " O"
+L109:
+	.word 25
+	.ascii "This doesn't works... :(\n"
+L108:
+	.word 12
+	.ascii "it's in else"
+L107:
+	.word 14
+	.ascii "This works...\n"
+L106:
+	.word 14
+	.ascii "it's in then!\n"

@@ -1,0 +1,9 @@
+let
+	var x := 5
+	var y := 6
+	var z := 7
+in
+	if x=5 & y=6 & z=7
+	then (print("it's in then!\n"); print("This works...\n"))
+	else (print("it's in else"); print("This doesn't works... :(\n"))
+end
