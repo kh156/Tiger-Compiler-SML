@@ -3,5 +3,5 @@ let
 	var row := intArray [20] of 6
 	var y := 11
 in
-	if row[5] = 5 then print("it's five!") else print("it's not five :(...")
+	if row[-1] = 20 then print("it's size!") else print("it's not size :(...")
 end

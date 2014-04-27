@@ -11,7 +11,7 @@ sig
 				initial: allocation,
 				spillCost: Liveness.igraphNode IGraph.node -> int,
 				registers: MipsFrame.register list}
-				-> allocation * Temp.temp list
+				-> allocation * bool * Temp.temp list
 end
 
 structure Color :> COLOR =
@@ -222,8 +222,10 @@ struct
 		    			then currNodeID
 		    			else bestNodeID
 		    	in
-		    		(unfreezeSuccess := List.length(moveNodeIDs) > 0;
-		    		foldr compareDegree (hd moveNodeIDs) moveNodeIDs)
+		    		if (List.length(moveNodeIDs) > 0)
+		    		then (unfreezeSuccess := true;
+		    			foldr compareDegree (hd moveNodeIDs) moveNodeIDs)
+		    		else IG.getNodeID (List.nth(IG.nodes ig, 0)) (* this node will not be used *)
 		    	end
 
 		    (*turn move edges associated with this node into normal edges, should restart from simplify after this step*)
@@ -246,7 +248,7 @@ struct
 		    		then (g, nodeID)
 		    		else (g, bestSoFarID)
 
-		    fun selectSpill(ig, selectStack, spillWorkList) =
+		    fun selectPotentialSpill(ig, selectStack, spillWorkList) =
 		    	let 
 		    		val head = hd spillWorkList
 		    		val (_, spillNodeID) = foldl selectBestSpillNode (ig, head) spillWorkList
@@ -279,12 +281,14 @@ struct
 				| enterIfNotPresent(t, [], color) = t
 
 			(*this method uses a coulpe global variables: initial, registers*)
-		 	fun assignColors(oldIG, selectStack) = 
+		 	fun assignColors(oldIG, selectStack, clrs) = 
 		 		let 
+		 			val noSpill = ref true
+		 			val spillTemps = ref [] : Temp.temp list ref
 		 			(*val _ = app (fn e => print("Node on the stack: " ^ Int.toString e ^ "\n")) selectStack*)
 			 		fun assignColor(nodeID, alloc) =
 			 			let
-			 				val okColors = registers
+			 				val okColors = clrs
 	 						val adjacent = IG.adj (IG.getNode (oldIG, nodeID))
 	 						val (_, okColors') = foldl filterColors (alloc, okColors) adjacent
 	 						val mergedNodeIDs = Set.listItems (getSet(nodeID, !mergeTable))
@@ -292,19 +296,22 @@ struct
 
 	 						val color = case avaiColors of (* Just take the first available color to color our node *)
 	 									h::rest => h
-	 									| _ => ErrorMsg.impossible "Not enough color... needs actual spilling!"
+	 									| _ => List.nth (registers, 0) (* needs to re-run the entire algorithm if reaches here *)
 	 						val addedAlloc = Table.enter(alloc, nodeID, color)
 	 						val completeAlloc = enterIfNotPresent(addedAlloc, mergedNodeIDs, color)
 		 				in
-		 					(if List.length(okColors') <= 0
-		 					 then ErrorMsg.impossible "No color assignable for a temp node, actual spill occurs..."
+		 					(if List.length(avaiColors) <= 0
+		 					 then ((*print("Warning: acutal spilling occurs!\n");*)
+		 					 		noSpill := false;
+		 					 		spillTemps := nodeID :: (!spillTemps))
 		 					 else ();
 		 					 completeAlloc)
 		 				end
 
 		 			val newAlloc = foldl assignColor initial selectStack
+		 			val firstPass = if List.length(clrs) = 18 then true else false
 			 	in 
-			 		newAlloc
+			 		(newAlloc, !noSpill, !spillTemps, firstPass)
 		 		end
 
 		 	(*main loop*)
@@ -315,15 +322,21 @@ struct
 				    val (simplifyWorkList, freezeWorkList, nonSimplifiable, graphNoReserve) = lookForSimpliable(ig, nodeIDList)
 				    val graphEmpty = if List.length(freezeWorkList)+List.length(nonSimplifiable) = 0 then true else false
 				    val simplifyDidWork = List.length(simplifyWorkList) > 0
+				    (*val _ = print("check 1");*)
 				    val (updatedStack, updatedIG) = simplify(selectStack, graphNoReserve, simplifyWorkList)
+				    (*val _ = print("check 2");*)
 				in
 					case simplifyDidWork of 
-						true => runRegAlloc(updatedIG, updatedStack)
+						true => ((*print ("Simplified\n"); *)
+								runRegAlloc(updatedIG, updatedStack))
 						| false =>
 							(case graphEmpty of 
 							true => ( (*print("I'm done\n");*)
 				    				(*Liveness.show(TextIO.stdOut, Liveness.IGRAPH {graph=interference, moves=[]});*)
-									assignColors(interference, updatedStack))
+									 case assignColors(interference, updatedStack, registers) of 
+									 	 (newAlloc, true, spillTemps, _) => (newAlloc, true, spillTemps, true)
+									 	| (newAlloc, false, spilltemps, true) => assignColors(interference, updatedStack, rev(tl (rev registers)))
+ 									 	| (newAlloc, noSpill, spillTemps, false) => (newAlloc, noSpill, spillTemps, true))
 							| false => (case coalesceAndReturnNewGraph(updatedIG) of 
 										(true, newIG) => (coalesceSuccess := false;
 															(*print("Coalesced\n");*)
@@ -332,14 +345,16 @@ struct
 															 true => (unfreezeSuccess := false;
 															 			(*print("Unfreezed\n");*)
 															 		  runRegAlloc(newIG, updatedStack))
-															 | false => (case selectSpill(newIG, updatedStack, nonSimplifiable) of 
+															 | false => (case selectPotentialSpill(newIG, updatedStack, nonSimplifiable) of 
 															 			(ig', stack') => runRegAlloc(ig', stack')
 															 			)
 															 )
 										)
 							)
 				end
+				
+			val (al, sp, spList, _) = runRegAlloc(interference, Stack.empty)
 		in
-			(runRegAlloc(interference, Stack.empty), [])
+			(al, sp, spList)
 		end
 end

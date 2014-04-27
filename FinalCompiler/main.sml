@@ -37,20 +37,36 @@ struct
 
    val firstStr = ref true
 
-   fun emitproc out (F.PROC{body,frame}) =
-     let val _ = print ("emit " ^ Symbol.name (F.name frame) ^ "\n")
-(*         val _ = Printtree.printtree(out,body); *)
-	       val stms = Canon.linearize body
+   fun process(body, frame) = 
+      let
+         (*val _ = Printtree.printtree(TextIO.stdOut,body); *)
+         val stms = Canon.linearize body
 (*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
          val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-	       val instrsPre =   List.concat(map (Mips.codegen frame) stms')
+         val instrsPre =   List.concat(map (Mips.codegen frame) stms')
 
          val {body=instrs, prolog=_, epilog=_} = F.procEntryExit3(instrsPre)
 
          val (flowGraph, nodeList) = MakeGraph.instrs2graph(instrs)
          val iGraph = Liveness.interferenceGraph (flowGraph, nodeList)
-         val (regTable, spillList) = Color.color({interference=iGraph, initial=F.tempMap, 
+         val (regTable, noSpill, spillTempList) = Color.color({interference=iGraph, initial=F.tempMap, 
             spillCost=(fn n=> 1 div IGraph.outDegree(n)), registers=F.colorableRegs})
+
+         val accessList = if (not noSpill)
+                          then foldl (fn (e, l) => l @ [F.allocLocal frame true]) [] spillTempList
+                          else []
+         val memExpList = foldl (fn (access, l) => l @ [F.exp access (Tree.TEMP F.FP)]) [] accessList
+       in
+          if noSpill
+          then (instrs, regTable)
+          else (process(Translate.substituteSpillTemp (body, map Tree.TEMP spillTempList, memExpList), frame))
+       end
+
+   fun emitproc out (F.PROC{body,frame}) =
+     let val _ = print ("emit " ^ Symbol.name (F.name frame) ^ "\n")
+
+         val (instrs, regTable) = process(body, frame)
+
          val _ = F.setTempMap regTable
          
          val format0 = Assem.format(F.getTempName)

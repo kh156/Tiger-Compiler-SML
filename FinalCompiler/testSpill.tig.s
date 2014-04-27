@@ -838,33 +838,47 @@ tig_main:
 	addi $s0, $sp, -44
 	move $sp, $s0
 	sw $a0, 0($fp)
-	li $a0, 20
-	li $a1, 6
-	jal tig_initArray
-	move $s0, $v0
-	li $s1, 11
-	addi $s1, $0, -1
-	addi $s2, $s1, 1
-	li $s1, 4
-	mul $s1, $s2, $s1
-	add $s0, $s0, $s1
-	lw $s1, 0($s0)
-	li $s0, 20
-	beq $s1, $s0, L4
-	bne $s1, $s0, L5
-L4:
-	la $s0, L2
-	move $a0, $s0
-	jal tig_print
-	move $s0, $v0
-	j L6
-L5:
-	la $s0, L3
-	move $a0, $s0
-	jal tig_print
-	move $s0, $v0
-	j L6
-L6:
+	li $s0, 1
+	sw $s0, -48($fp)
+	li $t8, 2
+	li $t7, 3
+	li $t6, 4
+	li $t5, 5
+	li $t4, 6
+	li $t3, 7
+	li $t2, 8
+	li $t1, 9
+	li $t0, 10
+	li $s7, 11
+	li $s6, 12
+	li $s5, 13
+	li $s4, 14
+	li $s3, 15
+	li $s2, 16
+	li $s1, 17
+	li $s0, 18
+	li $t9, 19
+	sw $t9, -44($fp)
+	lw $t9, -48($fp)
+	add $t8, $t9, $t8
+	add $t7, $t8, $t7
+	add $t6, $t7, $t6
+	add $t5, $t6, $t5
+	add $t4, $t5, $t4
+	add $t3, $t4, $t3
+	add $t2, $t3, $t2
+	add $t1, $t2, $t1
+	add $t0, $t1, $t0
+	add $s7, $t0, $s7
+	add $s6, $s7, $s6
+	add $s5, $s6, $s5
+	add $s4, $s5, $s4
+	add $s3, $s4, $s3
+	add $s2, $s3, $s2
+	add $s1, $s2, $s1
+	add $s1, $s1, $s0
+	lw $s0, -44($fp)
+	add $s0, $s1, $s0
 	move $v0, $s0
 	addi $s0, $sp, 44
 	move $sp, $s0
@@ -879,12 +893,3 @@ L6:
 	lw $ra, -4($fp)
 	lw $fp, -12($sp)
 	jr $ra
-
-.data
-.align 4
-L3:
-	.word 19
-	.ascii "it's not size :(..."
-L2:
-	.word 10
-	.ascii "it's size!"

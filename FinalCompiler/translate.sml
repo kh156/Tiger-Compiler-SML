@@ -17,6 +17,8 @@ sig
   val simpleVar : access * level -> exp
   val getStaticLink : level * Tree.exp -> Tree.exp
 
+  val substituteSpillTemp : Tree.stm * Tree.exp list * Tree.exp list -> Tree.stm
+
   val resetFragList : unit -> unit
 
 end
@@ -337,5 +339,39 @@ struct
     
   fun addExpListBefore(listToAdd, letBody) = 
     Ex (Tr.ESEQ(seq(map unNx listToAdd), unEx letBody))
+
+
+  fun substituteSpillTemp(prog, tempH::tempT, memH::memT) = 
+    let
+      fun substituteOneTemp (proggg, tempExp, memExp) = 
+        let
+          val targetTemp = (case tempExp of 
+                    Tr.TEMP t => t
+                    | _ => ErrorMsg.impossible "Error: tempExp passed into substituteSpillTemp is not a Tr.TEMP...")
+
+          fun traverseExp (Tr.BINOP (binop, exp1, exp2)) = Tr.BINOP (binop, traverseExp exp1, traverseExp exp2)
+            | traverseExp (Tr.MEM exp) = Tr.MEM (traverseExp exp)
+            | traverseExp (Tr.TEMP temp) = if temp = targetTemp then memExp else (Tr.TEMP temp)
+            | traverseExp (Tr.ESEQ (stm, exp)) = Tr.ESEQ (traverseStm stm, traverseExp exp)
+            | traverseExp (Tr.NAME lab) = Tr.NAME lab
+            | traverseExp (Tr.CONST c) = Tr.CONST c
+            | traverseExp (Tr.CALL (exp1, explist)) = Tr.CALL (traverseExp exp1, map traverseExp explist)
+
+          and traverseStm (Tr.SEQ (stm1, stm2)) = Tr.SEQ(traverseStm(stm1), traverseStm(stm2))
+            | traverseStm (Tr.LABEL l) = Tr.LABEL l
+            | traverseStm (Tr.JUMP (exp, lab)) = Tr.JUMP (traverseExp(exp), lab)
+            | traverseStm (Tr.CJUMP (relop, exp1, exp2, label1, label2)) = 
+                                Tr.CJUMP (relop, traverseExp exp1, traverseExp exp2, label1, label2)
+            | traverseStm (Tr.MOVE (exp1, exp2)) = Tr.MOVE (traverseExp exp1, traverseExp exp2)
+            | traverseStm (Tr.EXP exp) = Tr.EXP (traverseExp exp)
+
+        in
+          (print("Substituted temp!" ^ Int.toString targetTemp ^ "\n"); traverseStm(proggg))
+        end
+    in
+      (substituteSpillTemp(substituteOneTemp(prog, tempH, memH), tempT, memT))
+    end
+  | substituteSpillTemp(prog, [], []) = (print("finished a round!\n"); prog)
+  | substituteSpillTemp(prog, _, _ ) = ErrorMsg.impossible "Error: # of temps and # of mem exp doesn't agree!"
 
 end
